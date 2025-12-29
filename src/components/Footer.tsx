@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils';
 import { buttonVariants } from '@/components/ui/button';
 
 const Footer = () => {
+  const currentYear = new Date().getFullYear();
   return (
     <footer className="flex flex-col items-center gap-10 border-t-2">
       <div className="mt-10 flex flex-col gap-3 md:flex-row md:gap-14">
@@ -66,19 +67,6 @@ const Footer = () => {
                   'p-0'
                 )}
               >
-                Promo codes
-              </a>
-            </li>
-            <li>
-              <a
-                href="#"
-                target="_blank"
-                rel="noreferrer"
-                className={cn(
-                  buttonVariants({ variant: 'link' }),
-                  'p-0'
-                )}
-              >
                 Developers
               </a>
             </li>
@@ -118,16 +106,15 @@ const Footer = () => {
           </div>
         </div>
       </div>
-      <div className="flex h-8 w-full flex-row items-center justify-center gap-2 px-5 py-4">
-        <p>Copyright © Laszlo Kis 2023</p>
-        <a
-          className="flex items-center justify-center text-xl text-gray-950 hover:text-neutral-400"
-          href="https://github.com/ev0clu"
-          target="_blank"
-          rel="noreferrer"
-        >
-          <FaGithub className="hover:opacity-80 dark:text-white" />
-        </a>
+      <div className="border-t border-border px-4 py-6 sm:px-6 lg:px-8">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 sm:flex-row">
+          <p className="text-sm text-muted-foreground">
+            &copy; {currentYear} CRSD BTN. All rights reserved.
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Made with by CRSD Team
+          </p>
+        </div>
       </div>
     </footer>
   );

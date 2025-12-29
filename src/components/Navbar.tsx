@@ -18,7 +18,7 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
 import { LogOut, Menu } from 'lucide-react';
-import logo from '../../public/logo.png';
+import logo from '../../public/logobtn.png';
 import { cn } from '@/lib/utils';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { signOut, useSession } from 'next-auth/react';

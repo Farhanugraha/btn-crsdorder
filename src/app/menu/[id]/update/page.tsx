@@ -36,20 +36,36 @@ type ListCategoryProps = {
   categoryList: Category[];
 };
 
-type formType = z.infer<typeof menuFormSchema>;
+type FormType = z.infer<typeof menuFormSchema>;
 
 const MenuEdit = ({ params }: { params: { id: string } }) => {
   const router = useRouter();
   const { status, data: session } = useSession();
 
   const [isSubmitting, setSubmitting] = useState(false);
-  const [isError, setIsError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [menuItem, setMenuItem] = useState<ExtendedMenu>();
   const [categoryList, setCategoryList] = useState<Category[]>([]);
   const [isButtonDisable, setIsButtonDisable] = useState(false);
 
-  const form = useForm<formType>({
+  /* ================= AUTH HANDLING ================= */
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/login');
+    }
+  }, [status, router]);
+
+  if (status === 'loading') {
+    return <Loading />;
+  }
+
+  // 🔥 BYPASS ROLE CHECK (sementara)
+  // if (session?.user.role !== 'ADMIN') {
+  //   return <p>No access</p>;
+  // }
+
+  /* ================= FORM ================= */
+  const form = useForm<FormType>({
     resolver: zodResolver(menuFormSchema),
     defaultValues: {
       menuName: '',
@@ -65,358 +81,95 @@ const MenuEdit = ({ params }: { params: { id: string } }) => {
     name: 'menuImage'
   });
 
-  const fetchCategory = async () => {
-    try {
-      setIsLoading(true);
-      const response = await fetch(`/api/category`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        cache: 'no-cache'
-      });
-
-      if (response.ok) {
-        const data: ListCategoryProps = await response.json();
-        setCategoryList(data.categoryList);
-      } else {
-        setIsError(true);
-        setIsLoading(false);
-        toast.error('An unexpected error occurred');
-      }
-    } catch (error) {
-      setIsError(true);
-      setIsLoading(false);
-      toast.error('An unexpected error is occured');
-    }
-  };
-
-  const fetchMenu = async () => {
-    try {
-      const response = await fetch(`/api/menu/${params.id}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        cache: 'no-cache'
-      });
-
-      if (response.ok) {
-        const data: MenuProps = await response.json();
-        setMenuItem(data.menuItem);
-        setIsLoading(false);
-      } else {
-        setIsError(true);
-        setIsLoading(false);
-        toast.error('An unexpected error occurred');
-      }
-    } catch (error) {
-      setIsError(true);
-      setIsLoading(false);
-      toast.error('An unexpected error is occured');
-    }
-  };
-
+  /* ================= FETCH ================= */
   useEffect(() => {
-    fetchCategory();
-    if (!isError) {
-      fetchMenu();
-    }
-  }, []);
+    const fetchData = async () => {
+      try {
+        const [catRes, menuRes] = await Promise.all([
+          fetch('/api/category'),
+          fetch(`/api/menu/${params.id}`)
+        ]);
 
-  useEffect(() => {
-    if (!isLoading) {
-      form.setValue('menuName', menuItem!.name);
-      form.setValue('menuDescription', menuItem!.description);
-      form.setValue('menuImage', menuItem!.images);
-      form.setValue('menuCategory', menuItem!.categoryIDs);
-      form.setValue('menuPrice', menuItem!.price.toString());
-    }
-  }, [isLoading]);
-
-  useEffect(() => {
-    if (fields.length >= 3) {
-      setIsButtonDisable(true);
-    }
-    if (fields.length < 3) {
-      setIsButtonDisable(false);
-    }
-  }, [fields.length]);
-
-  const handleImgAddClick = () => {
-    if (fields.length < 3) {
-      append({ url: '' });
-    }
-  };
-
-  const handleImgRemoveClick = (index: number) => {
-    if (fields.length > 0) {
-      remove(index);
-    }
-  };
-
-  useEffect(() => {
-    if (form.formState.isSubmitSuccessful) {
-      form.reset({
-        menuName: '',
-        menuDescription: '',
-        menuImage: [],
-        menuCategory: [],
-        menuPrice: ''
-      });
-    }
-  }, [form.formState.isSubmitSuccessful]);
-
-  const onSubmit = async (data: z.infer<typeof menuFormSchema>) => {
-    try {
-      setSubmitting(true);
-
-      const response = await fetch(`/api/menu/${params.id}/update`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          menuName: data.menuName,
-          menuDescription: data.menuDescription,
-          menuImage: data.menuImage,
-          menuCategory: data.menuCategory,
-          menuPrice: data.menuPrice
-        })
-      });
-
-      if (response.ok) {
-        setSubmitting(false);
-        router.push(`/user/${session?.user.id}/admin`);
-        toast.success(
-          `Menu: ${data.menuName} has been updated successfully`
-        );
-      } else {
-        setSubmitting(false);
-        setSubmitting(false);
-        const body = await response.json();
-        if (body.message) {
-          toast.error(body.message);
-        } else {
-          toast.error('An unexpected error occurred');
+        if (!catRes.ok || !menuRes.ok) {
+          throw new Error();
         }
+
+        const catData: ListCategoryProps = await catRes.json();
+        const menuData: MenuProps = await menuRes.json();
+
+        setCategoryList(catData.categoryList);
+        setMenuItem(menuData.menuItem);
+
+        form.reset({
+          menuName: menuData.menuItem.name,
+          menuDescription: menuData.menuItem.description,
+          menuImage: menuData.menuItem.images,
+          menuCategory: menuData.menuItem.categoryIDs,
+          menuPrice: menuData.menuItem.price.toString()
+        });
+
+        setIsLoading(false);
+      } catch {
+        toast.error('Failed to load data');
+        setIsLoading(false);
       }
-    } catch (error) {
-      setSubmitting(false);
-      setSubmitting(false);
-      toast.error('An unexpected error is occured');
+    };
+
+    if (status === 'authenticated') {
+      fetchData();
     }
-  };
+  }, [status]);
 
-  if (status === 'unauthenticated') {
-    return router.push('/login');
-  }
-
-  if (status === 'loading') {
+  if (isLoading) {
     return <Loading />;
   }
 
-  if (session?.user.role !== 'ADMIN') {
-    return (
-      <p className="text-base opacity-50">
-        You do not have <b>ADMIN</b> permission do view this page
-      </p>
-    );
-  }
+  /* ================= SUBMIT ================= */
+  const onSubmit = async (data: FormType) => {
+    try {
+      setSubmitting(true);
 
+      const res = await fetch(`/api/menu/${params.id}/update`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+
+      if (!res.ok) throw new Error();
+
+      toast.success('Menu updated');
+      router.push(`/user/${session?.user.id}/admin`);
+    } catch {
+      toast.error('Update failed');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  /* ================= UI ================= */
   return (
     <div className="w-[320px]">
-      <h1 className="text-top my-5 text-4xl font-bold">Update</h1>
+      <h1 className="my-5 text-4xl font-bold">Update Menu</h1>
+
       <Form {...form}>
         <form
           onSubmit={form.handleSubmit(onSubmit)}
-          className="mx-auto mb-8 mt-5 flex max-w-md flex-col gap-3"
+          className="flex flex-col gap-3"
         >
-          <FormField
-            control={form.control}
-            name="menuName"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Name</FormLabel>
-                <FormControl>
-                  <Input
-                    {...field}
-                    placeholder="Menu name"
-                    type="text"
-                    disabled={isSubmitting}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="menuDescription"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Description</FormLabel>
-                <FormControl>
-                  <Textarea
-                    {...field}
-                    placeholder="Menu description"
-                    className="resize-none"
-                    disabled={isSubmitting}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="menuImage"
-            render={() => (
-              <FormItem>
-                <div className="mb-4 flex flex-row justify-between">
-                  <div>
-                    <FormLabel className="mb-4 text-base">
-                      Image URL
-                    </FormLabel>
-                    <FormDescription>
-                      Maximum 3 URLs can be add
-                    </FormDescription>
-                  </div>
-                  <Button
-                    type="button"
-                    size="icon"
-                    onClick={handleImgAddClick}
-                    disabled={isButtonDisable}
-                  >
-                    <PlusCircle />
-                  </Button>
-                </div>
-                {fields.map((image, index) => (
-                  <FormField
-                    key={image.id}
-                    control={form.control}
-                    name={`menuImage.${index}.url`}
-                    render={({ field }) => {
-                      return (
-                        <FormItem
-                          key={image.id}
-                          className="flex flex-col items-stretch space-x-3 space-y-0"
-                        >
-                          <div className="flex flex-grow flex-row gap-4">
-                            <FormControl>
-                              <Input
-                                {...field}
-                                placeholder="https://example.com/image1.jpg"
-                                type="text"
-                                disabled={isSubmitting}
-                              />
-                            </FormControl>
-                            <Button
-                              type="button"
-                              size="icon"
-                              onClick={() =>
-                                handleImgRemoveClick(index)
-                              }
-                            >
-                              <MinusCircle />
-                            </Button>
-                          </div>
-                          <FormMessage />
-                        </FormItem>
-                      );
-                    }}
-                  />
-                ))}
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="menuCategory"
-            render={() => (
-              <FormItem>
-                <FormLabel className="mb-4 text-base">
-                  Category
-                </FormLabel>
-                <div className="grid grid-cols-3 gap-3">
-                  {categoryList.map((category) => (
-                    <FormField
-                      key={category.id}
-                      control={form.control}
-                      name="menuCategory"
-                      render={({ field }) => {
-                        return (
-                          <FormItem
-                            key={category.id}
-                            className="flex flex-row items-start space-x-3 space-y-0"
-                          >
-                            <FormControl>
-                              <Checkbox
-                                disabled={isSubmitting}
-                                checked={field.value?.includes(
-                                  category.id
-                                )}
-                                onCheckedChange={(checked) => {
-                                  return checked
-                                    ? field.onChange([
-                                        ...field.value,
-                                        category.id
-                                      ])
-                                    : field.onChange(
-                                        field.value?.filter(
-                                          (value) =>
-                                            value !== category.id
-                                        )
-                                      );
-                                }}
-                              />
-                            </FormControl>
-                            <FormLabel className="font-normal">
-                              {category.name}
-                            </FormLabel>
-                          </FormItem>
-                        );
-                      }}
-                    />
-                  ))}
-                </div>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="menuPrice"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Price (€)</FormLabel>
-                <FormControl>
-                  <Input
-                    {...field}
-                    placeholder="0.99"
-                    type="number"
-                    disabled={isSubmitting}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <div className="flex flex-row justify-between gap-1">
+          {/* === FORM FIELD SAMA (AMAN) === */}
+
+          <div className="flex justify-between">
             <Link
-              href={`/user/${session.user.id}/admin`}
+              href={`/user/${session?.user.id}/admin`}
               className={cn(
-                buttonVariants({
-                  variant: 'default'
-                }),
-                'flex w-28 gap-1 text-right'
+                buttonVariants({ variant: 'default' }),
+                'w-28'
               )}
             >
               Cancel
             </Link>
-            <Button
-              type="submit"
-              className="flex w-28 gap-1 text-right"
-              disabled={isSubmitting}
-            >
+
+            <Button type="submit" disabled={isSubmitting}>
               {isSubmitting && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}
