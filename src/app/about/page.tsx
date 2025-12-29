@@ -1,5 +1,5 @@
 import Image from 'next/image';
-import aboutPic from '../../../public/about.jpg';
+import aboutPic from '../../../public/aboutus.png';
 
 const About = () => {
   return (
@@ -15,16 +15,13 @@ const About = () => {
       <div className="flex flex-col justify-center gap-10">
         <h1 className="text-center text-2xl font-bold">About Us</h1>
         <p>
-          Welcome to Fooder, where passion for food meets seamless
-          online ordering. Our journey began with a simple yet
-          powerful idea: to bring delectable dishes from your favorite
-          local restaurants directly to your doorstep. At Fooder, we
-          believe in the joy of sharing good food and creating
-          memorable dining experiences. Explore our diverse menu,
-          curated with care, and join us in celebrating the love for
-          delicious cuisine. Discover the Fooder, where innovation,
-          flavor, and convenience converge to redefine the way you
-          experience food.
+          Selamat datang BTNers di Fooder, platform pemesanan makanan
+          yang kami hadirkan untuk memudahkan Anda menikmati beragam
+          hidangan favorit secara praktis dan cepat. Fooder dirancang
+          untuk mendukung aktivitas BTNers dengan akses mudah ke
+          pilihan kuliner berkualitas dari berbagai mitra restoran,
+          menghadirkan pengalaman memesan makanan yang efisien,
+          nyaman, dan menyenangkan dalam satu genggaman
         </p>
       </div>
     </div>

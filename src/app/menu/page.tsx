@@ -48,7 +48,7 @@ const MOCK_MENU = [
     id: '1',
     name: 'Pepperoni Pizza',
     description: 'Classic pepperoni pizza with cheese',
-    price: 12,
+    price: 120000,
     images: [],
     categoryIDs: ['pizza']
   },
@@ -56,7 +56,7 @@ const MOCK_MENU = [
     id: '2',
     name: 'Cheese Burger',
     description: 'Beef burger with melted cheese',
-    price: 10,
+    price: 10000,
     images: [],
     categoryIDs: ['burger']
   },
@@ -64,7 +64,7 @@ const MOCK_MENU = [
     id: '3',
     name: 'Ice Lemon Tea',
     description: 'Fresh cold lemon tea',
-    price: 4,
+    price: 40000,
     images: [],
     categoryIDs: ['drink']
   }
@@ -102,7 +102,7 @@ const MenuPage = () => {
 
   const totalItemPrice = (price: number) =>
     formatPrice(price * quantity, {
-      currency: 'EUR',
+      currency: 'IDR',
       notation: 'compact'
     });
 
