@@ -18,7 +18,7 @@ const OrderItem = ({ order }: OrderItemProps) => {
   }, 0);
 
   const formattedTotalCartPrice = formatPrice(totalCartPrice, {
-    currency: 'EUR',
+    currency: 'IDR',
     notation: 'compact'
   });
 

@@ -169,7 +169,7 @@ const Cart = () => {
                               <Button
                                 type="button"
                                 size="icon"
-                                className="h-6 w-6"
+                                className="w-;6 h-6"
                                 onClick={() =>
                                   increaseQuantity(
                                     item.menu.id,

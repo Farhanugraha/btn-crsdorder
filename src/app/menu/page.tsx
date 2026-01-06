@@ -1,23 +1,17 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
 import Loading from '@/components/Loading';
+import MenuCard from '@/components/menu/MenuCard';
+import CategoryFilter from '@/components/category/CategoryFilter';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger
 } from '@/components/ui/dialog';
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious
-} from '@/components/ui/carousel';
 import {
   Select,
   SelectContent,
@@ -26,16 +20,12 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { Minus, Plus } from 'lucide-react';
-import MenuCard from '@/components/menu/MenuCard';
-import noImageUrl from '../../../public/no-image.png';
-import Image from 'next/image';
+import { Minus, Plus, ShoppingCart } from 'lucide-react';
 import { useCartStore } from '@/lib/store';
-import ErrorMessage from '@/components/ErrorMessage';
+import { toast } from 'sonner';
 import { formatPrice } from '@/lib/utils';
-import CategoryFilter from '@/components/category/CategoryFilter';
+import ErrorMessage from '@/components/ErrorMessage';
 
 const MOCK_CATEGORIES = [
   { id: 'pizza', name: 'Pizza' },
@@ -47,7 +37,8 @@ const MOCK_MENU = [
   {
     id: '1',
     name: 'Pepperoni Pizza',
-    description: 'Classic pepperoni pizza with cheese',
+    description:
+      'Classic pepperoni pizza dengan keju mozzarella segar dan sauce homemade yang lezat',
     price: 120000,
     images: [],
     categoryIDs: ['pizza']
@@ -55,33 +46,47 @@ const MOCK_MENU = [
   {
     id: '2',
     name: 'Cheese Burger',
-    description: 'Beef burger with melted cheese',
-    price: 10000,
+    description:
+      'Beef burger premium dengan cheddar cheese yang lumer dan fresh lettuce',
+    price: 95000,
     images: [],
     categoryIDs: ['burger']
   },
   {
     id: '3',
     name: 'Ice Lemon Tea',
-    description: 'Fresh cold lemon tea',
-    price: 40000,
+    description:
+      'Minuman segar dari lemon asli dengan es batu dan gula murni',
+    price: 30000,
     images: [],
     categoryIDs: ['drink']
   }
 ];
 
 const MenuPage = () => {
+  const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [menuList, setMenuList] = useState<any[]>([]);
   const [categoryList, setCategoryList] = useState<any[]>([]);
-  const [size, setSize] = useState<string | undefined>();
-  const [quantity, setQuantity] = useState(1);
-  const [isSizeError, setIsSizeError] = useState(false);
-  const [dialogOpen, setDialogOpen] = useState<boolean[]>([]);
   const [selectedCategoryList, setSelectedCategoryList] = useState<
     string[]
   >([]);
 
+  // Dialog states
+  const [dialogOpen, setDialogOpen] = useState<{
+    [key: string]: boolean;
+  }>({});
+  const [selectedSize, setSelectedSize] = useState<{
+    [key: string]: string;
+  }>({});
+  const [selectedQuantity, setSelectedQuantity] = useState<{
+    [key: string]: number;
+  }>({});
+  const [sizeError, setSizeError] = useState<{
+    [key: string]: boolean;
+  }>({});
+
+  // Cart store
   const { cart, addToCart, increaseQuantity } = useCartStore();
 
   /* =======================
@@ -91,7 +96,6 @@ const MenuPage = () => {
     setTimeout(() => {
       setCategoryList(MOCK_CATEGORIES);
       setMenuList(MOCK_MENU);
-      setDialogOpen(new Array(MOCK_MENU.length).fill(false));
       setIsLoading(false);
     }, 500);
   }, []);
@@ -100,17 +104,57 @@ const MenuPage = () => {
     setSelectedCategoryList(categoryArray ?? []);
   };
 
-  const totalItemPrice = (price: number) =>
-    formatPrice(price * quantity, {
+  const filteredMenu = menuList.filter(
+    (item) =>
+      selectedCategoryList.length === 0 ||
+      item.categoryIDs.some((id: string) =>
+        selectedCategoryList.includes(id)
+      )
+  );
+
+  const toggleDialog = (menuId: string) => {
+    setDialogOpen((prev) => ({
+      ...prev,
+      [menuId]: !prev[menuId]
+    }));
+
+    // Reset form saat dialog dibuka
+    if (!dialogOpen[menuId]) {
+      setSelectedSize({ ...selectedSize, [menuId]: '' });
+      setSelectedQuantity({ ...selectedQuantity, [menuId]: 1 });
+      setSizeError({ ...sizeError, [menuId]: false });
+    }
+  };
+
+  const handleAddToCart = (menu: any) => {
+    const size = selectedSize[menu.id];
+    const quantity = selectedQuantity[menu.id] || 1;
+
+    if (!size) {
+      setSizeError({ ...sizeError, [menu.id]: true });
+      return;
+    }
+
+    // Check if item already in cart
+    const existingItem = cart.find(
+      (item) => item.menu.id === menu.id && item.size === size
+    );
+
+    if (existingItem) {
+      increaseQuantity(menu.id, size);
+    } else {
+      addToCart(menu, size, quantity);
+    }
+
+    toast.success(`${menu.name} ditambahkan ke keranjang!`);
+    toggleDialog(menu.id);
+  };
+
+  const getTotalPrice = (menuId: string, price: number) => {
+    const quantity = selectedQuantity[menuId] || 1;
+    return formatPrice(price * quantity, {
       currency: 'IDR',
       notation: 'compact'
-    });
-
-  const toggleDialog = (index: number) => {
-    setDialogOpen((prev) => {
-      const next = [...prev];
-      next[index] = !next[index];
-      return next;
     });
   };
 
@@ -123,138 +167,173 @@ const MenuPage = () => {
   }
 
   return (
-    <div className="mt-5">
-      <CategoryFilter
-        categoryList={categoryList}
-        selectedCategoryList={selectedCategoryList}
-        setFilterCategory={setFilterCategory}
-      />
+    <div className="min-h-screen bg-background">
+      {/* Header Section */}
+      <div className="border-b border-border bg-muted/30 px-4 py-12 sm:px-6 lg:px-10">
+        <div className="mx-auto max-w-7xl">
+          <h1 className="mb-2 text-4xl font-bold text-foreground">
+            Menu Kami
+          </h1>
+          <p className="text-muted-foreground">
+            Pilih dari berbagai pilihan hidangan lezat yang kami
+            tawarkan
+          </p>
+        </div>
+      </div>
 
-      <div className="mt-14 grid grid-cols-1 gap-10 px-10 py-4 md:grid-cols-2 xl:grid-cols-3">
-        {menuList
-          .filter(
-            (item) =>
-              selectedCategoryList.length === 0 ||
-              item.categoryIDs.some((id: string) =>
-                selectedCategoryList.includes(id)
-              )
-          )
-          .map((menu, index) => (
-            <Dialog
-              key={menu.id}
-              open={dialogOpen[index]}
-              onOpenChange={() => {
-                setQuantity(1);
-                setIsSizeError(false);
-                toggleDialog(index);
-              }}
-            >
-              <DialogTrigger>
-                <MenuCard
-                  menu={menu}
-                  toggleDialog={toggleDialog}
-                  index={index}
-                />
-              </DialogTrigger>
+      {/* Category Filter */}
+      <div className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="px-4 py-6 sm:px-6 lg:px-10">
+          <CategoryFilter
+            categoryList={categoryList}
+            selectedCategoryList={selectedCategoryList}
+            setFilterCategory={setFilterCategory}
+          />
+        </div>
+      </div>
 
-              <DialogContent className="flex flex-col px-12 sm:max-w-md">
-                <Carousel className="mx-auto h-[200px] w-[200px]">
-                  <CarouselContent>
-                    <CarouselItem className="flex justify-center">
-                      <Image
-                        src={noImageUrl}
-                        alt="Menu"
-                        width={160}
-                        height={160}
-                        className="rounded-md"
-                      />
-                    </CarouselItem>
-                  </CarouselContent>
-                  <CarouselPrevious />
-                  <CarouselNext />
-                </Carousel>
-
-                <DialogHeader>
-                  <DialogTitle className="text-2xl">
-                    {menu.name}
-                  </DialogTitle>
-                  <ScrollArea className="h-32">
-                    <DialogDescription>
-                      {menu.description}
-                    </DialogDescription>
-                  </ScrollArea>
-                </DialogHeader>
-
-                <Select
-                  onValueChange={(value) => {
-                    setSize(value);
-                    setIsSizeError(false);
-                  }}
+      {/* Menu Grid */}
+      <div className="px-4 py-12 sm:px-6 lg:px-10">
+        <div className="mx-auto max-w-7xl">
+          {filteredMenu.length === 0 ? (
+            <div className="py-12 text-center">
+              <p className="text-lg text-muted-foreground">
+                Tidak ada menu yang sesuai dengan kategori yang
+                dipilih
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {filteredMenu.map((menu) => (
+                <Dialog
+                  key={menu.id}
+                  open={dialogOpen[menu.id] || false}
+                  onOpenChange={() => toggleDialog(menu.id)}
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select size" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      <SelectItem value="SMALL">Small</SelectItem>
-                      <SelectItem value="NORMAL">Normal</SelectItem>
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
+                  <DialogTrigger asChild>
+                    <div className="cursor-pointer transition-transform hover:scale-105">
+                      <MenuCard
+                        menu={menu}
+                        toggleDialog={() => toggleDialog(menu.id)}
+                        index={0}
+                      />
+                    </div>
+                  </DialogTrigger>
 
-                {isSizeError && (
-                  <ErrorMessage>Please select a size</ErrorMessage>
-                )}
+                  <DialogContent className="w-full max-w-md">
+                    {/* Product Info */}
+                    <DialogHeader>
+                      <DialogTitle className="text-2xl text-foreground">
+                        {menu.name}
+                      </DialogTitle>
+                    </DialogHeader>
 
-                <div className="mt-5 flex items-center gap-8">
-                  <div className="flex items-center gap-3">
+                    {/* Description */}
+                    <p className="text-sm text-muted-foreground">
+                      {menu.description}
+                    </p>
+
+                    {/* Size Selection */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-semibold text-foreground">
+                        Pilih Ukuran
+                      </label>
+                      <Select
+                        value={selectedSize[menu.id] || ''}
+                        onValueChange={(value) => {
+                          setSelectedSize({
+                            ...selectedSize,
+                            [menu.id]: value
+                          });
+                          setSizeError({
+                            ...sizeError,
+                            [menu.id]: false
+                          });
+                        }}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Pilih ukuran..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectGroup>
+                            <SelectItem value="SMALL">
+                              Kecil (Small)
+                            </SelectItem>
+                            <SelectItem value="NORMAL">
+                              Besar (Normal)
+                            </SelectItem>
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
+                      {sizeError[menu.id] && (
+                        <ErrorMessage>
+                          Silakan pilih ukuran
+                        </ErrorMessage>
+                      )}
+                    </div>
+
+                    {/* Quantity Control */}
+                    <div className="flex items-center gap-4 rounded-lg bg-muted p-3">
+                      <span className="text-sm font-semibold text-muted-foreground">
+                        Jumlah
+                      </span>
+                      <div className="ml-auto flex items-center gap-3">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={
+                            (selectedQuantity[menu.id] || 1) === 1
+                          }
+                          onClick={() =>
+                            setSelectedQuantity({
+                              ...selectedQuantity,
+                              [menu.id]: Math.max(
+                                1,
+                                (selectedQuantity[menu.id] || 1) - 1
+                              )
+                            })
+                          }
+                          className="h-8 w-8 p-0"
+                        >
+                          <Minus className="h-4 w-4" />
+                        </Button>
+                        <span className="w-8 text-center font-semibold">
+                          {selectedQuantity[menu.id] || 1}
+                        </span>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() =>
+                            setSelectedQuantity({
+                              ...selectedQuantity,
+                              [menu.id]:
+                                (selectedQuantity[menu.id] || 1) + 1
+                            })
+                          }
+                          className="h-8 w-8 p-0"
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Add to Cart Button */}
                     <Button
-                      size="icon"
-                      disabled={quantity === 1}
-                      onClick={() => setQuantity((q) => q - 1)}
+                      className="h-11 w-full gap-2"
+                      onClick={() => handleAddToCart(menu)}
                     >
-                      <Minus />
+                      <ShoppingCart className="h-5 w-5" />
+                      <span>Tambah ke Keranjang</span>
+                      <span className="ml-auto font-semibold">
+                        {getTotalPrice(menu.id, menu.price)}
+                      </span>
                     </Button>
-                    <span>{quantity}</span>
-                    <Button
-                      size="icon"
-                      onClick={() => setQuantity((q) => q + 1)}
-                    >
-                      <Plus />
-                    </Button>
-                  </div>
-
-                  <Button
-                    className="w-40 justify-between"
-                    onClick={() => {
-                      if (!size) {
-                        setIsSizeError(true);
-                        return;
-                      }
-
-                      if (
-                        cart.some(
-                          (item) =>
-                            item.menu.id === menu.id &&
-                            item.size === size
-                        )
-                      ) {
-                        increaseQuantity(menu.id, size);
-                      } else {
-                        addToCart(menu, size, quantity);
-                      }
-
-                      toast.success('Added to cart');
-                      toggleDialog(index);
-                    }}
-                  >
-                    <span>Add</span>
-                    <span>{totalItemPrice(menu.price)}</span>
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
-          ))}
+                  </DialogContent>
+                </Dialog>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

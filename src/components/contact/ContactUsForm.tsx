@@ -474,7 +474,7 @@ const ContactUsForm = () => {
             <h3 className="mb-2 font-semibold text-foreground">
               Bagaimana cara membatalkan pesanan?
             </h3>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-muted-foregound text-sm">
               Anda dapat membatalkan pesanan dalam 5 menit pertama
               setelah pemesanan.
             </p>

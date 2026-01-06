@@ -1,14 +1,13 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
 import Link from 'next/link';
-import { signIn, useSession } from 'next-auth/react';
-import { Button, buttonVariants } from '@/components/ui/button';
+import { Button } from '@/components/ui/button';
 import { Loader2, Eye, EyeOff } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import {
@@ -19,26 +18,46 @@ import {
   FormLabel,
   FormMessage
 } from '@/components/ui/form';
-import { cn } from '@/lib/utils';
-import Image from 'next/image';
-import googleLogo from '../../../../public/google_logo.svg';
-import { loginFormSchema } from '@/lib/validation/loginFormSchema';
 
-type formType = z.infer<typeof loginFormSchema>;
+// Login validation schema
+const loginFormSchema = z.object({
+  email: z.string().email('Email tidak valid'),
+  password: z.string().min(6, 'Password minimal 6 karakter')
+});
+
+type FormType = z.infer<typeof loginFormSchema>;
+
+interface LoginResponse {
+  success: boolean;
+  message?: string;
+  token?: string;
+  token_type?: string;
+  expires_in?: number;
+  user?: {
+    id: number;
+    name: string;
+    email: string;
+    email_verified_at: string;
+    phone: string;
+    divisi: string;
+    unit_kerja: string;
+    role: string;
+    created_at: string;
+    updated_at: string;
+  };
+  errors?: Record<string, string[]>;
+}
 
 const Login = () => {
   const router = useRouter();
-  const { status } = useSession();
   const searchParams = useSearchParams();
+  const [isSubmitting, setSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   const redirect = searchParams.get('redirect');
 
-  const [isSubmittingCredentials, setSubmittingCredentials] =
-    useState(false);
-  const [isSubmittingGoogle, setSubmittingGoogle] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-
-  const form = useForm<formType>({
+  const form = useForm<FormType>({
     resolver: zodResolver(loginFormSchema),
     defaultValues: {
       email: '',
@@ -46,46 +65,100 @@ const Login = () => {
     }
   });
 
-  const onSubmit = async (data: z.infer<typeof loginFormSchema>) => {
-    try {
-      setSubmittingCredentials(true);
-      const response = await signIn('credentials', {
-        email: data.email,
-        password: data.password,
-        redirect: false
-      });
-      if (response?.ok) {
-        toast.success('Login successful!');
-        if (redirect === 'checkout') {
-          router.push('/checkout');
-        } else {
-          router.push('/');
-        }
+  // Check if user already logged in
+  useEffect(() => {
+    const checkAuth = () => {
+      const token = localStorage.getItem('auth_token');
+      if (token) {
+        router.push('/');
       }
-      if (response?.error) {
-        setSubmittingCredentials(false);
-        toast.error('Email or password is incorrect');
+      setIsLoading(false);
+    };
+
+    checkAuth();
+  }, [router]);
+
+  const onSubmit = async (data: FormType) => {
+    try {
+      setSubmitting(true);
+
+      const response = await fetch(
+        'http://localhost:8000/api/auth/login',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json'
+          },
+          body: JSON.stringify({
+            email: data.email,
+            password: data.password
+          })
+        }
+      );
+
+      const responseData: LoginResponse = await response.json();
+
+      if (
+        response.ok &&
+        responseData.success &&
+        responseData.token &&
+        responseData.user
+      ) {
+        // Store token and user data
+        localStorage.setItem('auth_token', responseData.token);
+        localStorage.setItem(
+          'auth_user',
+          JSON.stringify(responseData.user)
+        );
+        localStorage.setItem(
+          'token_expires_in',
+          String(
+            Date.now() + (responseData.expires_in || 3600) * 1000
+          )
+        );
+
+        toast.success('Login berhasil!');
+
+        // Dispatch custom event untuk notify Navbar
+        window.dispatchEvent(new Event('auth-changed'));
+
+        // Redirect after short delay
+        setTimeout(() => {
+          const userId = responseData.user!.id;
+          const userRole = responseData.user!.role;
+
+          if (redirect === 'checkout') {
+            router.push('/checkout');
+          } else if (
+            userRole === 'admin' ||
+            userRole === 'superadmin'
+          ) {
+            router.push(`/user/${userId}/admin`);
+          } else {
+            router.push(`/user/${userId}/user`);
+          }
+        }, 1000);
+      } else {
+        setSubmitting(false);
+        toast.error(
+          (responseData && responseData.message) ||
+            'Email atau password salah'
+        );
       }
     } catch (error) {
-      toast.error('An unexpected error occurred');
-      setSubmittingCredentials(false);
+      console.error('Error:', error);
+      toast.error(
+        'Terjadi kesalahan koneksi. Pastikan server berjalan di localhost:8000'
+      );
+      setSubmitting(false);
     }
   };
 
-  if (status === 'authenticated') {
+  if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background px-4">
-        <div className="w-full max-w-sm rounded-lg border border-border bg-card p-8 text-center shadow-lg">
-          <h2 className="mb-4 text-2xl font-bold text-foreground">
-            Already Logged In
-          </h2>
-          <p className="mb-6 text-muted-foreground">
-            You are already authenticated. Redirecting...
-          </p>
-          <Button onClick={() => router.push('/')} className="w-full">
-            Go to Home
-          </Button>
-        </div>
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -96,10 +169,10 @@ const Login = () => {
         {/* Header */}
         <div className="border-b border-border bg-muted/50 px-6 py-8 text-center">
           <h1 className="mb-2 text-3xl font-bold text-foreground">
-            Welcome
+            Selamat Datang
           </h1>
           <p className="text-sm text-muted-foreground">
-            Sign in to your account to continue
+            Masuk ke akun Anda untuk melanjutkan
           </p>
         </div>
 
@@ -122,12 +195,9 @@ const Login = () => {
                     <FormControl>
                       <Input
                         {...field}
-                        placeholder="you@example.com"
+                        placeholder="email@example.com"
                         type="email"
-                        disabled={
-                          isSubmittingCredentials ||
-                          isSubmittingGoogle
-                        }
+                        disabled={isSubmitting}
                         className="border-border focus:ring-2 focus:ring-primary"
                       />
                     </FormControl>
@@ -159,10 +229,7 @@ const Login = () => {
                           {...field}
                           placeholder="••••••••"
                           type={showPassword ? 'text' : 'password'}
-                          disabled={
-                            isSubmittingCredentials ||
-                            isSubmittingGoogle
-                          }
+                          disabled={isSubmitting}
                           className="border-border pr-10 focus:ring-2 focus:ring-primary"
                         />
                         <button
@@ -171,10 +238,7 @@ const Login = () => {
                             setShowPassword(!showPassword)
                           }
                           className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
-                          disabled={
-                            isSubmittingCredentials ||
-                            isSubmittingGoogle
-                          }
+                          disabled={isSubmitting}
                         >
                           {showPassword ? (
                             <EyeOff className="h-4 w-4" />
@@ -192,59 +256,17 @@ const Login = () => {
               {/* Submit Button */}
               <Button
                 type="submit"
-                disabled={
-                  isSubmittingCredentials || isSubmittingGoogle
-                }
+                disabled={isSubmitting}
                 className="w-full"
                 size="lg"
               >
-                {isSubmittingCredentials && (
+                {isSubmitting && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 )}
-                {isSubmittingCredentials
-                  ? 'Signing in...'
-                  : 'Sign In'}
+                {isSubmitting ? 'Masuk...' : 'Masuk'}
               </Button>
             </form>
           </Form>
-
-          {/* Divider */}
-          <div className="relative my-6 flex items-center">
-            <div className="flex-grow border-t border-border"></div>
-            <span className="mx-4 flex-shrink text-xs text-muted-foreground">
-              ATAU
-            </span>
-            <div className="flex-grow border-t border-border"></div>
-          </div>
-
-          {/* Google Sign In */}
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full"
-            onClick={async () => {
-              setSubmittingGoogle(true);
-              await signIn('google', {
-                callbackUrl:
-                  redirect === 'checkout' ? '/checkout' : '/'
-              });
-            }}
-            disabled={isSubmittingCredentials || isSubmittingGoogle}
-          >
-            {isSubmittingGoogle && (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            )}
-            <Image
-              src={googleLogo}
-              alt="google logo"
-              width={16}
-              height={16}
-              className="mr-2"
-            />
-            {isSubmittingGoogle
-              ? 'Connecting...'
-              : 'Sign in with Google'}
-          </Button>
 
           {/* Register Link */}
           <p className="mt-6 text-center text-sm text-muted-foreground">
@@ -253,7 +275,7 @@ const Login = () => {
               href="/auth/register"
               className="font-semibold text-primary hover:underline"
             >
-              Buat sekarang
+              Daftar sekarang
             </Link>
           </p>
         </div>

@@ -200,7 +200,7 @@ const OrderId = ({ params }: { params: { orderId: string } }) => {
                                 </div>
                                 <span className="text-sky-400">
                                   {formatPrice(item.menu.price, {
-                                    currency: 'EUR',
+                                    currency: 'IDR',
                                     notation: 'compact'
                                   })}
                                 </span>
