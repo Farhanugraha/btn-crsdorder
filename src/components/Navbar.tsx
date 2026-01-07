@@ -221,7 +221,7 @@ const Navbar = () => {
                 'text-sm'
               )}
             >
-              Restaurant
+              Menu
             </Link>
             <Link
               href="/contact"
@@ -278,7 +278,7 @@ const Navbar = () => {
                   <Link href="/">Home</Link>
                 </MenubarItem>
                 <MenubarItem asChild>
-                  <Link href="/menu">Restaurant</Link>
+                  <Link href="/menu">Menu</Link>
                 </MenubarItem>
                 <MenubarSeparator />
                 <MenubarItem asChild>

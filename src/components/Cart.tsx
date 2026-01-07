@@ -23,7 +23,14 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button, buttonVariants } from '@/components/ui/button';
-import { Minus, Plus, ShoppingCart, X, Trash2 } from 'lucide-react';
+import {
+  Minus,
+  Plus,
+  ShoppingCart,
+  X,
+  Trash2,
+  MapPin
+} from 'lucide-react';
 import Loading from '@/components/Loading';
 import { cn, formatPrice } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -280,120 +287,91 @@ const CartComponent = () => {
     <>
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
         <SheetTrigger asChild>
-          <Button size="icon" variant="outline" className="relative">
-            <ShoppingCart />
+          <Button
+            size="icon"
+            variant="outline"
+            className="relative hover:bg-slate-100 dark:hover:bg-slate-800"
+          >
+            <ShoppingCart className="h-5 w-5" />
             {mounted && totalCartItems > 0 ? (
-              <span className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-red-600 text-xs font-bold text-white">
+              <span className="absolute -right-2 -top-2 flex h-5 w-5 animate-pulse items-center justify-center rounded-full bg-emerald-600 text-xs font-bold text-white">
                 {totalCartItems}
               </span>
             ) : null}
           </Button>
         </SheetTrigger>
-        <SheetContent className="flex h-full flex-col">
-          <SheetHeader>
-            <SheetTitle>Keranjang</SheetTitle>
+        <SheetContent className="flex h-full w-full flex-col overflow-hidden bg-white dark:bg-slate-900 sm:w-96">
+          <SheetHeader className="flex-shrink-0 border-b border-slate-200 pb-4 dark:border-slate-700">
+            <div className="flex items-center gap-2">
+              <ShoppingCart className="h-5 w-5 text-emerald-600" />
+              <SheetTitle className="text-xl">Keranjang</SheetTitle>
+            </div>
           </SheetHeader>
 
-          <div className="flex flex-1 flex-col overflow-hidden">
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
             {mounted ? (
               cartsWithItems.length === 0 ? (
                 <div className="flex flex-1 flex-col items-center justify-center">
-                  <p className="mb-5 text-lg text-muted-foreground">
-                    Keranjang kosong
+                  <div className="mb-4 text-5xl">🛒</div>
+                  <p className="mb-2 text-lg font-semibold text-slate-900 dark:text-white">
+                    Keranjang Kosong
+                  </p>
+                  <p className="mb-6 px-4 text-center text-sm text-slate-600 dark:text-slate-400">
+                    Mulai tambahkan menu favorit Anda
                   </p>
                   <SheetClose asChild>
                     <Link
                       href="/menu"
                       className={buttonVariants({
-                        variant: 'link',
+                        variant: 'default',
                         size: 'sm',
-                        className: 'text-sm text-muted-foreground'
+                        className:
+                          'bg-emerald-600 hover:bg-emerald-700'
                       })}
                     >
-                      Tambahkan menu ke keranjang Anda
+                      Lihat Menu
                     </Link>
                   </SheetClose>
                 </div>
               ) : (
-                <div className="flex flex-1 flex-col">
+                <div className="flex h-full flex-1 flex-col overflow-hidden">
                   <ScrollArea className="flex-1">
-                    <div className="space-y-6 pr-4">
+                    <div className="space-y-6 px-4 py-4 pb-32">
                       {cartsWithItems.map((cart) => (
-                        <div key={cart.id}>
-                          <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-700/50">
-                            <h4 className="text-sm font-semibold text-slate-900 dark:text-white">
+                        <div key={cart.id} className="space-y-4">
+                          {/* Restaurant Header */}
+                          <div className="rounded-xl border border-emerald-200 bg-gradient-to-r from-emerald-50 to-emerald-100/50 p-4 dark:border-emerald-800 dark:from-emerald-900/20 dark:to-emerald-800/10">
+                            <h4 className="mb-1 text-base font-semibold text-slate-900 dark:text-white">
                               {cart.restaurant?.name ||
                                 `Restaurant ${cart.restaurant_id}`}
                             </h4>
+                            {cart.restaurant?.address && (
+                              <p className="flex items-center gap-1 text-xs text-slate-600 dark:text-slate-400">
+                                <MapPin className="h-3 w-3" />
+                                {cart.restaurant.address}
+                              </p>
+                            )}
                           </div>
 
-                          <div className="space-y-4">
+                          {/* Items */}
+                          <div className="space-y-3">
                             {cart.items.map((item, index) => (
-                              <div key={item.id + index}>
-                                <div className="flex flex-row items-start justify-between gap-3">
-                                  <div className="flex-1 space-y-1">
-                                    <div>
-                                      <h3 className="line-clamp-2 text-sm font-semibold">
-                                        {item.menu.name}
-                                      </h3>
-                                    </div>
-                                    {item.notes && (
-                                      <p className="line-clamp-1 text-xs text-muted-foreground">
-                                        {item.notes}
-                                      </p>
-                                    )}
-                                    <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
-                                      Rp{' '}
-                                      {parseFloat(
-                                        item.menu.price
-                                      ).toLocaleString('id-ID')}
-                                    </p>
-                                  </div>
-                                  <div className="flex flex-col gap-2">
-                                    <div className="flex flex-row items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700">
-                                      <Button
-                                        disabled={
-                                          item.quantity === 1 ||
-                                          isUpdating
-                                        }
-                                        type="button"
-                                        size="icon"
-                                        variant="ghost"
-                                        className="h-7 w-7"
-                                        onClick={() =>
-                                          handleUpdateQuantity(
-                                            item.id,
-                                            item.quantity - 1
-                                          )
-                                        }
-                                      >
-                                        <Minus className="h-3 w-3" />
-                                      </Button>
-                                      <span className="w-6 text-center text-sm font-semibold">
-                                        {item.quantity}
-                                      </span>
-                                      <Button
-                                        type="button"
-                                        size="icon"
-                                        variant="ghost"
-                                        className="h-7 w-7"
-                                        disabled={isUpdating}
-                                        onClick={() =>
-                                          handleUpdateQuantity(
-                                            item.id,
-                                            item.quantity + 1
-                                          )
-                                        }
-                                      >
-                                        <Plus className="h-3 w-3" />
-                                      </Button>
-                                    </div>
+                              <div
+                                key={item.id + index}
+                                className="group"
+                              >
+                                <div className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4 transition-all hover:shadow-md dark:border-slate-700 dark:bg-slate-800/50">
+                                  {/* Header: Name and Delete Button */}
+                                  <div className="flex items-start justify-between gap-3">
+                                    <h3 className="line-clamp-2 min-w-0 flex-1 text-sm font-semibold text-slate-900 dark:text-white">
+                                      {item.menu.name}
+                                    </h3>
                                     <Button
                                       type="button"
                                       variant="ghost"
                                       size="icon"
                                       disabled={isUpdating}
-                                      className="h-7 w-7 text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-900/20"
+                                      className="h-6 w-6 flex-shrink-0 text-slate-600 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
                                       onClick={() =>
                                         handleRemoveItem(item.id)
                                       }
@@ -401,8 +379,76 @@ const CartComponent = () => {
                                       <X className="h-4 w-4" />
                                     </Button>
                                   </div>
+
+                                  {/* Notes - Fixed untuk text overflow */}
+                                  {item.notes && (
+                                    <div className="max-h-20 w-full overflow-y-auto overflow-x-hidden rounded-lg border border-blue-200 bg-blue-50 p-2 text-xs text-slate-600 dark:border-blue-800 dark:bg-blue-900/20 dark:text-slate-400">
+                                      <p className="whitespace-pre-wrap break-all">
+                                        <span className="font-medium">
+                                          💬
+                                        </span>{' '}
+                                        {item.notes}
+                                      </p>
+                                    </div>
+                                  )}
+
+                                  {/* Price */}
+                                  <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
+                                    Rp{' '}
+                                    {parseFloat(
+                                      item.menu.price
+                                    ).toLocaleString('id-ID')}
+                                  </p>
+
+                                  {/* Quantity Controls */}
+                                  <div className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white dark:border-slate-600 dark:bg-slate-900">
+                                    <Button
+                                      disabled={
+                                        item.quantity === 1 ||
+                                        isUpdating
+                                      }
+                                      type="button"
+                                      size="icon"
+                                      variant="ghost"
+                                      className="h-8 w-8"
+                                      onClick={() =>
+                                        handleUpdateQuantity(
+                                          item.id,
+                                          item.quantity - 1
+                                        )
+                                      }
+                                    >
+                                      <Minus className="h-4 w-4" />
+                                    </Button>
+                                    <span className="flex-1 text-center text-sm font-bold text-slate-900 dark:text-white">
+                                      Qty: {item.quantity}
+                                    </span>
+                                    <Button
+                                      type="button"
+                                      size="icon"
+                                      variant="ghost"
+                                      className="h-8 w-8"
+                                      disabled={isUpdating}
+                                      onClick={() =>
+                                        handleUpdateQuantity(
+                                          item.id,
+                                          item.quantity + 1
+                                        )
+                                      }
+                                    >
+                                      <Plus className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+
+                                  {/* Subtotal */}
+                                  <div className="border-t border-slate-200 pt-2 text-right text-sm font-semibold text-slate-900 dark:border-slate-700 dark:text-white">
+                                    Subtotal: Rp{' '}
+                                    {(
+                                      parseFloat(item.price) *
+                                      item.quantity
+                                    ).toLocaleString('id-ID')}
+                                  </div>
                                 </div>
-                                <Separator className="mt-4" />
                               </div>
                             ))}
                           </div>
@@ -411,39 +457,46 @@ const CartComponent = () => {
                     </div>
                   </ScrollArea>
 
-                  <div className="mt-6 space-y-4 border-t border-slate-200 pt-4 dark:border-slate-700">
-                    <div className="flex flex-row items-center justify-between">
-                      <span className="font-semibold">Total:</span>
-                      <span className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
-                        Rp {totalCartPrice.toLocaleString('id-ID')}
-                      </span>
+                  {/* Footer - Sticky */}
+                  <div className="shrink-0 space-y-4 border-t border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
+                    <div className="space-y-2 rounded-xl bg-slate-50 p-4 dark:bg-slate-800">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-slate-600 dark:text-slate-400">
+                          Subtotal
+                        </span>
+                        <span className="text-sm font-semibold text-slate-900 dark:text-white">
+                          Rp {totalCartPrice.toLocaleString('id-ID')}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between border-t border-slate-200 pt-2 dark:border-slate-700">
+                        <span className="font-semibold text-slate-900 dark:text-white">
+                          Total
+                        </span>
+                        <span className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
+                          Rp {totalCartPrice.toLocaleString('id-ID')}
+                        </span>
+                      </div>
                     </div>
 
-                    <SheetFooter className="flex w-full flex-col gap-2">
+                    <div className="flex flex-col gap-2 pt-2">
                       <Button
                         type="button"
-                        variant="outline"
                         onClick={() => setShowClearConfirm(true)}
                         disabled={isUpdating}
-                        className="w-full"
+                        className="h-10 w-full rounded-lg border border-red-200 bg-red-50 font-medium text-red-600 hover:bg-red-100 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/30"
                       >
                         <Trash2 className="mr-2 h-4 w-4" />
-                        Kosongkan Keranjang
+                        Hapus Semua
                       </Button>
                       <SheetClose asChild>
                         <Link
                           href="/checkout"
-                          className={cn(
-                            buttonVariants({ variant: 'default' }),
-                            'w-full',
-                            isUpdating &&
-                              'pointer-events-none opacity-50'
-                          )}
+                          className="flex h-10 w-full items-center justify-center rounded-lg bg-emerald-600 font-medium text-white transition-colors hover:bg-emerald-700 disabled:pointer-events-none disabled:opacity-50"
                         >
                           Checkout
                         </Link>
                       </SheetClose>
-                    </SheetFooter>
+                    </div>
                   </div>
                 </div>
               )
@@ -456,37 +509,36 @@ const CartComponent = () => {
         </SheetContent>
       </Sheet>
 
+      {/* Clear Confirmation Modal */}
       <AlertDialog
         open={showClearConfirm}
         onOpenChange={setShowClearConfirm}
       >
-        <AlertDialogContent className="rounded-lg">
+        <AlertDialogContent className="rounded-xl border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-xl">
+            <AlertDialogTitle className="text-2xl">
               Kosongkan Keranjang?
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-base">
-              Anda yakin ingin menghapus semua item dari keranjang?
-              Tindakan ini tidak dapat dibatalkan.
+            <AlertDialogDescription className="text-base text-slate-600 dark:text-slate-400">
+              Semua item akan dihapus dari keranjang. Tindakan ini
+              tidak dapat dibatalkan.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-900/20">
-            <p className="text-sm font-medium text-red-800 dark:text-red-300">
-              ⚠️ Semua pesanan akan dihapus
+          <div className="my-6 rounded-lg border-l-4 border-l-red-600 bg-red-50 p-4 dark:bg-red-900/20">
+            <p className="text-sm font-semibold text-red-800 dark:text-red-300">
+              ⚠️ Peringatan: Semua pesanan akan dihapus permanen
             </p>
           </div>
-          <div className="mt-6 flex gap-2">
-            <AlertDialogCancel className="flex-1">
-              Batal
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleClearCart}
-              disabled={isUpdating}
-              className="flex-1 bg-red-600 text-white hover:bg-red-700"
-            >
-              {isUpdating ? 'Menghapus...' : 'Hapus Semua'}
-            </AlertDialogAction>
-          </div>
+          <AlertDialogCancel className="rounded-lg border-slate-300 dark:border-slate-700">
+            Batal
+          </AlertDialogCancel>
+          <AlertDialogAction
+            onClick={handleClearCart}
+            disabled={isUpdating}
+            className="rounded-lg bg-red-600 text-white hover:bg-red-700"
+          >
+            {isUpdating ? '⏳ Menghapus...' : '🗑️ Hapus Semua'}
+          </AlertDialogAction>
         </AlertDialogContent>
       </AlertDialog>
     </>
