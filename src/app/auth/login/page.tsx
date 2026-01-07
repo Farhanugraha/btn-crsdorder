@@ -122,6 +122,7 @@ const Login = () => {
 
         // Dispatch custom event untuk notify Navbar
         window.dispatchEvent(new Event('auth-changed'));
+        window.dispatchEvent(new Event('login'));
 
         // Redirect after short delay
         setTimeout(() => {

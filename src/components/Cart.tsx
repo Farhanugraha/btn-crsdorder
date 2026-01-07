@@ -91,14 +91,23 @@ const CartComponent = () => {
     const handleLogout = () => {
       console.log('Logout event received');
       setCarts([]);
+      setSheetOpen(false);
+      setShowClearConfirm(false);
+    };
+
+    const handleLogin = () => {
+      console.log('Login event received');
+      fetchCart();
     };
 
     window.addEventListener('cart-updated', handleCartUpdate);
     window.addEventListener('logout', handleLogout);
+    window.addEventListener('login', handleLogin);
 
     return () => {
       window.removeEventListener('cart-updated', handleCartUpdate);
       window.removeEventListener('logout', handleLogout);
+      window.removeEventListener('login', handleLogin);
     };
   }, []);
 

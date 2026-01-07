@@ -122,28 +122,39 @@ const Navbar = () => {
       const token = localStorage.getItem('auth_token');
 
       if (!token) {
+        // Clear storage
         localStorage.removeItem('auth_user');
         localStorage.removeItem('auth_token');
         localStorage.removeItem('token_expires_in');
         setUser(null);
+
+        // Dispatch logout event untuk clear cart
+        window.dispatchEvent(new Event('logout'));
+
         toast.success('Logout berhasil');
         router.push('/');
         return;
       }
 
-      const response = await fetch(
-        'http://localhost:8000/api/auth/logout',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-            Authorization: `Bearer ${token}`
+      try {
+        const response = await fetch(
+          'http://localhost:8000/api/auth/logout',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Accept: 'application/json',
+              Authorization: `Bearer ${token}`
+            }
           }
-        }
-      );
+        );
 
-      const data = await response.json();
+        const data = await response.json();
+        console.log('Logout response:', data);
+      } catch (apiError) {
+        console.error('Logout API error:', apiError);
+        // Continue dengan logout meski API fail
+      }
 
       // Clear storage regardless of API response
       localStorage.removeItem('auth_user');
@@ -151,15 +162,23 @@ const Navbar = () => {
       localStorage.removeItem('token_expires_in');
       setUser(null);
 
+      // Dispatch logout event untuk clear cart
+      window.dispatchEvent(new Event('logout'));
+
       toast.success('Logout berhasil');
       router.push('/');
     } catch (error) {
       console.error('Logout error:', error);
-      // Force clear even if API fails
+
+      // Force clear even if unexpected error
       localStorage.removeItem('auth_user');
       localStorage.removeItem('auth_token');
       localStorage.removeItem('token_expires_in');
       setUser(null);
+
+      // Dispatch logout event untuk clear cart
+      window.dispatchEvent(new Event('logout'));
+
       toast.success('Logout berhasil');
       router.push('/');
     } finally {
