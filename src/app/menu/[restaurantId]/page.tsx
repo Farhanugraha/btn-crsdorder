@@ -152,30 +152,10 @@ const RestaurantMenuPage = () => {
       setIsAddingToCart(true);
 
       // Debug: Check all possible token locations
-      const localToken = localStorage.getItem('token');
-      const sessionToken = sessionStorage.getItem('token');
-      const authToken = localStorage.getItem('auth_token');
-      const accessToken = localStorage.getItem('access_token');
-
-      console.log('Token locations:');
-      console.log('localStorage.token:', localToken);
-      console.log('sessionStorage.token:', sessionToken);
-      console.log('localStorage.auth_token:', authToken);
-      console.log('localStorage.access_token:', accessToken);
-      console.log(
-        'All localStorage keys:',
-        Object.keys(localStorage)
-      );
-      console.log(
-        'All sessionStorage keys:',
-        Object.keys(sessionStorage)
-      );
-
-      const token =
-        localToken || sessionToken || authToken || accessToken;
+      const token = localStorage.getItem('auth_token');
 
       if (!token) {
-        console.warn('No token found anywhere');
+        console.warn('No token found');
         toast.error('Silakan login terlebih dahulu');
         return;
       }
@@ -188,7 +168,6 @@ const RestaurantMenuPage = () => {
       };
 
       console.log('Sending payload:', payload);
-      console.log('Using token:', token.substring(0, 20) + '...');
 
       const response = await fetch(
         'http://localhost:8000/api/cart/add-item',
@@ -221,6 +200,9 @@ const RestaurantMenuPage = () => {
         toggleDialog(menu.id);
         setSelectedQuantity((prev) => ({ ...prev, [key]: 1 }));
         setNotes((prev) => ({ ...prev, [key]: '' }));
+
+        // Trigger cart refresh using custom event
+        window.dispatchEvent(new Event('cart-updated'));
       } else {
         toast.error(data.message || 'Gagal menambahkan ke keranjang');
       }
