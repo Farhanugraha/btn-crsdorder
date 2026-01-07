@@ -202,7 +202,7 @@ const Navbar = () => {
                 'text-sm'
               )}
             >
-              Menu
+              Restaurant
             </Link>
             <Link
               href="/contact"
@@ -235,7 +235,20 @@ const Navbar = () => {
         </div>
 
         {/* Mobile Navigation */}
-        <div className="flex md:hidden">
+        <div className="flex items-center gap-4 md:hidden">
+          <Link
+            href="/"
+            className="transition-opacity hover:opacity-80"
+          >
+            <Image
+              src={logo}
+              alt="Logo"
+              width={40}
+              height={40}
+              placeholder="blur"
+              priority
+            />
+          </Link>
           <Menubar className="border-0">
             <MenubarMenu>
               <MenubarTrigger className="cursor-pointer">
@@ -246,7 +259,7 @@ const Navbar = () => {
                   <Link href="/">Home</Link>
                 </MenubarItem>
                 <MenubarItem asChild>
-                  <Link href="/menu">Menu</Link>
+                  <Link href="/menu">Restaurant</Link>
                 </MenubarItem>
                 <MenubarSeparator />
                 <MenubarItem asChild>

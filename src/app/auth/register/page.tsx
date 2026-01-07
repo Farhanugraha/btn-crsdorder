@@ -214,7 +214,7 @@ const Register = () => {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-sm font-semibold">
-                      Nomor Telepon (Opsional)
+                      Nomor Telepon
                     </FormLabel>
                     <FormControl>
                       <Input
@@ -238,7 +238,7 @@ const Register = () => {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-sm font-semibold">
-                        Divisi (Opsional)
+                        Divisi
                       </FormLabel>
                       <FormControl>
                         <Input

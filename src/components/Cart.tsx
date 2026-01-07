@@ -16,66 +16,202 @@ import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Minus, Plus, ShoppingCart, X } from 'lucide-react';
-import { useCartStore } from '@/lib/store';
 import noImageUrl from '../../public/no-image.png';
 import Loading from '@/components/Loading';
 import { cn, formatPrice } from '@/lib/utils';
+import { toast } from 'sonner';
+
+interface CartMenu {
+  id: number;
+  restaurant_id: number;
+  name: string;
+  price: string;
+  image: string;
+  is_available: number;
+  created_at: string;
+  updated_at: string;
+}
+
+interface CartItem {
+  id: number;
+  cart_id: number;
+  menu_id: number;
+  quantity: number;
+  price: string;
+  notes: string;
+  created_at: string;
+  updated_at: string;
+  menu: CartMenu;
+}
+
+interface Cart {
+  id: number;
+  user_id: number;
+  restaurant_id: number;
+  created_at: string;
+  updated_at: string;
+  items: CartItem[];
+}
 
 const Cart = () => {
   const [mounted, setMounted] = useState(false);
-
-  const {
-    cart,
-    clearCart,
-    increaseQuantity,
-    decreaseQuantity,
-    removeFromCart
-  } = useCartStore();
+  const [carts, setCarts] = useState<Cart[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   useEffect(() => {
     setMounted(true);
+    fetchCart();
   }, []);
 
-  const initialValue = 0;
-  const totalCartItems = cart.reduce(
-    (total, currentValue) => total + currentValue.quantity,
-    initialValue
-  );
+  const fetchCart = async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch('http://localhost:8000/api/cart', {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      const data = await response.json();
+      if (data.success) {
+        setCarts(data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching cart:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-  const initialPrice = 0;
-  const totalCartPrice = cart.reduce((total, item) => {
-    const itemPrice = item.menu.price * item.quantity;
-    return total + itemPrice;
-  }, initialPrice);
+  const handleRemoveItem = async (itemId: number) => {
+    try {
+      const response = await fetch(
+        `http://localhost:8000/api/cart/remove-item/${itemId}`,
+        {
+          method: 'DELETE',
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`
+          }
+        }
+      );
+      const data = await response.json();
+      if (data.success) {
+        toast.success('Item dihapus dari keranjang');
+        fetchCart();
+      } else {
+        toast.error(data.message || 'Gagal menghapus item');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error('Terjadi kesalahan');
+    }
+  };
+
+  const handleUpdateQuantity = async (
+    itemId: number,
+    newQuantity: number
+  ) => {
+    if (newQuantity < 1) return;
+
+    try {
+      const response = await fetch(
+        `http://localhost:8000/api/cart/update-item/${itemId}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({ quantity: newQuantity })
+        }
+      );
+      const data = await response.json();
+      if (data.success) {
+        fetchCart();
+      } else {
+        toast.error(data.message || 'Gagal mengupdate quantity');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error('Terjadi kesalahan');
+    }
+  };
+
+  const handleClearCart = async (cartId: number) => {
+    try {
+      const response = await fetch(
+        `http://localhost:8000/api/cart/${cartId}/clear`,
+        {
+          method: 'DELETE',
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`
+          }
+        }
+      );
+      const data = await response.json();
+      if (data.success) {
+        toast.success('Keranjang dikosongkan');
+        fetchCart();
+      } else {
+        toast.error(data.message || 'Gagal mengosongkan keranjang');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error('Terjadi kesalahan');
+    }
+  };
+
+  const totalCartItems = carts.reduce((total, cart) => {
+    return (
+      total +
+      cart.items.reduce(
+        (itemTotal, item) => itemTotal + item.quantity,
+        0
+      )
+    );
+  }, 0);
+
+  const totalCartPrice = carts.reduce((total, cart) => {
+    return (
+      total +
+      cart.items.reduce(
+        (itemTotal, item) =>
+          itemTotal + parseFloat(item.price) * item.quantity,
+        0
+      )
+    );
+  }, 0);
 
   const formattedTotalCartPrice = formatPrice(totalCartPrice, {
-    currency: 'EUR',
+    currency: 'IDR',
     notation: 'compact'
   });
 
   return (
-    <Sheet>
+    <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
       <SheetTrigger asChild>
-        <Button size="icon" variant={'outline'} className="relative">
+        <Button size="icon" variant="outline" className="relative">
           <ShoppingCart />
-          {mounted && cart.length > 0 ? (
-            <span className="absolute -top-1 left-5 flex h-6 w-6 items-center justify-center rounded-full bg-red-600 text-white">
+          {mounted && totalCartItems > 0 ? (
+            <span className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-red-600 text-xs font-bold text-white">
               {totalCartItems}
             </span>
-          ) : (
-            ''
-          )}
+          ) : null}
         </Button>
       </SheetTrigger>
-      <SheetContent>
+      <SheetContent className="flex h-full flex-col">
         <SheetHeader>
-          <SheetTitle>Cart</SheetTitle>
+          <SheetTitle>Keranjang</SheetTitle>
         </SheetHeader>
-        <div className="space-y-3">
+
+        <div className="flex flex-1 flex-col overflow-hidden">
           {mounted ? (
-            cart.length === 0 ? (
-              <div className="spaxe-y-1 flex flex-col items-center justify-center">
-                <p className="m-auto my-5 text-lg">Cart is empty</p>
+            carts.length === 0 ||
+            carts.every((cart) => cart.items.length === 0) ? (
+              <div className="flex flex-1 flex-col items-center justify-center">
+                <p className="mb-5 text-lg text-muted-foreground">
+                  Keranjang kosong
+                </p>
                 <SheetClose asChild>
                   <Link
                     href="/menu"
@@ -85,145 +221,146 @@ const Cart = () => {
                       className: 'text-sm text-muted-foreground'
                     })}
                   >
-                    Add menu to your cart to checkout
+                    Tambahkan menu ke keranjang Anda
                   </Link>
                 </SheetClose>
               </div>
             ) : (
-              <div className="my-5">
-                <ScrollArea
-                  className={cn({ 'h-96': cart.length > 4 })}
-                >
-                  <div className="space-y-2">
-                    {cart.map((item, index) => (
-                      <div key={item.menu.id + index}>
-                        <div className="flex flex-row items-center justify-between gap-1">
-                          <div className="flex flex-row items-center gap-2">
-                            {item.menu.images.length === 0 ? (
-                              <div className="hidden h-[50px] flex-col justify-center p-1 sm:flex">
+              <div className="flex flex-1 flex-col">
+                <ScrollArea className="flex-1">
+                  <div className="space-y-4 pr-4">
+                    {carts.map((cart) =>
+                      cart.items.map((item, index) => (
+                        <div key={item.id + index}>
+                          <div className="flex flex-row items-start justify-between gap-3">
+                            <div className="flex flex-row items-start gap-3">
+                              <div className="hidden h-[60px] w-[60px] flex-shrink-0 sm:flex">
                                 <Image
-                                  src={noImageUrl}
-                                  alt="No image"
-                                  width="50"
-                                  height="50"
-                                  placeholder="blur"
-                                  blurDataURL={`${noImageUrl}`}
-                                  loading="lazy"
-                                  className="rounded-md"
-                                />
-                              </div>
-                            ) : (
-                              <div className="hidden h-[50px] flex-col justify-center p-1 sm:flex">
-                                <Image
-                                  src={`${item.menu.images[0].url}`}
-                                  alt={item.menu.images[0].id}
-                                  width="50"
-                                  height="50"
-                                  placeholder="blur"
-                                  blurDataURL={`${item.menu.images[0].url}`}
-                                  loading="lazy"
-                                  className="rounded-md"
-                                />
-                              </div>
-                            )}
-                            <div className="space-y-1">
-                              <div className="w-28 sm:w-32">
-                                <h1 className="line-clamp-1">
-                                  {item.menu.name}
-                                </h1>
-                              </div>
-                              <div className="text-sm text-muted-foreground">
-                                {item.size}
-                              </div>
-                              <span className="text-sky-400">
-                                {formatPrice(item.menu.price, {
-                                  currency: 'EUR',
-                                  notation: 'compact'
-                                })}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="flex flex-row gap-1">
-                            <div className="flex flex-row items-center gap-1">
-                              <Button
-                                disabled={
-                                  item.quantity === 1 ? true : false
-                                }
-                                type="button"
-                                size="icon"
-                                className="h-6 w-6"
-                                onClick={() => {
-                                  if (item.quantity > 1) {
-                                    decreaseQuantity(
-                                      item.menu.id,
-                                      item.size
-                                    );
+                                  src={
+                                    item.menu.image
+                                      ? `/uploads/${item.menu.image}`
+                                      : noImageUrl
                                   }
-                                }}
-                              >
-                                <Minus className="h-4 w-4" />
-                              </Button>
-                              <span className="w-8 text-center">
-                                {item.quantity}
-                              </span>
+                                  alt={item.menu.name}
+                                  width={60}
+                                  height={60}
+                                  className="rounded-lg object-cover"
+                                />
+                              </div>
+                              <div className="flex-1 space-y-1">
+                                <div>
+                                  <h3 className="line-clamp-2 text-sm font-semibold">
+                                    {item.menu.name}
+                                  </h3>
+                                </div>
+                                {item.notes && (
+                                  <p className="line-clamp-1 text-xs text-muted-foreground">
+                                    {item.notes}
+                                  </p>
+                                )}
+                                <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
+                                  Rp{' '}
+                                  {parseFloat(
+                                    item.menu.price
+                                  ).toLocaleString('id-ID')}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex flex-col gap-2">
+                              <div className="flex flex-row items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700">
+                                <Button
+                                  disabled={item.quantity === 1}
+                                  type="button"
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-7 w-7"
+                                  onClick={() =>
+                                    handleUpdateQuantity(
+                                      item.id,
+                                      item.quantity - 1
+                                    )
+                                  }
+                                >
+                                  <Minus className="h-3 w-3" />
+                                </Button>
+                                <span className="w-6 text-center text-sm font-semibold">
+                                  {item.quantity}
+                                </span>
+                                <Button
+                                  type="button"
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-7 w-7"
+                                  onClick={() =>
+                                    handleUpdateQuantity(
+                                      item.id,
+                                      item.quantity + 1
+                                    )
+                                  }
+                                >
+                                  <Plus className="h-3 w-3" />
+                                </Button>
+                              </div>
                               <Button
                                 type="button"
+                                variant="ghost"
                                 size="icon"
-                                className="w-;6 h-6"
+                                className="h-7 w-7 text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-900/20"
                                 onClick={() =>
-                                  increaseQuantity(
-                                    item.menu.id,
-                                    item.size
-                                  )
+                                  handleRemoveItem(item.id)
                                 }
                               >
-                                <Plus className="h-4 w-4" />
+                                <X className="h-4 w-4" />
                               </Button>
                             </div>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="mr-2 h-6 w-6"
-                              onClick={() =>
-                                removeFromCart(
-                                  item.menu.id,
-                                  item.size
-                                )
-                              }
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
                           </div>
+                          <Separator className="mt-4" />
                         </div>
-                        <Separator className="mt-2" />
-                      </div>
-                    ))}
+                      ))
+                    )}
                   </div>
                 </ScrollArea>
-                <div className="mb-10 flex flex-row justify-end gap-2">
-                  <div>Total:</div>
-                  <span> {formattedTotalCartPrice}</span>
-                </div>
-                <SheetFooter className="flex flex-col gap-2 sm:flex-row">
-                  <Button type="button" onClick={clearCart}>
-                    Clear Cart
-                  </Button>
-                  <SheetClose asChild>
-                    <Link
-                      href="/checkout"
-                      className={cn(
-                        buttonVariants({ variant: 'default' })
-                      )}
+
+                <div className="mt-6 space-y-4 border-t border-slate-200 pt-4 dark:border-slate-700">
+                  <div className="flex flex-row items-center justify-between">
+                    <span className="font-semibold">Total:</span>
+                    <span className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
+                      Rp {totalCartPrice.toLocaleString('id-ID')}
+                    </span>
+                  </div>
+
+                  <SheetFooter className="flex w-full flex-col gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        carts.forEach((cart) =>
+                          handleClearCart(cart.id)
+                        );
+                      }}
+                      className="w-full"
                     >
-                      Checkout
-                    </Link>
-                  </SheetClose>
-                </SheetFooter>
+                      Kosongkan Keranjang
+                    </Button>
+                    <SheetClose asChild>
+                      <Link
+                        href="/checkout"
+                        className={cn(
+                          buttonVariants({ variant: 'default' }),
+                          'w-full'
+                        )}
+                      >
+                        Checkout
+                      </Link>
+                    </SheetClose>
+                  </SheetFooter>
+                </div>
               </div>
             )
           ) : (
-            <Loading />
+            <div className="flex flex-1 items-center justify-center">
+              <Loading />
+            </div>
           )}
         </div>
       </SheetContent>
