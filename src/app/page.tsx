@@ -133,7 +133,7 @@ export default function Home() {
           kemudahan Fooder
         </p>
         <Link
-          href="/menu"
+          href="/areas"
           className={cn(
             buttonVariants({ variant: 'secondary' }),
             'w-fit px-8 text-base'

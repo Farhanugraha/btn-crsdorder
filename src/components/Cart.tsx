@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   Sheet,
   SheetClose,
@@ -20,6 +21,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -79,12 +88,16 @@ interface Cart {
 }
 
 const CartComponent = () => {
+  const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [carts, setCarts] = useState<Cart[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [showCheckoutDialog, setShowCheckoutDialog] = useState(false);
+  const [checkoutNotes, setCheckoutNotes] = useState('');
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -258,6 +271,73 @@ const CartComponent = () => {
     }
   };
 
+  const handleCheckoutSubmit = async () => {
+    try {
+      setIsCheckingOut(true);
+      const token = localStorage.getItem('auth_token');
+
+      // Filter cart yang ada items
+      const cartsWithItems = carts.filter(
+        (cart) => cart.items.length > 0
+      );
+
+      if (cartsWithItems.length === 0) {
+        toast.error('Keranjang Anda kosong');
+        return;
+      }
+
+      // Buat order dengan notes
+      const response = await fetch(
+        'http://localhost:8000/api/orders',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+            Accept: 'application/json'
+          },
+          body: JSON.stringify({
+            notes: checkoutNotes || ''
+          })
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to create order');
+      }
+
+      const data = await response.json();
+      if (data.success) {
+        toast.success('Pesanan berhasil dibuat');
+
+        // Clear cart di server
+        await fetch('http://localhost:8000/api/cart/clear', {
+          method: 'DELETE',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: 'application/json'
+          }
+        });
+
+        // Update state cart
+        setCarts([]);
+
+        // Reset state dialog
+        setShowCheckoutDialog(false);
+        setCheckoutNotes('');
+        setSheetOpen(false);
+
+        // Navigasi ke halaman checkout dengan order ID (dynamic route)
+        router.push(`/checkout/${data.data.id}`);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error('Gagal membuat pesanan');
+    } finally {
+      setIsCheckingOut(false);
+    }
+  };
+
   const totalCartItems = carts.reduce((total, cart) => {
     return (
       total +
@@ -321,7 +401,7 @@ const CartComponent = () => {
                   </p>
                   <SheetClose asChild>
                     <Link
-                      href="/menu"
+                      href="/areas"
                       className={buttonVariants({
                         variant: 'default',
                         size: 'sm',
@@ -380,7 +460,7 @@ const CartComponent = () => {
                                     </Button>
                                   </div>
 
-                                  {/* Notes - Fixed untuk text overflow */}
+                                  {/* Notes */}
                                   {item.notes && (
                                     <div className="max-h-20 w-full overflow-y-auto overflow-x-hidden rounded-lg border border-blue-200 bg-blue-50 p-2 text-xs text-slate-600 dark:border-blue-800 dark:bg-blue-900/20 dark:text-slate-400">
                                       <p className="whitespace-pre-wrap break-all">
@@ -488,14 +568,14 @@ const CartComponent = () => {
                         <Trash2 className="mr-2 h-4 w-4" />
                         Hapus Semua
                       </Button>
-                      <SheetClose asChild>
-                        <Link
-                          href="/checkout"
-                          className="flex h-10 w-full items-center justify-center rounded-lg bg-emerald-600 font-medium text-white transition-colors hover:bg-emerald-700 disabled:pointer-events-none disabled:opacity-50"
-                        >
-                          Checkout
-                        </Link>
-                      </SheetClose>
+                      <Button
+                        type="button"
+                        onClick={() => setShowCheckoutDialog(true)}
+                        className="h-10 w-full rounded-lg bg-emerald-600 font-medium text-white transition-colors hover:bg-emerald-700 disabled:pointer-events-none disabled:opacity-50"
+                        disabled={isUpdating}
+                      >
+                        Checkout
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -509,7 +589,7 @@ const CartComponent = () => {
         </SheetContent>
       </Sheet>
 
-      {/* Clear Confirmation Modal */}
+      {/* Clear Cart Confirmation Modal */}
       <AlertDialog
         open={showClearConfirm}
         onOpenChange={setShowClearConfirm}
@@ -541,6 +621,62 @@ const CartComponent = () => {
           </AlertDialogAction>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Checkout Notes Dialog */}
+      <Dialog
+        open={showCheckoutDialog}
+        onOpenChange={setShowCheckoutDialog}
+      >
+        <DialogContent className="rounded-xl border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-2xl">
+              Catatan Pesanan
+            </DialogTitle>
+            <DialogDescription className="text-base text-slate-600 dark:text-slate-400">
+              Tambahkan catatan atau instruksi khusus untuk pesanan
+              Anda (opsional)
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-4 py-4">
+            <textarea
+              placeholder="Contoh: Antar sebelum jam 12 siang, dll..."
+              value={checkoutNotes}
+              onChange={(e) => setCheckoutNotes(e.target.value)}
+              className="min-h-32 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm placeholder-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-600 dark:bg-slate-900 dark:text-white dark:placeholder-slate-500 dark:focus:border-emerald-400"
+              maxLength={500}
+            />
+            <div className="text-xs text-slate-500 dark:text-slate-400">
+              {checkoutNotes.length} / 500 karakter
+            </div>
+          </div>
+
+          <DialogFooter className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setShowCheckoutDialog(false);
+                setCheckoutNotes('');
+              }}
+              disabled={isCheckingOut}
+              className="rounded-lg border-slate-300 dark:border-slate-600"
+            >
+              Batal
+            </Button>
+            <Button
+              type="button"
+              onClick={handleCheckoutSubmit}
+              disabled={isCheckingOut}
+              className="rounded-lg bg-emerald-600 text-white hover:bg-emerald-700"
+            >
+              {isCheckingOut
+                ? '⏳ Memproses...'
+                : '✓ Lanjut ke Checkout'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };

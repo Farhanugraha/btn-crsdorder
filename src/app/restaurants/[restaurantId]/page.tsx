@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   Dialog,
@@ -53,6 +53,7 @@ interface Restaurant {
 
 const RestaurantMenuPage = () => {
   const params = useParams();
+  const router = useRouter();
   const restaurantId = params.restaurantId as string;
 
   const [isLoading, setIsLoading] = useState(true);
@@ -70,6 +71,13 @@ const RestaurantMenuPage = () => {
   const [notes, setNotes] = useState<{ [key: string]: string }>({});
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const [areaId, setAreaId] = useState<number | null>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  // Check login status
+  useEffect(() => {
+    const token = localStorage.getItem('auth_token');
+    setIsLoggedIn(!!token);
+  }, []);
 
   useEffect(() => {
     if (!restaurantId) return;
@@ -108,6 +116,12 @@ const RestaurantMenuPage = () => {
   }, [restaurantId]);
 
   const toggleDialog = (menuId: number) => {
+    if (!isLoggedIn) {
+      toast.error('Silakan login terlebih dahulu');
+      router.push('/auth/login');
+      return;
+    }
+
     const key = String(menuId);
     setDialogOpen((prev) => ({
       ...prev,
@@ -131,6 +145,7 @@ const RestaurantMenuPage = () => {
 
       if (!token) {
         toast.error('Silakan login terlebih dahulu');
+        router.push('/auth/login');
         return;
       }
 
@@ -405,8 +420,21 @@ const RestaurantMenuPage = () => {
                             </p>
                             <Button
                               size="sm"
-                              disabled={!menu.is_available}
-                              className="h-9 w-full bg-emerald-600 text-xs font-semibold text-white hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-700 sm:h-10 sm:text-sm"
+                              disabled={
+                                !menu.is_available || !isLoggedIn
+                              }
+                              className="h-9 w-full bg-emerald-600 text-xs font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-emerald-600 dark:hover:bg-emerald-700"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (!isLoggedIn) {
+                                  toast.error(
+                                    'Silakan login terlebih dahulu'
+                                  );
+                                  router.push('/auth/login');
+                                  return;
+                                }
+                                toggleDialog(menu.id);
+                              }}
                             >
                               <ShoppingCart className="mr-2 h-4 w-4" />
                               Pesan
@@ -417,114 +445,116 @@ const RestaurantMenuPage = () => {
                     </div>
                   </DialogTrigger>
 
-                  <DialogContent className="max-h-[90vh] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-3xl border-slate-200 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white sm:w-full">
-                    <DialogHeader>
-                      <DialogTitle className="text-2xl text-slate-900 dark:text-white sm:text-3xl">
-                        {menu.name}
-                      </DialogTitle>
-                    </DialogHeader>
+                  {isLoggedIn && (
+                    <DialogContent className="max-h-[90vh] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-3xl border-slate-200 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white sm:w-full">
+                      <DialogHeader>
+                        <DialogTitle className="text-2xl text-slate-900 dark:text-white sm:text-3xl">
+                          {menu.name}
+                        </DialogTitle>
+                      </DialogHeader>
 
-                    <div className="space-y-5 py-4 sm:py-6">
-                      <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 dark:border-emerald-800 dark:bg-emerald-900/20">
-                        <p className="text-xs font-medium uppercase tracking-wide text-slate-600 dark:text-slate-400">
-                          Harga
-                        </p>
-                        <p className="mt-2 text-3xl font-bold text-emerald-600 dark:text-emerald-400">
-                          Rp{' '}
-                          {parseFloat(menu.price).toLocaleString(
-                            'id-ID'
-                          )}
-                        </p>
-                      </div>
-
-                      <div className="space-y-3">
-                        <label className="text-sm font-semibold text-slate-900 dark:text-white">
-                          Catatan (Opsional)
-                        </label>
-                        <textarea
-                          value={notes[String(menu.id)] || ''}
-                          onChange={(e) => {
-                            const key = String(menu.id);
-                            setNotes((prev) => ({
-                              ...prev,
-                              [key]: e.target.value
-                            }));
-                          }}
-                          placeholder="Tambahkan catatan khusus untuk pesanan Anda..."
-                          className="w-full resize-none rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-500 focus:border-transparent focus:ring-2 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-700 dark:text-white dark:placeholder:text-slate-400"
-                          rows={3}
-                        />
-                      </div>
-
-                      <div className="space-y-3">
-                        <label className="text-sm font-semibold text-slate-900 dark:text-white">
-                          Jumlah
-                        </label>
-                        <div className="flex items-center justify-between rounded-2xl bg-slate-100 p-4 dark:bg-slate-700">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={
-                              (selectedQuantity[String(menu.id)] ||
-                                1) === 1
-                            }
-                            onClick={() => {
-                              const key = String(menu.id);
-                              setSelectedQuantity((prev) => ({
-                                ...prev,
-                                [key]: Math.max(
-                                  1,
-                                  (prev[key] || 1) - 1
-                                )
-                              }));
-                            }}
-                            className="h-10 w-10 rounded-lg border-slate-300 text-slate-900 hover:bg-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:hover:bg-slate-600"
-                          >
-                            <Minus className="h-4 w-4" />
-                          </Button>
-                          <span className="text-2xl font-bold text-slate-900 dark:text-white">
-                            {selectedQuantity[String(menu.id)] || 1}
-                          </span>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              const key = String(menu.id);
-                              setSelectedQuantity((prev) => ({
-                                ...prev,
-                                [key]: (prev[key] || 1) + 1
-                              }));
-                            }}
-                            className="h-10 w-10 rounded-lg border-slate-300 text-slate-900 hover:bg-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:hover:bg-slate-600"
-                          >
-                            <Plus className="h-4 w-4" />
-                          </Button>
+                      <div className="space-y-5 py-4 sm:py-6">
+                        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 dark:border-emerald-800 dark:bg-emerald-900/20">
+                          <p className="text-xs font-medium uppercase tracking-wide text-slate-600 dark:text-slate-400">
+                            Harga
+                          </p>
+                          <p className="mt-2 text-3xl font-bold text-emerald-600 dark:text-emerald-400">
+                            Rp{' '}
+                            {parseFloat(menu.price).toLocaleString(
+                              'id-ID'
+                            )}
+                          </p>
                         </div>
-                      </div>
 
-                      <div className="rounded-2xl border border-slate-200 bg-slate-100 p-5 dark:border-slate-600 dark:bg-slate-700">
-                        <p className="text-xs font-medium uppercase tracking-wide text-slate-600 dark:text-slate-400">
-                          Total
-                        </p>
-                        <p className="mt-2 text-3xl font-bold text-slate-900 dark:text-white">
-                          Rp {getTotalPrice(menu.id, menu.price)}
-                        </p>
-                      </div>
+                        <div className="space-y-3">
+                          <label className="text-sm font-semibold text-slate-900 dark:text-white">
+                            Catatan (Opsional)
+                          </label>
+                          <textarea
+                            value={notes[String(menu.id)] || ''}
+                            onChange={(e) => {
+                              const key = String(menu.id);
+                              setNotes((prev) => ({
+                                ...prev,
+                                [key]: e.target.value
+                              }));
+                            }}
+                            placeholder="Tambahkan catatan khusus untuk pesanan Anda..."
+                            className="w-full resize-none rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-500 focus:border-transparent focus:ring-2 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-700 dark:text-white dark:placeholder:text-slate-400"
+                            rows={3}
+                          />
+                        </div>
 
-                      <Button
-                        className="h-12 w-full rounded-xl bg-emerald-600 text-base font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-emerald-600 dark:hover:bg-emerald-700"
-                        onClick={() => handleAddToCart(menu)}
-                        disabled={
-                          !menu.is_available || isAddingToCart
-                        }
-                      >
-                        <ShoppingCart className="mr-2 h-5 w-5" />
-                        {isAddingToCart
-                          ? 'Menambahkan...'
-                          : 'Tambah ke Keranjang'}
-                      </Button>
-                    </div>
-                  </DialogContent>
+                        <div className="space-y-3">
+                          <label className="text-sm font-semibold text-slate-900 dark:text-white">
+                            Jumlah
+                          </label>
+                          <div className="flex items-center justify-between rounded-2xl bg-slate-100 p-4 dark:bg-slate-700">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={
+                                (selectedQuantity[String(menu.id)] ||
+                                  1) === 1
+                              }
+                              onClick={() => {
+                                const key = String(menu.id);
+                                setSelectedQuantity((prev) => ({
+                                  ...prev,
+                                  [key]: Math.max(
+                                    1,
+                                    (prev[key] || 1) - 1
+                                  )
+                                }));
+                              }}
+                              className="h-10 w-10 rounded-lg border-slate-300 text-slate-900 hover:bg-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:hover:bg-slate-600"
+                            >
+                              <Minus className="h-4 w-4" />
+                            </Button>
+                            <span className="text-2xl font-bold text-slate-900 dark:text-white">
+                              {selectedQuantity[String(menu.id)] || 1}
+                            </span>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                const key = String(menu.id);
+                                setSelectedQuantity((prev) => ({
+                                  ...prev,
+                                  [key]: (prev[key] || 1) + 1
+                                }));
+                              }}
+                              className="h-10 w-10 rounded-lg border-slate-300 text-slate-900 hover:bg-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:hover:bg-slate-600"
+                            >
+                              <Plus className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div className="rounded-2xl border border-slate-200 bg-slate-100 p-5 dark:border-slate-600 dark:bg-slate-700">
+                          <p className="text-xs font-medium uppercase tracking-wide text-slate-600 dark:text-slate-400">
+                            Total
+                          </p>
+                          <p className="mt-2 text-3xl font-bold text-slate-900 dark:text-white">
+                            Rp {getTotalPrice(menu.id, menu.price)}
+                          </p>
+                        </div>
+
+                        <Button
+                          className="h-12 w-full rounded-xl bg-emerald-600 text-base font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-emerald-600 dark:hover:bg-emerald-700"
+                          onClick={() => handleAddToCart(menu)}
+                          disabled={
+                            !menu.is_available || isAddingToCart
+                          }
+                        >
+                          <ShoppingCart className="mr-2 h-5 w-5" />
+                          {isAddingToCart
+                            ? 'Menambahkan...'
+                            : 'Tambah ke Keranjang'}
+                        </Button>
+                      </div>
+                    </DialogContent>
+                  )}
                 </Dialog>
               ))}
             </div>

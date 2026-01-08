@@ -384,8 +384,13 @@ const Navbar = () => {
               </Link>
             </>
           )}
-          <Separator orientation="vertical" className="h-6" />
-          <Cart />
+          {/* Cart - Hanya tampil jika user sudah login */}
+          {user && (
+            <>
+              <Separator orientation="vertical" className="h-6" />
+              <Cart />
+            </>
+          )}
           <ToggleTheme />
         </div>
       </div>
