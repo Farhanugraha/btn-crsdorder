@@ -215,13 +215,13 @@ const Navbar = () => {
               Home
             </Link>
             <Link
-              href="/menu"
+              href="/areas"
               className={cn(
                 buttonVariants({ variant: 'ghost' }),
                 'text-sm'
               )}
             >
-              Menu
+              Pesan Makanan
             </Link>
             <Link
               href="/contact"
@@ -278,7 +278,7 @@ const Navbar = () => {
                   <Link href="/">Home</Link>
                 </MenubarItem>
                 <MenubarItem asChild>
-                  <Link href="/menu">Menu</Link>
+                  <Link href="/areas">Pesan Makanan</Link>
                 </MenubarItem>
                 <MenubarSeparator />
                 <MenubarItem asChild>
@@ -322,7 +322,7 @@ const Navbar = () => {
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
                     <Link
-                      href={`/user/${user.id}/user`}
+                      href={`/user/${user.id}/profile`}
                       className="cursor-pointer"
                     >
                       Profile
@@ -330,10 +330,10 @@ const Navbar = () => {
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link
-                      href={`/user/${user.id}/user`}
+                      href={`/user/${user.id}/orders`}
                       className="cursor-pointer"
                     >
-                      Orders
+                      My Orders
                     </Link>
                   </DropdownMenuItem>
                   {(user.role === 'admin' ||

@@ -138,7 +138,7 @@ const Login = () => {
             router.push(`/user/${userId}/admin`);
           } else {
             // Redirect ke menu untuk regular users
-            router.push('/menu');
+            router.push('/areas');
           }
         }, 1000);
       } else {

@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import Loading from '@/components/Loading';
 import {
   Dialog,
   DialogContent,
@@ -11,14 +10,6 @@ import {
   DialogTitle,
   DialogTrigger
 } from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import {
   Minus,
@@ -27,10 +18,14 @@ import {
   ArrowLeft,
   MapPin
 } from 'lucide-react';
-import { useCartStore } from '@/lib/store';
 import { toast } from 'sonner';
-import { formatPrice } from '@/lib/utils';
-import ErrorMessage from '@/components/ErrorMessage';
+
+interface Area {
+  id: number;
+  name: string;
+  slug: string;
+  icon: string;
+}
 
 interface Menu {
   id: number;
@@ -38,22 +33,22 @@ interface Menu {
   name: string;
   price: string;
   image: string;
-  is_available: number;
+  is_available: boolean;
   created_at: string;
   updated_at: string;
   description?: string;
-  images?: string[];
-  categoryIDs?: string[];
 }
 
 interface Restaurant {
   id: number;
+  area_id: number;
   name: string;
   description: string;
   address: string;
-  is_open: number;
-  created_at: string;
-  updated_at: string;
+  is_open: boolean;
+  menus_count: number;
+  area?: Area;
+  menus?: Menu[];
 }
 
 const RestaurantMenuPage = () => {
@@ -69,16 +64,12 @@ const RestaurantMenuPage = () => {
   const [dialogOpen, setDialogOpen] = useState<{
     [key: string]: boolean;
   }>({});
-  const [selectedSize, setSelectedSize] = useState<{
-    [key: string]: string;
-  }>({});
   const [selectedQuantity, setSelectedQuantity] = useState<{
     [key: string]: number;
   }>({});
   const [notes, setNotes] = useState<{ [key: string]: string }>({});
   const [isAddingToCart, setIsAddingToCart] = useState(false);
-
-  const { addToCart } = useCartStore();
+  const [areaId, setAreaId] = useState<number | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -89,37 +80,18 @@ const RestaurantMenuPage = () => {
       setIsLoading(true);
       setError(null);
 
-      const resRestaurants = await fetch(
-        'http://localhost:8000/api/restaurants'
+      const response = await fetch(
+        `http://localhost:8000/api/restaurants/${restaurantId}`
       );
-      const dataRestaurants = await resRestaurants.json();
+      const result = await response.json();
 
-      if (!dataRestaurants.success) {
+      if (!result.success) {
         throw new Error('Gagal memuat restoran');
       }
 
-      const foundRestaurant = dataRestaurants.data.data.find(
-        (r: Restaurant) => r.id === Number(restaurantId)
-      );
-
-      if (!foundRestaurant) {
-        setError('Restoran tidak ditemukan');
-        setIsLoading(false);
-        return;
-      }
-
-      setRestaurant(foundRestaurant);
-
-      const resMenu = await fetch(
-        `http://localhost:8000/api/menus/restaurant/${restaurantId}`
-      );
-      const dataMenu = await resMenu.json();
-
-      if (dataMenu.success) {
-        setMenuList(dataMenu.data || []);
-      } else {
-        throw new Error('Gagal memuat menu');
-      }
+      setRestaurant(result.data);
+      setMenuList(result.data.menus || []);
+      setAreaId(result.data.area_id);
     } catch (err) {
       console.error('Error:', err);
       setError(
@@ -150,12 +122,9 @@ const RestaurantMenuPage = () => {
 
     try {
       setIsAddingToCart(true);
-
-      // Debug: Check all possible token locations
       const token = localStorage.getItem('auth_token');
 
       if (!token) {
-        console.warn('No token found');
         toast.error('Silakan login terlebih dahulu');
         return;
       }
@@ -166,8 +135,6 @@ const RestaurantMenuPage = () => {
         quantity: quantity,
         notes: noteText
       };
-
-      console.log('Sending payload:', payload);
 
       const response = await fetch(
         'http://localhost:8000/api/cart/add-item',
@@ -182,26 +149,13 @@ const RestaurantMenuPage = () => {
         }
       );
 
-      console.log('Response status:', response.status);
-
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        const text = await response.text();
-        console.error('Non-JSON response:', text);
-        toast.error('Error dari server - silakan cek console');
-        return;
-      }
-
       const data = await response.json();
-      console.log('Response data:', data);
 
       if (response.ok && data.success) {
         toast.success(`${menu.name} ditambahkan ke keranjang!`);
         toggleDialog(menu.id);
         setSelectedQuantity((prev) => ({ ...prev, [key]: 1 }));
         setNotes((prev) => ({ ...prev, [key]: '' }));
-
-        // Trigger cart refresh using custom event
         window.dispatchEvent(new Event('cart-updated'));
       } else {
         toast.error(data.message || 'Gagal menambahkan ke keranjang');
@@ -218,32 +172,37 @@ const RestaurantMenuPage = () => {
     const key = String(menuId);
     const quantity = selectedQuantity[key] || 1;
     const numPrice = parseFloat(price);
-    return formatPrice(numPrice * quantity, {
-      currency: 'IDR',
-      notation: 'compact'
-    });
+    return (numPrice * quantity).toLocaleString('id-ID');
   };
 
   if (isLoading) {
     return (
-      <div className="fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden bg-white dark:bg-slate-900">
-        <Loading />
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-50 dark:bg-slate-900">
+        <div className="text-center">
+          <div className="mb-4 h-12 w-12 animate-spin rounded-full border-4 border-emerald-200 border-t-emerald-600 dark:border-slate-700 dark:border-t-emerald-500"></div>
+          <p className="text-sm text-slate-600 dark:text-slate-400">
+            Memuat...
+          </p>
+        </div>
       </div>
     );
   }
 
   if (error || !restaurant) {
     return (
-      <div className="fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden bg-white px-4 dark:bg-slate-900">
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-50 px-4 dark:bg-slate-900">
         <div className="text-center">
           <div className="mb-4 text-5xl">⚠️</div>
           <p className="mb-6 text-lg font-medium text-slate-600 dark:text-slate-300">
-            {error}
+            {error || 'Restoran tidak ditemukan'}
           </p>
-          <Link href="/menu">
-            <Button size="lg" className="gap-2">
+          <Link href="/areas">
+            <Button
+              size="lg"
+              className="gap-2 bg-emerald-600 hover:bg-emerald-700"
+            >
               <ArrowLeft className="h-4 w-4" />
-              Kembali ke Daftar Restoran
+              Kembali ke Areas
             </Button>
           </Link>
         </div>
@@ -256,27 +215,59 @@ const RestaurantMenuPage = () => {
       {/* Header */}
       <header className="shadow-sm/50 sticky top-0 z-30 border-b border-slate-200/50 bg-white/80 backdrop-blur-md dark:border-slate-700/50 dark:bg-slate-800/80">
         <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
-          <Link href="/menu" className="mb-4 inline-block">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="gap-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-white"
+          {areaId ? (
+            <Link
+              href={`/areas/${areaId}`}
+              className="mb-4 inline-block"
             >
-              <ArrowLeft className="h-4 w-4" />
-              Kembali
-            </Button>
-          </Link>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-white"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Kembali ke {restaurant?.area?.name || 'Area'}
+              </Button>
+            </Link>
+          ) : (
+            <Link href="/areas" className="mb-4 inline-block">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-white"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Kembali ke Areas
+              </Button>
+            </Link>
+          )}
 
           <div className="space-y-3">
+            {/* Restaurant Name with Area */}
             <div>
-              <h1 className="text-3xl font-bold text-slate-900 dark:text-white sm:text-4xl">
-                {restaurant.name}
-              </h1>
+              <div className="mb-2 flex items-center gap-3">
+                {restaurant.area && (
+                  <span className="text-3xl">
+                    {restaurant.area.icon || '📍'}
+                  </span>
+                )}
+                <div>
+                  {restaurant.area && (
+                    <p className="text-xs font-medium uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
+                      {restaurant.area.name}
+                    </p>
+                  )}
+                  <h1 className="text-3xl font-bold text-slate-900 dark:text-white sm:text-4xl">
+                    {restaurant.name}
+                  </h1>
+                </div>
+              </div>
               <p className="mt-2 max-w-2xl text-sm text-slate-600 dark:text-slate-400 sm:text-base">
                 {restaurant.description}
               </p>
             </div>
 
+            {/* Restaurant Info */}
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
               <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
                 <MapPin className="h-4 w-4 shrink-0" />
@@ -286,7 +277,7 @@ const RestaurantMenuPage = () => {
               </div>
 
               <div>
-                {restaurant.is_open === 1 ? (
+                {restaurant.is_open ? (
                   <div className="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-3 py-1.5 text-sm font-medium text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
                     <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-600 dark:bg-emerald-400" />
                     Buka
@@ -298,6 +289,12 @@ const RestaurantMenuPage = () => {
                   </div>
                 )}
               </div>
+
+              {restaurant.menus_count > 0 && (
+                <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-700 dark:bg-slate-700 dark:text-slate-300">
+                  🍽️ {restaurant.menus_count} Menu
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -335,7 +332,6 @@ const RestaurantMenuPage = () => {
                   <DialogTrigger asChild>
                     <div className="group cursor-pointer">
                       <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:border-slate-300 hover:shadow-lg active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-slate-600">
-                        {/* Image Container */}
                         <div className="relative aspect-square w-full overflow-hidden bg-slate-100 dark:bg-slate-700">
                           <img
                             src={menu.image || '/foodimages.png'}
@@ -345,7 +341,7 @@ const RestaurantMenuPage = () => {
                               e.currentTarget.src = '/foodimages.png';
                             }}
                           />
-                          {menu.is_available === 0 && (
+                          {!menu.is_available && (
                             <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm">
                               <span className="rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-semibold text-white dark:bg-slate-950">
                                 Tidak Tersedia
@@ -354,7 +350,6 @@ const RestaurantMenuPage = () => {
                           )}
                         </div>
 
-                        {/* Info Container */}
                         <div className="flex flex-grow flex-col justify-between p-4 sm:p-5">
                           <div className="mb-3">
                             <h3 className="line-clamp-2 text-sm font-semibold leading-snug text-slate-900 dark:text-white sm:text-base">
@@ -371,7 +366,7 @@ const RestaurantMenuPage = () => {
                             </p>
                             <Button
                               size="sm"
-                              disabled={menu.is_available === 0}
+                              disabled={!menu.is_available}
                               className="h-9 w-full bg-emerald-600 text-xs font-semibold text-white hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-700 sm:h-10 sm:text-sm"
                             >
                               <ShoppingCart className="mr-2 h-4 w-4" />
@@ -391,7 +386,6 @@ const RestaurantMenuPage = () => {
                     </DialogHeader>
 
                     <div className="space-y-5 py-4 sm:py-6">
-                      {/* Price Display */}
                       <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 dark:border-emerald-800 dark:bg-emerald-900/20">
                         <p className="text-xs font-medium uppercase tracking-wide text-slate-600 dark:text-slate-400">
                           Harga
@@ -404,7 +398,6 @@ const RestaurantMenuPage = () => {
                         </p>
                       </div>
 
-                      {/* Notes Section */}
                       <div className="space-y-3">
                         <label className="text-sm font-semibold text-slate-900 dark:text-white">
                           Catatan (Opsional)
@@ -424,7 +417,6 @@ const RestaurantMenuPage = () => {
                         />
                       </div>
 
-                      {/* Quantity Selection */}
                       <div className="space-y-3">
                         <label className="text-sm font-semibold text-slate-900 dark:text-white">
                           Jumlah
@@ -471,22 +463,20 @@ const RestaurantMenuPage = () => {
                         </div>
                       </div>
 
-                      {/* Total Price */}
                       <div className="rounded-2xl border border-slate-200 bg-slate-100 p-5 dark:border-slate-600 dark:bg-slate-700">
                         <p className="text-xs font-medium uppercase tracking-wide text-slate-600 dark:text-slate-400">
                           Total
                         </p>
                         <p className="mt-2 text-3xl font-bold text-slate-900 dark:text-white">
-                          {getTotalPrice(menu.id, menu.price)}
+                          Rp {getTotalPrice(menu.id, menu.price)}
                         </p>
                       </div>
 
-                      {/* Add to Cart Button */}
                       <Button
                         className="h-12 w-full rounded-xl bg-emerald-600 text-base font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-emerald-600 dark:hover:bg-emerald-700"
                         onClick={() => handleAddToCart(menu)}
                         disabled={
-                          menu.is_available === 0 || isAddingToCart
+                          !menu.is_available || isAddingToCart
                         }
                       >
                         <ShoppingCart className="mr-2 h-5 w-5" />
