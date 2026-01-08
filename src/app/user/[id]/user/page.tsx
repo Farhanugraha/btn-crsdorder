@@ -9,7 +9,11 @@ import {
   Phone,
   Briefcase,
   Building2,
-  LogOut
+  LogOut,
+  User,
+  Calendar,
+  Shield,
+  ArrowRight
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -68,62 +72,27 @@ const UserPage = () => {
     checkAuth();
   }, [userId, router]);
 
-  const handleLogout = async () => {
-    try {
-      const token = localStorage.getItem('auth_token');
-
-      const response = await fetch(
-        'http://localhost:8000/api/auth/logout',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-            Authorization: `Bearer ${token}`
-          }
-        }
-      );
-
-      const data = await response.json();
-
-      if (data.success) {
-        localStorage.removeItem('auth_user');
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('token_expires_in');
-        toast.success('Logout berhasil');
-        router.push('/');
-      } else {
-        toast.error(data.message || 'Logout gagal');
-      }
-    } catch (error) {
-      console.error('Logout error:', error);
-      localStorage.removeItem('auth_user');
-      localStorage.removeItem('auth_token');
-      localStorage.removeItem('token_expires_in');
-      toast.error('Terjadi kesalahan saat logout');
-      router.push('/');
-    }
-  };
-
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
       </div>
     );
   }
 
   if (!user) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="w-full max-w-md rounded-lg border border-border bg-card p-6 shadow-lg">
-          <h2 className="mb-2 text-xl font-bold">Unauthorized</h2>
-          <p className="mb-6 text-muted-foreground">
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+        <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-xl dark:border-slate-700 dark:bg-slate-800">
+          <h2 className="mb-2 text-2xl font-bold text-slate-900 dark:text-white">
+            Unauthorized
+          </h2>
+          <p className="mb-6 text-slate-600 dark:text-slate-400">
             Anda tidak memiliki akses ke halaman ini
           </p>
           <Button
             onClick={() => router.push('/auth/login')}
-            className="w-full"
+            className="w-full bg-blue-600 hover:bg-blue-700"
           >
             Kembali ke Login
           </Button>
@@ -132,128 +101,171 @@ const UserPage = () => {
     );
   }
 
+  const isAdmin = user.role === 'admin' || user.role === 'superadmin';
+
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="grid gap-6">
-        {/* Profile Card */}
-        <div className="rounded-lg border border-border bg-card p-6 shadow-lg">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold">{user.name}</h1>
-              <p className="mt-1 text-muted-foreground">
-                {user.role === 'admin' || user.role === 'superadmin'
-                  ? 'Administrator'
-                  : 'User'}
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+      <div className="container mx-auto max-w-5xl px-4 py-8">
+        {/* Header Background */}
+        <div className="mb-8 rounded-3xl bg-gradient-to-r from-blue-600 to-blue-700 p-8 text-white shadow-lg">
+          <div className="flex flex-col items-start justify-between gap-6 md:flex-row md:items-center">
+            <div className="flex items-center gap-4">
+              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
+                <User className="h-10 w-10" />
+              </div>
+              <div>
+                <h1 className="text-4xl font-bold">{user.name}</h1>
+                <p className="mt-1 flex items-center gap-2 text-blue-100">
+                  <Shield className="h-4 w-4" />
+                  {isAdmin ? 'Administrator' : 'Regular User'}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Main Content Grid */}
+        <div className="grid gap-6">
+          {/* Contact Information */}
+          <div className="grid gap-4 md:grid-cols-2">
+            {/* Email */}
+            <div className="group rounded-2xl border border-slate-200 bg-white/80 p-6 backdrop-blur-sm transition-all hover:border-blue-300 hover:shadow-lg dark:border-slate-700 dark:bg-slate-800/80">
+              <div className="mb-4 flex items-center gap-3">
+                <div className="rounded-lg bg-blue-100 p-3 dark:bg-blue-900/30">
+                  <Mail className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                </div>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                  Email
+                </h3>
+              </div>
+              <p className="mb-3 text-slate-900 dark:text-white">
+                {user.email}
+              </p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {user.email_verified_at
+                  ? `✓ Terverifikasi pada ${new Date(
+                      user.email_verified_at
+                    ).toLocaleDateString('id-ID')}`
+                  : '⚠ Belum terverifikasi'}
               </p>
             </div>
-            {/* <Button
-              variant="destructive"
-              onClick={handleLogout}
-              className="flex items-center gap-2"
-            >
-              <LogOut className="h-4 w-4" />
-              Logout
-            </Button> */}
-          </div>
-        </div>
 
-        {/* Profile Information */}
-        <div className="grid gap-6 md:grid-cols-2">
-          {/* Email Card */}
-          <div className="rounded-lg border border-border bg-card p-6">
-            <h3 className="mb-4 flex items-center gap-2 text-lg font-bold">
-              <Mail className="h-5 w-5" />
-              Email
-            </h3>
-            <p className="text-foreground">{user.email}</p>
-            <p className="mt-2 text-xs text-muted-foreground">
-              {user.email_verified_at
-                ? `Terverifikasi pada ${new Date(
-                    user.email_verified_at
-                  ).toLocaleDateString('id-ID')}`
-                : 'Belum terverifikasi'}
-            </p>
-          </div>
-
-          {/* Phone Card */}
-          <div className="rounded-lg border border-border bg-card p-6">
-            <h3 className="mb-4 flex items-center gap-2 text-lg font-bold">
-              <Phone className="h-5 w-5" />
-              Nomor Telepon
-            </h3>
-            <p className="text-foreground">{user.phone || '-'}</p>
-          </div>
-
-          {/* Divisi Card */}
-          <div className="rounded-lg border border-border bg-card p-6">
-            <h3 className="mb-4 flex items-center gap-2 text-lg font-bold">
-              <Briefcase className="h-5 w-5" />
-              Divisi
-            </h3>
-            <p className="text-foreground">{user.divisi || '-'}</p>
-          </div>
-
-          {/* Unit Kerja Card */}
-          <div className="rounded-lg border border-border bg-card p-6">
-            <h3 className="mb-4 flex items-center gap-2 text-lg font-bold">
-              <Building2 className="h-5 w-5" />
-              Unit Kerja
-            </h3>
-            <p className="text-foreground">
-              {user.unit_kerja || '-'}
-            </p>
-          </div>
-        </div>
-
-        {/* Account Info */}
-        <div className="rounded-lg border border-border bg-card p-6">
-          <h2 className="mb-4 text-xl font-bold">Informasi Akun</h2>
-          <div className="space-y-2">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">ID:</span>
-              <span className="font-medium">{user.id}</span>
+            {/* Phone */}
+            <div className="group rounded-2xl border border-slate-200 bg-white/80 p-6 backdrop-blur-sm transition-all hover:border-blue-300 hover:shadow-lg dark:border-slate-700 dark:bg-slate-800/80">
+              <div className="mb-4 flex items-center gap-3">
+                <div className="rounded-lg bg-green-100 p-3 dark:bg-green-900/30">
+                  <Phone className="h-5 w-5 text-green-600 dark:text-green-400" />
+                </div>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                  Nomor Telepon
+                </h3>
+              </div>
+              <p className="text-slate-900 dark:text-white">
+                {user.phone || '-'}
+              </p>
             </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Role:</span>
-              <span className="font-medium capitalize">
-                {user.role}
-              </span>
+
+            {/* Division */}
+            <div className="group rounded-2xl border border-slate-200 bg-white/80 p-6 backdrop-blur-sm transition-all hover:border-blue-300 hover:shadow-lg dark:border-slate-700 dark:bg-slate-800/80">
+              <div className="mb-4 flex items-center gap-3">
+                <div className="rounded-lg bg-purple-100 p-3 dark:bg-purple-900/30">
+                  <Briefcase className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                </div>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                  Divisi
+                </h3>
+              </div>
+              <p className="text-slate-900 dark:text-white">
+                {user.divisi || '-'}
+              </p>
             </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">
-                Dibuat pada:
-              </span>
-              <span className="font-medium">
-                {new Date(user.created_at).toLocaleDateString(
-                  'id-ID'
-                )}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">
-                Diperbarui:
-              </span>
-              <span className="font-medium">
-                {new Date(user.updated_at).toLocaleDateString(
-                  'id-ID'
-                )}
-              </span>
+
+            {/* Work Unit */}
+            <div className="group rounded-2xl border border-slate-200 bg-white/80 p-6 backdrop-blur-sm transition-all hover:border-blue-300 hover:shadow-lg dark:border-slate-700 dark:bg-slate-800/80">
+              <div className="mb-4 flex items-center gap-3">
+                <div className="rounded-lg bg-orange-100 p-3 dark:bg-orange-900/30">
+                  <Building2 className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                </div>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                  Unit Kerja
+                </h3>
+              </div>
+              <p className="text-slate-900 dark:text-white">
+                {user.unit_kerja || '-'}
+              </p>
             </div>
           </div>
-        </div>
 
-        {/* Action Buttons */}
-        <div className="flex gap-4">
-          <Button variant="outline" onClick={() => router.push('/')}>
-            Kembali ke Home
-          </Button>
-          {(user.role === 'admin' || user.role === 'superadmin') && (
+          {/* Account Details */}
+          <div className="rounded-2xl border border-slate-200 bg-white/80 p-8 backdrop-blur-sm dark:border-slate-700 dark:bg-slate-800/80">
+            <h2 className="mb-6 flex items-center gap-3 text-2xl font-bold text-slate-900 dark:text-white">
+              <Calendar className="h-6 w-6 text-blue-600" />
+              Informasi Akun
+            </h2>
+            <div className="grid gap-6 md:grid-cols-2">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between rounded-xl bg-slate-50 p-4 dark:bg-slate-700/50">
+                  <span className="text-slate-600 dark:text-slate-400">
+                    ID
+                  </span>
+                  <span className="font-semibold text-slate-900 dark:text-white">
+                    {user.id}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between rounded-xl bg-slate-50 p-4 dark:bg-slate-700/50">
+                  <span className="text-slate-600 dark:text-slate-400">
+                    Role
+                  </span>
+                  <span className="inline-block rounded-full bg-blue-100 px-4 py-1 font-semibold capitalize text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                    {user.role}
+                  </span>
+                </div>
+              </div>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between rounded-xl bg-slate-50 p-4 dark:bg-slate-700/50">
+                  <span className="text-slate-600 dark:text-slate-400">
+                    Dibuat
+                  </span>
+                  <span className="font-semibold text-slate-900 dark:text-white">
+                    {new Date(user.created_at).toLocaleDateString(
+                      'id-ID'
+                    )}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between rounded-xl bg-slate-50 p-4 dark:bg-slate-700/50">
+                  <span className="text-slate-600 dark:text-slate-400">
+                    Diperbarui
+                  </span>
+                  <span className="font-semibold text-slate-900 dark:text-white">
+                    {new Date(user.updated_at).toLocaleDateString(
+                      'id-ID'
+                    )}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex flex-col gap-3 sm:flex-row">
             <Button
-              onClick={() => router.push(`/user/${user.id}/admin`)}
+              variant="outline"
+              onClick={() => router.push('/')}
+              className="group border-slate-300 hover:border-blue-300 hover:bg-blue-50 dark:border-slate-600 dark:hover:bg-slate-700"
             >
-              Buka Admin Panel
+              Kembali ke Home
+              <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
             </Button>
-          )}
+            {isAdmin && (
+              <Button
+                onClick={() => router.push(`/user/${user.id}/admin`)}
+                className="group bg-blue-600 hover:bg-blue-700"
+              >
+                Admin Panel
+                <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     </div>

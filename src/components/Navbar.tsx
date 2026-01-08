@@ -322,7 +322,7 @@ const Navbar = () => {
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
                     <Link
-                      href={`/user/${user.id}/profile`}
+                      href={`/user/${user.id}/user`}
                       className="cursor-pointer"
                     >
                       Profile

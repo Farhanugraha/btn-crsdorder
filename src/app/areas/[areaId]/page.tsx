@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ArrowLeft, Search, MapPin } from 'lucide-react';
@@ -161,9 +162,12 @@ export default function RestaurantsByAreaPage() {
                 >
                   <div className="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all hover:shadow-lg active:scale-95 dark:border-slate-700 dark:bg-slate-800">
                     <div className="relative h-56 bg-slate-100 dark:bg-slate-700">
-                      <div className="flex h-full items-center justify-center text-6xl">
-                        🍽️
-                      </div>
+                      <Image
+                        src="/restaurant.png"
+                        alt={restaurant.name}
+                        fill
+                        className="object-cover"
+                      />
                       {restaurant.is_open && (
                         <div className="absolute right-4 top-4 rounded-full bg-emerald-100 px-3 py-1.5 text-xs font-semibold text-emerald-700">
                           Buka

@@ -72,35 +72,40 @@ const RestaurantMenuPage = () => {
   const [areaId, setAreaId] = useState<number | null>(null);
 
   useEffect(() => {
+    if (!restaurantId) return;
+
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        setRestaurant(null);
+        setMenuList([]);
+        setDialogOpen({});
+
+        const response = await fetch(
+          `http://localhost:8000/api/restaurants/${restaurantId}`
+        );
+        const result = await response.json();
+
+        if (!result.success) {
+          throw new Error('Gagal memuat restoran');
+        }
+
+        setRestaurant(result.data);
+        setMenuList(result.data.menus || []);
+        setAreaId(result.data.area_id);
+      } catch (err) {
+        console.error('Error:', err);
+        setError(
+          err instanceof Error ? err.message : 'Terjadi kesalahan'
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
     fetchData();
   }, [restaurantId]);
-
-  const fetchData = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-
-      const response = await fetch(
-        `http://localhost:8000/api/restaurants/${restaurantId}`
-      );
-      const result = await response.json();
-
-      if (!result.success) {
-        throw new Error('Gagal memuat restoran');
-      }
-
-      setRestaurant(result.data);
-      setMenuList(result.data.menus || []);
-      setAreaId(result.data.area_id);
-    } catch (err) {
-      console.error('Error:', err);
-      setError(
-        err instanceof Error ? err.message : 'Terjadi kesalahan'
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const toggleDialog = (menuId: number) => {
     const key = String(menuId);
@@ -175,23 +180,57 @@ const RestaurantMenuPage = () => {
     return (numPrice * quantity).toLocaleString('id-ID');
   };
 
+  // Skeleton loading component
+  const SkeletonCard = () => (
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
+      <div className="aspect-square w-full animate-pulse bg-slate-200 dark:bg-slate-700" />
+      <div className="space-y-4 p-4 sm:p-5">
+        <div className="h-4 w-3/4 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+        <div className="h-6 w-1/2 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+        <div className="h-10 w-full animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+      </div>
+    </div>
+  );
+
   if (isLoading) {
     return (
-      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-50 dark:bg-slate-900">
-        <div className="text-center">
-          <div className="mb-4 h-12 w-12 animate-spin rounded-full border-4 border-emerald-200 border-t-emerald-600 dark:border-slate-700 dark:border-t-emerald-500"></div>
-          <p className="text-sm text-slate-600 dark:text-slate-400">
-            Memuat...
-          </p>
-        </div>
+      <div className="relative min-h-screen bg-slate-50 dark:bg-slate-900">
+        {/* Header Skeleton */}
+        <header className="shadow-sm/50 sticky top-0 z-30 border-b border-slate-200/50 bg-white/80 backdrop-blur-md dark:border-slate-700/50 dark:bg-slate-800/80">
+          <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
+            <div className="mb-4 h-10 w-32 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+            <div className="space-y-3">
+              <div className="h-10 w-1/2 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+              <div className="h-4 w-3/4 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+              <div className="flex gap-3">
+                <div className="h-8 w-40 animate-pulse rounded-full bg-slate-200 dark:bg-slate-700" />
+                <div className="h-8 w-32 animate-pulse rounded-full bg-slate-200 dark:bg-slate-700" />
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* Content Skeleton */}
+        <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
+          <div className="mb-8">
+            <div className="mb-2 h-8 w-40 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+            <div className="h-4 w-32 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 sm:gap-6 md:grid-cols-3 lg:grid-cols-4">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <SkeletonCard key={i} />
+            ))}
+          </div>
+        </main>
       </div>
     );
   }
 
   if (error || !restaurant) {
     return (
-      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-50 px-4 dark:bg-slate-900">
-        <div className="text-center">
+      <div className="relative flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-900">
+        <div className="px-4 text-center">
           <div className="mb-4 text-5xl">⚠️</div>
           <p className="mb-6 text-lg font-medium text-slate-600 dark:text-slate-300">
             {error || 'Restoran tidak ditemukan'}
