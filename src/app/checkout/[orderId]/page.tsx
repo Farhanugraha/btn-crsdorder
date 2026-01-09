@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import {
   AlertDialog,
   AlertDialogAction,
+  AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogHeader,
@@ -16,7 +17,8 @@ import {
   CheckCircle,
   Upload,
   AlertCircle,
-  X
+  X,
+  Trash2
 } from 'lucide-react';
 import Loading from '@/components/Loading';
 import { toast } from 'sonner';
@@ -48,11 +50,11 @@ const CheckoutConfirmationPage = () => {
     'qris' | 'transfer'
   >('qris');
   const [copiedText, setCopiedText] = useState('');
-
-  // Form state
   const [proofImage, setProofImage] = useState<File | null>(null);
   const [proofImagePreview, setProofImagePreview] = useState('');
   const [confirmationNotes, setConfirmationNotes] = useState('');
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
 
   // Dummy data
   const BANK_ACCOUNT = '1234567890';
@@ -193,6 +195,56 @@ const CheckoutConfirmationPage = () => {
     }
   };
 
+  const handleCancelOrder = async () => {
+    try {
+      setIsCancelling(true);
+      const token = localStorage.getItem('auth_token');
+
+      if (!token) {
+        toast.error('Silakan login terlebih dahulu');
+        router.push('/auth/login');
+        return;
+      }
+
+      if (!order) {
+        toast.error('Data pesanan tidak ditemukan');
+        return;
+      }
+
+      const response = await fetch(
+        `http://localhost:8000/api/orders/${order.id}/cancel`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: 'application/json',
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to cancel order');
+      }
+
+      const data = await response.json();
+      if (data.success) {
+        toast.success('Pesanan berhasil dibatalkan');
+        setShowCancelDialog(false);
+
+        // Redirect ke orders page setelah 1 detik
+        setTimeout(() => {
+          router.push('/areas');
+        }, 1000);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error('Gagal membatalkan pesanan');
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
     setCopiedText(label);
@@ -293,7 +345,7 @@ const CheckoutConfirmationPage = () => {
                         {item.menu?.name}
                       </p>
                       <p className="text-xs text-slate-600 dark:text-slate-400 sm:text-sm">
-                        Qty: {item.quantity}
+                        Jumlah: {item.quantity}
                       </p>
                     </div>
                     <p className="ml-2 flex-shrink-0 font-semibold text-slate-900 dark:text-white">
@@ -667,6 +719,16 @@ const CheckoutConfirmationPage = () => {
               >
                 Kembali
               </Button>
+
+              <Button
+                variant="destructive"
+                onClick={() => setShowCancelDialog(true)}
+                disabled={isSubmitting || isCancelling}
+                className="w-full text-sm sm:text-base"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Batalkan Pesanan
+              </Button>
             </div>
           </div>
         </div>
@@ -707,6 +769,41 @@ const CheckoutConfirmationPage = () => {
           >
             Lihat Pesanan Saya
           </AlertDialogAction>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Cancel Order Confirmation Dialog */}
+      <AlertDialog
+        open={showCancelDialog}
+        onOpenChange={setShowCancelDialog}
+      >
+        <AlertDialogContent className="rounded-xl border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-2xl">
+              Batalkan Pesanan?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-base text-slate-600 dark:text-slate-400">
+              Apakah Anda yakin ingin membatalkan pesanan ini?
+              Tindakan ini tidak dapat dibatalkan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="my-6 rounded-lg border-l-4 border-l-red-600 bg-red-50 p-4 dark:bg-red-900/20">
+            <p className="text-sm font-semibold text-red-800 dark:text-red-300">
+              ⚠️ Pesanan {order?.order_code} akan dibatalkan
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <AlertDialogCancel className="rounded-lg border-slate-300 dark:border-slate-700">
+              Tidak, Lanjutkan
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleCancelOrder}
+              disabled={isCancelling}
+              className="rounded-lg bg-red-600 text-white hover:bg-red-700"
+            >
+              {isCancelling ? '⏳ Membatalkan...' : '🗑️ Ya, Batalkan'}
+            </AlertDialogAction>
+          </div>
         </AlertDialogContent>
       </AlertDialog>
     </div>

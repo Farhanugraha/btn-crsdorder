@@ -207,7 +207,7 @@ const OrderId = ({ params }: { params: { orderId: string } }) => {
                               </div>
                             </div>
                             <span className="w-12 text-center">
-                              Qty {item.quantity}
+                              Jumlah {item.quantity}
                             </span>
                           </div>
                           <Separator className="mt-2" />

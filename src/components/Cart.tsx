@@ -501,7 +501,7 @@ const CartComponent = () => {
                                       <Minus className="h-4 w-4" />
                                     </Button>
                                     <span className="flex-1 text-center text-sm font-bold text-slate-900 dark:text-white">
-                                      Qty: {item.quantity}
+                                      Jumlah: {item.quantity}
                                     </span>
                                     <Button
                                       type="button"

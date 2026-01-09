@@ -21,10 +21,20 @@ import {
   DropdownMenuSeparator
 } from '@/components/ui/dropdown-menu';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from '@/components/ui/alert-dialog';
+import {
   LogOut,
   Menu,
   Loader2,
-  User as UserIcon
+  User as UserIcon,
+  AlertCircle
 } from 'lucide-react';
 import logo from '../../public/logobtn.png';
 import { cn } from '@/lib/utils';
@@ -51,6 +61,12 @@ const Navbar = () => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [latestOrderId, setLatestOrderId] = useState<number | null>(
+    null
+  );
+  const [isLoadingOrder, setIsLoadingOrder] = useState(false);
+  const [showNoPaymentDialog, setShowNoPaymentDialog] =
+    useState(false);
 
   // Check auth status on mount and listen for storage changes
   useEffect(() => {
@@ -115,6 +131,65 @@ const Navbar = () => {
       window.removeEventListener('auth-changed', handleAuthChange);
     };
   }, []);
+
+  // Fetch latest order ketika user berubah
+  useEffect(() => {
+    if (user) {
+      fetchLatestOrder();
+    }
+  }, [user]);
+
+  const fetchLatestOrder = async () => {
+    try {
+      setIsLoadingOrder(true);
+      const token = localStorage.getItem('auth_token');
+
+      if (!token) {
+        setLatestOrderId(null);
+        return;
+      }
+
+      const response = await fetch(
+        'http://localhost:8000/api/orders',
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: 'application/json',
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      const data = await response.json();
+      if (data.success && data.data && data.data.length > 0) {
+        // Ambil order dengan status pending (belum dibayar)
+        const pendingOrder = data.data.find(
+          (order: any) => order.status === 'pending'
+        );
+
+        if (pendingOrder) {
+          setLatestOrderId(pendingOrder.id);
+        } else {
+          // Jika tidak ada pending, ambil order terbaru
+          setLatestOrderId(data.data[0].id);
+        }
+      } else {
+        setLatestOrderId(null);
+      }
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+      setLatestOrderId(null);
+    } finally {
+      setIsLoadingOrder(false);
+    }
+  };
+
+  const handlePaymentClick = (e: React.MouseEvent) => {
+    if (!latestOrderId) {
+      e.preventDefault();
+      setShowNoPaymentDialog(true);
+    }
+  };
 
   const handleLogout = async () => {
     try {
@@ -333,7 +408,26 @@ const Navbar = () => {
                       href={`/user/${user.id}/orders`}
                       className="cursor-pointer"
                     >
-                      My Orders
+                      Pesanan
+                    </Link>
+                  </DropdownMenuItem>
+
+                  <DropdownMenuItem asChild>
+                    <Link
+                      href={
+                        latestOrderId
+                          ? `/checkout/${latestOrderId}`
+                          : '#'
+                      }
+                      className="cursor-pointer"
+                      onClick={handlePaymentClick}
+                    >
+                      Pembayaran
+                      {isLoadingOrder && (
+                        <span className="ml-2 inline-block animate-spin text-xs">
+                          ⏳
+                        </span>
+                      )}
                     </Link>
                   </DropdownMenuItem>
                   {(user.role === 'admin' ||
@@ -394,6 +488,47 @@ const Navbar = () => {
           <ToggleTheme />
         </div>
       </div>
+
+      {/* No Payment Dialog */}
+      <AlertDialog
+        open={showNoPaymentDialog}
+        onOpenChange={setShowNoPaymentDialog}
+      >
+        <AlertDialogContent className="rounded-xl border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+          <AlertDialogHeader>
+            <div className="mb-4 flex justify-center">
+              <AlertCircle className="h-12 w-12 text-yellow-600 dark:text-yellow-400" />
+            </div>
+            <AlertDialogTitle className="text-center text-2xl">
+              Belum Ada Pembayaran
+            </AlertDialogTitle>
+            <AlertDialogDescription className="mt-4 text-center text-base text-slate-600 dark:text-slate-400">
+              Anda tidak memiliki pesanan yang menunggu pembayaran
+              saat ini.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="my-6 rounded-lg border-l-4 border-l-yellow-600 bg-yellow-50 p-4 dark:bg-yellow-900/20">
+            <p className="text-sm font-semibold text-yellow-800 dark:text-yellow-300">
+              💡 Silakan pesan makanan terlebih dahulu untuk melakukan
+              pembayaran
+            </p>
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
+            <AlertDialogCancel className="rounded-lg border-slate-300 dark:border-slate-700">
+              Tutup
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setShowNoPaymentDialog(false);
+                router.push('/areas');
+              }}
+              className="rounded-lg bg-emerald-600 text-white hover:bg-emerald-700"
+            >
+              Pesan Sekarang
+            </AlertDialogAction>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
     </nav>
   );
 };
