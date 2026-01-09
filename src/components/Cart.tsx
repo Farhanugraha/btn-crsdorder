@@ -7,7 +7,6 @@ import {
   Sheet,
   SheetClose,
   SheetContent,
-  SheetFooter,
   SheetHeader,
   SheetTitle,
   SheetTrigger
@@ -283,10 +282,15 @@ const CartComponent = () => {
 
       if (cartsWithItems.length === 0) {
         toast.error('Keranjang Anda kosong');
+        setIsCheckingOut(false);
         return;
       }
 
-      // Buat order dengan notes
+      console.log('🛒 Submitting checkout...');
+      console.log('Carts with items:', cartsWithItems.length);
+      console.log('Checkout notes:', checkoutNotes);
+
+      // Backend akan combine semua items dari berbagai restaurants menjadi 1 order
       const response = await fetch(
         'http://localhost:8000/api/orders',
         {
@@ -302,13 +306,16 @@ const CartComponent = () => {
         }
       );
 
+      const data = await response.json();
+      console.log('📦 Checkout response:', data);
+
       if (!response.ok) {
-        throw new Error('Failed to create order');
+        console.error('❌ Backend error:', data);
+        throw new Error(data.message || 'Failed to create order');
       }
 
-      const data = await response.json();
       if (data.success) {
-        toast.success('Pesanan berhasil dibuat');
+        toast.success('Pesanan berhasil dibuat!');
 
         // Clear cart di server
         await fetch('http://localhost:8000/api/cart/clear', {
@@ -327,12 +334,17 @@ const CartComponent = () => {
         setCheckoutNotes('');
         setSheetOpen(false);
 
-        // Navigasi ke halaman checkout dengan order ID (dynamic route)
+        // Navigasi ke halaman checkout dengan order ID
+        console.log('📍 Navigating to order:', data.data.id);
         router.push(`/checkout/${data.data.id}`);
       }
     } catch (error) {
-      console.error('Error:', error);
-      toast.error('Gagal membuat pesanan');
+      console.error('❌ Checkout error:', error);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Gagal membuat pesanan'
+      );
     } finally {
       setIsCheckingOut(false);
     }

@@ -18,10 +18,28 @@ import {
   Upload,
   AlertCircle,
   X,
-  Trash2
+  Trash2,
+  MapPin
 } from 'lucide-react';
 import Loading from '@/components/Loading';
 import { toast } from 'sonner';
+
+interface MenuItem {
+  id: number;
+  name: string;
+  price: string;
+  restaurant_id: number;
+}
+
+interface OrderItem {
+  id: number;
+  order_id: number;
+  menu_id: number;
+  quantity: number;
+  price: string;
+  notes: string;
+  menu: MenuItem;
+}
 
 interface Order {
   id: number;
@@ -33,7 +51,14 @@ interface Order {
   notes: string;
   created_at: string;
   updated_at: string;
-  items: any[];
+  items: OrderItem[];
+}
+
+interface Restaurant {
+  id: number;
+  name: string;
+  address: string;
+  is_open: number;
 }
 
 const CheckoutConfirmationPage = () => {
@@ -43,9 +68,14 @@ const CheckoutConfirmationPage = () => {
 
   const [mounted, setMounted] = useState(false);
   const [order, setOrder] = useState<Order | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [restaurants, setRestaurants] = useState<
+    Map<number, Restaurant>
+  >(new Map());
+  const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showNoPaymentDialog, setShowNoPaymentDialog] =
+    useState(false);
   const [paymentMethod, setPaymentMethod] = useState<
     'qris' | 'transfer'
   >('qris');
@@ -55,6 +85,7 @@ const CheckoutConfirmationPage = () => {
   const [confirmationNotes, setConfirmationNotes] = useState('');
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Dummy data
   const BANK_ACCOUNT = '1234567890';
@@ -68,15 +99,22 @@ const CheckoutConfirmationPage = () => {
     setMounted(true);
   }, []);
 
+  // Fetch order data ketika mounted dan orderId tersedia
   useEffect(() => {
     if (mounted && orderId) {
       loadOrderData();
+    } else if (mounted && !orderId) {
+      // Jika tidak ada orderId, tampilkan dialog "Belum Ada Pembayaran"
+      setShowNoPaymentDialog(true);
     }
   }, [mounted, orderId]);
 
   const loadOrderData = async () => {
     try {
       setIsLoading(true);
+      setError(null);
+      setOrder(null);
+
       const token = localStorage.getItem('auth_token');
 
       if (!token) {
@@ -86,13 +124,14 @@ const CheckoutConfirmationPage = () => {
       }
 
       if (!orderId) {
-        router.push('/');
+        setShowNoPaymentDialog(true);
         return;
       }
 
       const response = await fetch(
         `http://localhost:8000/api/orders/${orderId}`,
         {
+          method: 'GET',
           headers: {
             Authorization: `Bearer ${token}`,
             Accept: 'application/json',
@@ -102,21 +141,100 @@ const CheckoutConfirmationPage = () => {
       );
 
       if (!response.ok) {
-        throw new Error('Failed to fetch order');
+        if (response.status === 401) {
+          toast.error(
+            'Session Anda telah berakhir, silakan login kembali'
+          );
+          localStorage.removeItem('auth_token');
+          router.push('/auth/login');
+          return;
+        }
+
+        if (response.status === 404) {
+          setShowNoPaymentDialog(true);
+          return;
+        }
+
+        throw new Error(`HTTP Error: ${response.status}`);
       }
 
       const data = await response.json();
-      if (data.success) {
+
+      if (data.success && data.data) {
+        // CEK STATUS - HANYA BOLEH PENDING
+        if (data.data.status !== 'pending') {
+          setShowNoPaymentDialog(true);
+          return;
+        }
+
         setOrder(data.data);
+        setError(null);
+
+        // Fetch restaurant data untuk setiap item
+        if (data.data.items && data.data.items.length > 0) {
+          await fetchRestaurantData(data.data.items);
+        }
+      } else {
+        setShowNoPaymentDialog(true);
       }
     } catch (error) {
       console.error('Error loading order:', error);
-      toast.error('Gagal mengambil data pesanan');
-      router.push('/');
+      setShowNoPaymentDialog(true);
     } finally {
       setIsLoading(false);
     }
   };
+
+  const fetchRestaurantData = async (items: OrderItem[]) => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const restaurantIds = new Set(
+        items.map((item) => item.menu?.restaurant_id)
+      );
+
+      const restaurantIdArray = Array.from(restaurantIds);
+
+      for (const restoId of restaurantIdArray) {
+        try {
+          const response = await fetch(
+            `http://localhost:8000/api/restaurants/${restoId}`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+                Accept: 'application/json'
+              }
+            }
+          );
+
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.data) {
+              setRestaurants((prev) =>
+                new Map(prev).set(restoId, data.data)
+              );
+            }
+          }
+        } catch (err) {
+          console.error(`Error fetching restaurant ${restoId}:`, err);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching restaurants:', error);
+    }
+  };
+
+  // Group items by restaurant
+  const groupedItems = order?.items.reduce(
+    (acc, item) => {
+      const restoId = item.menu?.restaurant_id || 0;
+      if (!acc[restoId]) {
+        acc[restoId] = [];
+      }
+      acc[restoId].push(item);
+      return acc;
+    },
+    {} as Record<number, OrderItem[]>
+  );
 
   const handleImageChange = (
     e: React.ChangeEvent<HTMLInputElement>
@@ -159,15 +277,14 @@ const CheckoutConfirmationPage = () => {
       }
 
       const formData = new FormData();
-      formData.append('order_code', order.order_code);
-      formData.append('payment_method', paymentMethod);
       formData.append('proof_image', proofImage);
+      formData.append('payment_method', paymentMethod);
       if (confirmationNotes.trim()) {
         formData.append('notes', confirmationNotes);
       }
 
       const response = await fetch(
-        `http://localhost:8000/api/orders/${order.id}/confirm-payment`,
+        `http://localhost:8000/api/payments/orders/${order.id}/upload-proof`,
         {
           method: 'POST',
           headers: {
@@ -179,17 +296,49 @@ const CheckoutConfirmationPage = () => {
       );
 
       if (!response.ok) {
-        throw new Error('Failed to confirm payment');
+        if (response.status === 401) {
+          toast.error('Session Anda telah berakhir');
+          localStorage.removeItem('auth_token');
+          router.push('/auth/login');
+          return;
+        }
+
+        if (response.status === 422) {
+          const errorData = await response.json();
+          toast.error(
+            'Validasi gagal: ' + JSON.stringify(errorData.errors)
+          );
+          return;
+        }
+
+        throw new Error(`HTTP Error: ${response.status}`);
       }
 
       const data = await response.json();
+
       if (data.success) {
         toast.success('Pembayaran berhasil dikonfirmasi');
         setShowSuccessModal(true);
+
+        // Reset form
+        setProofImage(null);
+        setProofImagePreview('');
+        setConfirmationNotes('');
+
+        // Reload order data setelah 2 detik
+        setTimeout(() => {
+          loadOrderData();
+        }, 2000);
+      } else {
+        toast.error(data.message || 'Gagal mengonfirmasi pembayaran');
       }
     } catch (error) {
       console.error('Error:', error);
-      toast.error('Gagal mengonfirmasi pembayaran');
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Gagal mengonfirmasi pembayaran'
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -224,6 +373,11 @@ const CheckoutConfirmationPage = () => {
       );
 
       if (!response.ok) {
+        if (response.status === 401) {
+          toast.error('Session Anda telah berakhir');
+          router.push('/auth/login');
+          return;
+        }
         throw new Error('Failed to cancel order');
       }
 
@@ -232,9 +386,8 @@ const CheckoutConfirmationPage = () => {
         toast.success('Pesanan berhasil dibatalkan');
         setShowCancelDialog(false);
 
-        // Redirect ke orders page setelah 1 detik
         setTimeout(() => {
-          router.push('/areas');
+          router.push('/order');
         }, 1000);
       }
     } catch (error) {
@@ -252,7 +405,7 @@ const CheckoutConfirmationPage = () => {
     setTimeout(() => setCopiedText(''), 2000);
   };
 
-  if (!mounted || isLoading) {
+  if (!mounted) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-900">
         <Loading />
@@ -260,22 +413,57 @@ const CheckoutConfirmationPage = () => {
     );
   }
 
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-900">
+        <Loading />
+      </div>
+    );
+  }
+
+  // DIALOG JIKA TIDAK ADA PESANAN YANG PENDING
   if (!order) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-50 px-4 dark:bg-slate-900">
-        <div className="text-6xl">❌</div>
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-          Pesanan Tidak Ditemukan
-        </h1>
-        <p className="text-sm text-slate-600 dark:text-slate-400">
-          Order ID: {orderId}
-        </p>
-        <Button
-          onClick={() => router.push('/')}
-          className="mt-4 bg-emerald-600 hover:bg-emerald-700"
+      <div className="min-h-screen bg-slate-50 px-4 py-6 dark:bg-slate-900 sm:px-6 sm:py-8">
+        <AlertDialog
+          open={showNoPaymentDialog}
+          onOpenChange={setShowNoPaymentDialog}
         >
-          Kembali ke Beranda
-        </Button>
+          <AlertDialogContent className="rounded-xl border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 sm:max-w-md">
+            <AlertDialogHeader>
+              <div className="mb-4 flex justify-center">
+                <AlertCircle className="h-12 w-12 text-yellow-600 dark:text-yellow-400 sm:h-16 sm:w-16" />
+              </div>
+              <AlertDialogTitle className="text-center text-xl sm:text-2xl">
+                Belum Ada Pembayaran
+              </AlertDialogTitle>
+              <AlertDialogDescription className="mt-4 text-center text-xs sm:text-base">
+                Anda tidak memiliki pesanan yang menunggu pembayaran
+                saat ini.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="my-6 rounded-lg border-l-4 border-l-yellow-600 bg-yellow-50 p-4 dark:bg-yellow-900/20">
+              <p className="text-xs font-semibold text-yellow-800 dark:text-yellow-300 sm:text-sm">
+                💡 Silakan pesan makanan terlebih dahulu untuk
+                melakukan pembayaran
+              </p>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
+              <AlertDialogCancel className="rounded-lg border-slate-300 dark:border-slate-700">
+                Tutup
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  setShowNoPaymentDialog(false);
+                  router.push('/areas');
+                }}
+                className="rounded-lg bg-emerald-600 text-white hover:bg-emerald-700"
+              >
+                Pesan Sekarang
+              </AlertDialogAction>
+            </div>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     );
   }
@@ -328,40 +516,105 @@ const CheckoutConfirmationPage = () => {
         <div className="grid gap-6 lg:grid-cols-3">
           {/* Left Column - Main Content */}
           <div className="space-y-6 lg:col-span-2">
-            {/* Order Summary */}
+            {/* Order Summary - Grouped by Restaurant */}
             <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800 sm:p-6">
               <h2 className="mb-4 text-lg font-bold text-slate-900 dark:text-white sm:text-xl">
                 Ringkasan Pesanan
               </h2>
 
-              <div className="space-y-3">
-                {order.items?.map((item: any) => (
-                  <div
-                    key={item.id}
-                    className="flex items-center justify-between border-b border-slate-200 py-3 last:border-b-0 dark:border-slate-700"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-medium text-slate-900 dark:text-white">
-                        {item.menu?.name}
-                      </p>
-                      <p className="text-xs text-slate-600 dark:text-slate-400 sm:text-sm">
-                        Jumlah: {item.quantity}
-                      </p>
-                    </div>
-                    <p className="ml-2 flex-shrink-0 font-semibold text-slate-900 dark:text-white">
-                      Rp{' '}
-                      {(
-                        parseFloat(item.price) * item.quantity
-                      ).toLocaleString('id-ID')}
-                    </p>
-                  </div>
-                ))}
+              <div className="space-y-6">
+                {groupedItems &&
+                  Object.entries(groupedItems).map(
+                    ([restoId, items]) => {
+                      const resto = restaurants.get(
+                        parseInt(restoId)
+                      );
+                      const restoSubtotal = items.reduce(
+                        (sum, item) =>
+                          sum +
+                          parseFloat(item.price) * item.quantity,
+                        0
+                      );
+
+                      return (
+                        <div
+                          key={restoId}
+                          className="space-y-3 border-b border-slate-200 pb-4 last:border-b-0 dark:border-slate-700"
+                        >
+                          {/* Restaurant Header */}
+                          {resto && (
+                            <div className="rounded-lg border border-emerald-200 bg-gradient-to-r from-emerald-50 to-emerald-100/50 p-3 dark:border-emerald-800 dark:from-emerald-900/20 dark:to-emerald-800/10">
+                              <h3 className="mb-1 text-sm font-semibold text-slate-900 dark:text-white">
+                                {resto.name}
+                              </h3>
+                              {resto.address && (
+                                <p className="flex items-center gap-1 text-xs text-slate-600 dark:text-slate-400">
+                                  <MapPin className="h-3 w-3" />
+                                  {resto.address}
+                                </p>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Items for this restaurant */}
+                          <div className="space-y-2">
+                            {items.map((item) => (
+                              <div
+                                key={item.id}
+                                className="flex items-center justify-between border-b border-slate-200 py-3 last:border-b-0 dark:border-slate-700"
+                              >
+                                <div className="min-w-0 flex-1">
+                                  <p className="truncate text-sm font-medium text-slate-900 dark:text-white">
+                                    {item.menu?.name}
+                                  </p>
+                                  <p className="text-xs text-slate-600 dark:text-slate-400">
+                                    Rp{' '}
+                                    {parseFloat(
+                                      item.price
+                                    ).toLocaleString('id-ID')}{' '}
+                                    × {item.quantity}
+                                  </p>
+                                  {item.notes && (
+                                    <p className="mt-1 text-xs italic text-blue-600 dark:text-blue-400">
+                                      💬 {item.notes}
+                                    </p>
+                                  )}
+                                </div>
+                                <p className="ml-2 flex-shrink-0 text-right font-semibold text-slate-900 dark:text-white">
+                                  Rp{' '}
+                                  {(
+                                    parseFloat(item.price) *
+                                    item.quantity
+                                  ).toLocaleString('id-ID')}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* Subtotal per restaurant */}
+                          <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-900 sm:p-5">
+                            <div className="flex items-center justify-between">
+                              <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                                Subtotal
+                              </p>
+                              <p className="text-lg font-bold text-slate-900 dark:text-white sm:text-xl">
+                                Rp{' '}
+                                {restoSubtotal.toLocaleString(
+                                  'id-ID'
+                                )}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+                  )}
               </div>
 
-              <div className="mt-4 border-t border-slate-200 pt-4 dark:border-slate-700">
+              <div className="mt-6 border-t border-slate-200 pt-4 dark:border-slate-700">
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-slate-900 dark:text-white sm:text-lg">
-                    Total
+                    Total Keseluruhan
                   </span>
                   <span className="text-xl font-bold text-emerald-600 dark:text-emerald-400 sm:text-2xl">
                     Rp {totalPrice.toLocaleString('id-ID')}
@@ -763,7 +1016,7 @@ const CheckoutConfirmationPage = () => {
           <AlertDialogAction
             onClick={() => {
               setShowSuccessModal(false);
-              router.push('/orders');
+              router.push('/areas');
             }}
             className="bg-emerald-600 hover:bg-emerald-700"
           >

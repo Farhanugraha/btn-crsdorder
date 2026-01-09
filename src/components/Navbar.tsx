@@ -170,8 +170,8 @@ const Navbar = () => {
         if (pendingOrder) {
           setLatestOrderId(pendingOrder.id);
         } else {
-          // Jika tidak ada pending, ambil order terbaru
-          setLatestOrderId(data.data[0].id);
+          // Jika tidak ada pending, set null (tidak ada pembayaran menunggu)
+          setLatestOrderId(null);
         }
       } else {
         setLatestOrderId(null);
@@ -404,10 +404,7 @@ const Navbar = () => {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link
-                      href={`/user/${user.id}/orders`}
-                      className="cursor-pointer"
-                    >
+                    <Link href="/order" className="cursor-pointer">
                       Pesanan
                     </Link>
                   </DropdownMenuItem>
@@ -494,21 +491,21 @@ const Navbar = () => {
         open={showNoPaymentDialog}
         onOpenChange={setShowNoPaymentDialog}
       >
-        <AlertDialogContent className="rounded-xl border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+        <AlertDialogContent className="rounded-xl border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 sm:max-w-md">
           <AlertDialogHeader>
             <div className="mb-4 flex justify-center">
-              <AlertCircle className="h-12 w-12 text-yellow-600 dark:text-yellow-400" />
+              <AlertCircle className="h-12 w-12 text-yellow-600 dark:text-yellow-400 sm:h-16 sm:w-16" />
             </div>
-            <AlertDialogTitle className="text-center text-2xl">
+            <AlertDialogTitle className="text-center text-xl sm:text-2xl">
               Belum Ada Pembayaran
             </AlertDialogTitle>
-            <AlertDialogDescription className="mt-4 text-center text-base text-slate-600 dark:text-slate-400">
+            <AlertDialogDescription className="mt-4 text-center text-xs text-slate-600 dark:text-slate-400 sm:text-base">
               Anda tidak memiliki pesanan yang menunggu pembayaran
               saat ini.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="my-6 rounded-lg border-l-4 border-l-yellow-600 bg-yellow-50 p-4 dark:bg-yellow-900/20">
-            <p className="text-sm font-semibold text-yellow-800 dark:text-yellow-300">
+            <p className="text-xs font-semibold text-yellow-800 dark:text-yellow-300 sm:text-sm">
               💡 Silakan pesan makanan terlebih dahulu untuk melakukan
               pembayaran
             </p>
