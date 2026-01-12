@@ -371,14 +371,6 @@ const OrderListPage = () => {
                         {getStatusBadge(order.status)}
                       </div>
 
-                      <p className="mt-2 text-xs text-slate-600 dark:text-slate-400 sm:text-sm">
-                        {order.items.reduce(
-                          (sum, item) => sum + item.quantity,
-                          0
-                        )}{' '}
-                        item • {formatDate(order.created_at)}
-                      </p>
-
                       {order.notes && (
                         <p className="mt-2 line-clamp-1 text-xs text-slate-600 dark:text-slate-400">
                           💬 {order.notes}

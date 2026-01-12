@@ -136,12 +136,35 @@ const Navbar = () => {
   useEffect(() => {
     if (user) {
       fetchLatestOrder();
+
+      // Set up interval untuk refetch setiap 5 detik
+      const interval = setInterval(() => {
+        fetchLatestOrder();
+      }, 5000);
+
+      return () => clearInterval(interval);
     }
   }, [user]);
 
+  // Listen untuk payment success events
+  useEffect(() => {
+    const handlePaymentSuccess = () => {
+      console.log('Payment success event received');
+      fetchLatestOrder();
+    };
+
+    window.addEventListener('payment-success', handlePaymentSuccess);
+
+    return () => {
+      window.removeEventListener(
+        'payment-success',
+        handlePaymentSuccess
+      );
+    };
+  }, []);
+
   const fetchLatestOrder = async () => {
     try {
-      setIsLoadingOrder(true);
       const token = localStorage.getItem('auth_token');
 
       if (!token) {
@@ -167,26 +190,55 @@ const Navbar = () => {
           (order: any) => order.status === 'pending'
         );
 
-        if (pendingOrder) {
-          setLatestOrderId(pendingOrder.id);
-        } else {
-          // Jika tidak ada pending, set null (tidak ada pembayaran menunggu)
-          setLatestOrderId(null);
-        }
+        setLatestOrderId(pendingOrder ? pendingOrder.id : null);
       } else {
         setLatestOrderId(null);
       }
     } catch (error) {
       console.error('Error fetching orders:', error);
       setLatestOrderId(null);
-    } finally {
-      setIsLoadingOrder(false);
     }
   };
 
-  const handlePaymentClick = (e: React.MouseEvent) => {
+  const handlePaymentClick = async (e: React.MouseEvent) => {
     if (!latestOrderId) {
       e.preventDefault();
+
+      // Refetch sekali lagi sebelum show dialog
+      try {
+        const token = localStorage.getItem('auth_token');
+
+        if (token) {
+          const response = await fetch(
+            'http://localhost:8000/api/orders',
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+                Accept: 'application/json',
+                'Content-Type': 'application/json'
+              }
+            }
+          );
+
+          const data = await response.json();
+          if (data.success && data.data && data.data.length > 0) {
+            const pendingOrder = data.data.find(
+              (order: any) => order.status === 'pending'
+            );
+
+            // Jika ada pending order, redirect ke checkout
+            if (pendingOrder) {
+              setLatestOrderId(pendingOrder.id);
+              router.push(`/checkout/${pendingOrder.id}`);
+              return;
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error refetching orders:', error);
+      }
+
+      // Jika tetap tidak ada, show dialog
       setShowNoPaymentDialog(true);
     }
   };
@@ -419,12 +471,20 @@ const Navbar = () => {
                       className="cursor-pointer"
                       onClick={handlePaymentClick}
                     >
-                      Pembayaran
-                      {isLoadingOrder && (
-                        <span className="ml-2 inline-block animate-spin text-xs">
-                          ⏳
-                        </span>
-                      )}
+                      <div className="flex items-center gap-2">
+                        Pembayaran
+                        {isLoadingOrder && (
+                          <span className="inline-block animate-spin text-xs">
+                            ⏳
+                          </span>
+                        )}
+                        {latestOrderId && (
+                          <div className="relative inline-flex h-5 w-5 items-center justify-center">
+                            <span className="absolute h-5 w-5 animate-ping rounded-full bg-emerald-600"></span>
+                            <span className="relative h-3 w-3 rounded-full bg-emerald-600"></span>
+                          </div>
+                        )}
+                      </div>
                     </Link>
                   </DropdownMenuItem>
                   {(user.role === 'admin' ||
@@ -510,7 +570,7 @@ const Navbar = () => {
               pembayaran
             </p>
           </div>
-          <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:gap-3">
             <AlertDialogCancel className="rounded-lg border-slate-300 dark:border-slate-700">
               Tutup
             </AlertDialogCancel>

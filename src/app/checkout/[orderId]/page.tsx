@@ -22,6 +22,7 @@ import {
   MapPin
 } from 'lucide-react';
 import Loading from '@/components/Loading';
+import Link from 'next/link';
 import { toast } from 'sonner';
 
 interface MenuItem {
@@ -440,8 +441,13 @@ const CheckoutConfirmationPage = () => {
               </p>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
-              <AlertDialogCancel className="rounded-lg border-slate-300 dark:border-slate-700">
-                Tutup
+              <AlertDialogCancel asChild>
+                <Link
+                  href="/"
+                  className="rounded-lg border border-slate-300 px-4 py-2 text-center dark:border-slate-700"
+                >
+                  Tutup
+                </Link>
               </AlertDialogCancel>
               <AlertDialogAction
                 onClick={() => {

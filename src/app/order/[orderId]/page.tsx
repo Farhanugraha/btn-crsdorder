@@ -245,28 +245,31 @@ const OrderDetailPage = () => {
     switch (status) {
       case 'pending':
         return (
-          <span className="inline-flex items-center gap-1 rounded-full bg-yellow-100 px-3 py-1 text-sm font-semibold text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300">
-            <Clock className="h-4 w-4" />
-            Menunggu Pembayaran
+          <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-yellow-100 px-2 py-1 text-xs font-semibold text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300 sm:text-sm">
+            <Clock className="h-3 w-3 flex-shrink-0 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">
+              Menunggu Pembayaran
+            </span>
+            <span className="sm:hidden">Menunggu</span>
           </span>
         );
       case 'paid':
         return (
-          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-3 py-1 text-sm font-semibold text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300">
-            <CheckCircle className="h-4 w-4" />
+          <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300 sm:text-sm">
+            <CheckCircle className="h-3 w-3 flex-shrink-0 sm:h-4 sm:w-4" />
             Dibayar
           </span>
         );
       case 'canceled':
         return (
-          <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-3 py-1 text-sm font-semibold text-red-800 dark:bg-red-900/30 dark:text-red-300">
-            <AlertCircle className="h-4 w-4" />
+          <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-red-100 px-2 py-1 text-xs font-semibold text-red-800 dark:bg-red-900/30 dark:text-red-300 sm:text-sm">
+            <AlertCircle className="h-3 w-3 flex-shrink-0 sm:h-4 sm:w-4" />
             Dibatalkan
           </span>
         );
       default:
         return (
-          <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-800 dark:bg-slate-700/30 dark:text-slate-300">
+          <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-800 dark:bg-slate-700/30 dark:text-slate-300 sm:text-sm">
             {status}
           </span>
         );
@@ -569,7 +572,7 @@ const OrderDetailPage = () => {
               ⚠️ Pesanan {order?.order_code} akan dibatalkan
             </p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex flex-col-reverse gap-3 sm:flex-row">
             <AlertDialogCancel className="rounded-lg border-slate-300 dark:border-slate-700">
               Tidak, Lanjutkan
             </AlertDialogCancel>
