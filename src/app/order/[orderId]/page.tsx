@@ -21,7 +21,6 @@ import {
   Trash2,
   ArrowLeft
 } from 'lucide-react';
-import Loading from '@/components/Loading';
 import { toast } from 'sonner';
 
 interface MenuItem {
@@ -298,45 +297,39 @@ const OrderDetailPage = () => {
     {} as Record<number, OrderItem[]>
   );
 
-  if (!mounted) {
+  if (!mounted || isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-900">
-        <Loading />
-      </div>
-    );
-  }
-
-  if (isLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-900">
-        <Loading />
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-50 dark:bg-slate-900">
+        <div className="h-12 w-12 animate-spin rounded-full border-4 border-emerald-200 border-t-emerald-600"></div>
       </div>
     );
   }
 
   if (error || !order) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-50 px-4 dark:bg-slate-900">
-        <div className="text-6xl">❌</div>
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-          {error || 'Pesanan Tidak Ditemukan'}
-        </h1>
-        <p className="text-sm text-slate-600 dark:text-slate-400">
-          Order ID: {orderId}
-        </p>
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <Button
-            onClick={() => loadOrderData()}
-            className="bg-blue-600 hover:bg-blue-700"
-          >
-            Coba Lagi
-          </Button>
-          <Button
-            onClick={() => router.push('/order')}
-            className="bg-emerald-600 hover:bg-emerald-700"
-          >
-            Kembali ke Pesanan
-          </Button>
+      <div className="min-h-screen bg-slate-50 px-4 py-6 dark:bg-slate-900 sm:px-6 sm:py-8">
+        <div className="mx-auto flex max-w-3xl flex-col items-center justify-center gap-4 py-12">
+          <div className="text-6xl">❌</div>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+            {error || 'Pesanan Tidak Ditemukan'}
+          </h1>
+          <p className="text-sm text-slate-600 dark:text-slate-400">
+            Order ID: {orderId}
+          </p>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Button
+              onClick={() => loadOrderData()}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              Coba Lagi
+            </Button>
+            <Button
+              onClick={() => router.push('/order')}
+              className="bg-emerald-600 hover:bg-emerald-700"
+            >
+              Kembali ke Pesanan
+            </Button>
+          </div>
         </div>
       </div>
     );

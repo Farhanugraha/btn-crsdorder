@@ -405,23 +405,14 @@ const CheckoutConfirmationPage = () => {
     setTimeout(() => setCopiedText(''), 2000);
   };
 
-  if (!mounted) {
+  if (!mounted || isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-900">
-        <Loading />
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-50 dark:bg-slate-900">
+        <div className="h-12 w-12 animate-spin rounded-full border-4 border-emerald-200 border-t-emerald-600"></div>
       </div>
     );
   }
 
-  if (isLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-900">
-        <Loading />
-      </div>
-    );
-  }
-
-  // DIALOG JIKA TIDAK ADA PESANAN YANG PENDING
   if (!order) {
     return (
       <div className="min-h-screen bg-slate-50 px-4 py-6 dark:bg-slate-900 sm:px-6 sm:py-8">
@@ -1016,7 +1007,7 @@ const CheckoutConfirmationPage = () => {
           <AlertDialogAction
             onClick={() => {
               setShowSuccessModal(false);
-              router.push('/areas');
+              router.push('/order');
             }}
             className="bg-emerald-600 hover:bg-emerald-700"
           >

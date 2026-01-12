@@ -9,9 +9,9 @@ import {
   AlertCircle,
   ChevronRight,
   ShoppingBag,
-  ArrowLeft
+  ArrowLeft,
+  Calendar
 } from 'lucide-react';
-import Loading from '@/components/Loading';
 import { toast } from 'sonner';
 
 interface OrderItem {
@@ -41,16 +41,23 @@ const OrderListPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterDate, setFilterDate] = useState<string>('today');
+  const [customDate, setCustomDate] = useState<string>('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
 
   useEffect(() => {
     setMounted(true);
+    const today = new Date().toISOString().split('T')[0];
+    setCustomDate(today);
   }, []);
 
   useEffect(() => {
     if (mounted) {
+      setCurrentPage(1);
       loadOrders();
     }
-  }, [mounted]);
+  }, [mounted, filterStatus, filterDate, customDate]);
 
   const loadOrders = async () => {
     try {
@@ -92,9 +99,6 @@ const OrderListPage = () => {
 
       if (data.success && data.data) {
         setOrders(data.data);
-        if (data.data.length === 0) {
-          setError(null);
-        }
       } else {
         setError('Gagal memuat pesanan');
       }
@@ -148,15 +152,53 @@ const OrderListPage = () => {
     });
   };
 
-  const filteredOrders = orders.filter((order) => {
-    if (filterStatus === 'all') return true;
-    return order.status === filterStatus;
-  });
+  const formatDateOnly = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('id-ID', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
 
-  if (!mounted) {
+  const getFilteredOrders = () => {
+    let filtered = orders;
+
+    // Filter by status
+    if (filterStatus !== 'all') {
+      filtered = filtered.filter(
+        (order) => order.status === filterStatus
+      );
+    }
+
+    // Filter by date
+    if (filterDate === 'today') {
+      const today = new Date().toDateString();
+      filtered = filtered.filter((order) => {
+        return new Date(order.created_at).toDateString() === today;
+      });
+    } else if (filterDate === 'custom' && customDate) {
+      filtered = filtered.filter((order) => {
+        const orderDate = new Date(order.created_at)
+          .toISOString()
+          .split('T')[0];
+        return orderDate === customDate;
+      });
+    }
+
+    return filtered;
+  };
+
+  const filteredOrders = getFilteredOrders();
+  const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
+  const paginatedOrders = filteredOrders.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  if (!mounted || isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-900">
-        <Loading />
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-50 dark:bg-slate-900">
+        <div className="h-12 w-12 animate-spin rounded-full border-4 border-emerald-200 border-t-emerald-600"></div>
       </div>
     );
   }
@@ -185,64 +227,118 @@ const OrderListPage = () => {
           </Button>
         </div>
 
-        {/* Filter Buttons */}
-        <div className="mb-6 flex flex-wrap gap-2">
-          <Button
-            onClick={() => setFilterStatus('all')}
-            variant={filterStatus === 'all' ? 'default' : 'outline'}
-            size="sm"
-            className="rounded-full"
-          >
-            Semua
-          </Button>
-          <Button
-            onClick={() => setFilterStatus('pending')}
-            variant={
-              filterStatus === 'pending' ? 'default' : 'outline'
-            }
-            size="sm"
-            className="rounded-full"
-          >
-            Menunggu Bayar
-          </Button>
-          <Button
-            onClick={() => setFilterStatus('paid')}
-            variant={filterStatus === 'paid' ? 'default' : 'outline'}
-            size="sm"
-            className="rounded-full"
-          >
-            Dibayar
-          </Button>
-          <Button
-            onClick={() => setFilterStatus('canceled')}
-            variant={
-              filterStatus === 'canceled' ? 'default' : 'outline'
-            }
-            size="sm"
-            className="rounded-full"
-          >
-            Dibatalkan
-          </Button>
+        {/* Status Filter */}
+        <div className="mb-6">
+          <p className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-300">
+            Filter Status
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              onClick={() => setFilterStatus('all')}
+              variant={filterStatus === 'all' ? 'default' : 'outline'}
+              size="sm"
+              className="rounded-full"
+            >
+              Semua
+            </Button>
+            <Button
+              onClick={() => setFilterStatus('pending')}
+              variant={
+                filterStatus === 'pending' ? 'default' : 'outline'
+              }
+              size="sm"
+              className="rounded-full"
+            >
+              Menunggu Bayar
+            </Button>
+            <Button
+              onClick={() => setFilterStatus('paid')}
+              variant={
+                filterStatus === 'paid' ? 'default' : 'outline'
+              }
+              size="sm"
+              className="rounded-full"
+            >
+              Dibayar
+            </Button>
+            <Button
+              onClick={() => setFilterStatus('canceled')}
+              variant={
+                filterStatus === 'canceled' ? 'default' : 'outline'
+              }
+              size="sm"
+              className="rounded-full"
+            >
+              Dibatalkan
+            </Button>
+          </div>
         </div>
 
-        {/* Loading State */}
-        {isLoading && (
-          <div className="flex justify-center py-12">
-            <Loading />
+        {/* Date Filter */}
+        <div className="mb-6 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
+          <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-300">
+            <Calendar className="h-4 w-4" />
+            Pilih Tanggal
+          </p>
+          <div className="space-y-3">
+            <div className="flex gap-2">
+              <Button
+                onClick={() => setFilterDate('today')}
+                variant={
+                  filterDate === 'today' ? 'default' : 'outline'
+                }
+                size="sm"
+                className="flex-1 rounded-full"
+              >
+                Hari Ini
+              </Button>
+              <Button
+                onClick={() => setFilterDate('custom')}
+                variant={
+                  filterDate === 'custom' ? 'default' : 'outline'
+                }
+                size="sm"
+                className="flex-1 rounded-full"
+              >
+                Pilih Tanggal
+              </Button>
+            </div>
+            {filterDate === 'custom' && (
+              <input
+                type="date"
+                value={customDate}
+                onChange={(e) => setCustomDate(e.target.value)}
+                max={new Date().toISOString().split('T')[0]}
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-white"
+              />
+            )}
           </div>
-        )}
+          {filterDate === 'custom' && customDate && (
+            <p className="mt-2 text-xs text-slate-600 dark:text-slate-400">
+              Menampilkan pesanan tanggal:{' '}
+              <span className="font-semibold">
+                {formatDateOnly(customDate)}
+              </span>
+            </p>
+          )}
+          {filterDate === 'today' && (
+            <p className="mt-2 text-xs text-slate-600 dark:text-slate-400">
+              Menampilkan pesanan hari ini
+            </p>
+          )}
+        </div>
 
         {/* Empty State */}
-        {!isLoading && filteredOrders.length === 0 && (
+        {paginatedOrders.length === 0 && (
           <div className="rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 p-8 text-center dark:border-slate-600 dark:bg-slate-800">
             <ShoppingBag className="mx-auto h-12 w-12 text-slate-400 dark:text-slate-600" />
             <p className="mt-4 text-lg font-semibold text-slate-900 dark:text-white">
               Tidak ada pesanan
             </p>
             <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-              {filterStatus === 'all'
-                ? 'Mulai pesan sekarang untuk melihat pesanan Anda di sini'
-                : `Tidak ada pesanan dengan status ${filterStatus}`}
+              {filterStatus !== 'all' || filterDate !== 'today'
+                ? 'Coba ubah filter untuk melihat pesanan'
+                : 'Mulai pesan sekarang untuk melihat pesanan Anda di sini'}
             </p>
             <Button
               onClick={() => router.push('/areas')}
@@ -254,61 +350,124 @@ const OrderListPage = () => {
         )}
 
         {/* Orders List */}
-        <div className="space-y-4">
-          {filteredOrders.map((order) => (
-            <button
-              key={order.id}
-              onClick={() =>
-                router.push(`/order/${String(order.id)}`)
-              }
-              className="block w-full rounded-xl border border-slate-200 bg-white p-4 text-left transition-all hover:border-emerald-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-800 dark:hover:border-emerald-600 sm:p-6"
-            >
-              <div className="flex items-start justify-between gap-4">
-                {/* Left Content */}
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-mono font-semibold text-slate-900 dark:text-white">
-                      {order.order_code}
-                    </p>
-                    {getStatusBadge(order.status)}
+        {paginatedOrders.length > 0 && (
+          <>
+            <div className="mb-4 space-y-4">
+              {paginatedOrders.map((order) => (
+                <button
+                  key={order.id}
+                  onClick={() =>
+                    router.push(`/order/${String(order.id)}`)
+                  }
+                  className="block w-full rounded-xl border border-slate-200 bg-white p-4 text-left transition-all hover:border-emerald-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-800 dark:hover:border-emerald-600 sm:p-6"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    {/* Left Content */}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-mono font-semibold text-slate-900 dark:text-white">
+                          {order.order_code}
+                        </p>
+                        {getStatusBadge(order.status)}
+                      </div>
+
+                      <p className="mt-2 text-xs text-slate-600 dark:text-slate-400 sm:text-sm">
+                        {order.items.reduce(
+                          (sum, item) => sum + item.quantity,
+                          0
+                        )}{' '}
+                        item • {formatDate(order.created_at)}
+                      </p>
+
+                      {order.notes && (
+                        <p className="mt-2 line-clamp-1 text-xs text-slate-600 dark:text-slate-400">
+                          💬 {order.notes}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Right Content */}
+                    <div className="flex items-center gap-3">
+                      <div className="text-right">
+                        <p className="text-xs text-slate-600 dark:text-slate-400 sm:text-sm">
+                          Total
+                        </p>
+                        <p className="font-bold text-emerald-600 dark:text-emerald-400 sm:text-lg">
+                          Rp{' '}
+                          {typeof order.total_price === 'string'
+                            ? parseInt(
+                                order.total_price
+                              ).toLocaleString('id-ID')
+                            : order.total_price.toLocaleString(
+                                'id-ID'
+                              )}
+                        </p>
+                      </div>
+                      <ChevronRight className="h-5 w-5 flex-shrink-0 text-slate-400 dark:text-slate-600" />
+                    </div>
                   </div>
+                </button>
+              ))}
+            </div>
 
-                  <p className="mt-2 text-xs text-slate-600 dark:text-slate-400 sm:text-sm">
-                    {order.items.length} item •{' '}
-                    {formatDate(order.created_at)}
-                  </p>
-
-                  {order.notes && (
-                    <p className="mt-2 line-clamp-1 text-xs text-slate-600 dark:text-slate-400">
-                      💬 {order.notes}
-                    </p>
-                  )}
-                </div>
-
-                {/* Right Content */}
-                <div className="flex items-center gap-3">
-                  <div className="text-right">
-                    <p className="text-xs text-slate-600 dark:text-slate-400 sm:text-sm">
-                      Total
-                    </p>
-                    <p className="font-bold text-emerald-600 dark:text-emerald-400 sm:text-lg">
-                      Rp{' '}
-                      {typeof order.total_price === 'string'
-                        ? parseInt(order.total_price).toLocaleString(
-                            'id-ID'
-                          )
-                        : order.total_price.toLocaleString('id-ID')}
-                    </p>
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="mt-8 space-y-4">
+                <p className="text-center text-sm text-slate-600 dark:text-slate-400">
+                  Halaman {currentPage} dari {totalPages} • Total{' '}
+                  {filteredOrders.length} pesanan
+                </p>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-center">
+                  <Button
+                    onClick={() =>
+                      setCurrentPage((p) => Math.max(p - 1, 1))
+                    }
+                    disabled={currentPage === 1}
+                    variant="outline"
+                    size="sm"
+                    className="w-full sm:w-auto"
+                  >
+                    ← Sebelumnya
+                  </Button>
+                  <div className="flex flex-wrap items-center justify-center gap-1">
+                    {Array.from(
+                      { length: totalPages },
+                      (_, i) => i + 1
+                    ).map((page) => (
+                      <Button
+                        key={page}
+                        onClick={() => setCurrentPage(page)}
+                        variant={
+                          currentPage === page ? 'default' : 'outline'
+                        }
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                      >
+                        {page}
+                      </Button>
+                    ))}
                   </div>
-                  <ChevronRight className="h-5 w-5 flex-shrink-0 text-slate-400 dark:text-slate-600" />
+                  <Button
+                    onClick={() =>
+                      setCurrentPage((p) =>
+                        Math.min(p + 1, totalPages)
+                      )
+                    }
+                    disabled={currentPage === totalPages}
+                    variant="outline"
+                    size="sm"
+                    className="w-full sm:w-auto"
+                  >
+                    Selanjutnya →
+                  </Button>
                 </div>
               </div>
-            </button>
-          ))}
-        </div>
+            )}
+          </>
+        )}
 
         {/* Error State */}
-        {error && !isLoading && filteredOrders.length === 0 && (
+        {error && paginatedOrders.length === 0 && (
           <div className="rounded-xl border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-900/20">
             <div className="flex gap-2">
               <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
