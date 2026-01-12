@@ -37,7 +37,8 @@ import {
   ShoppingCart,
   X,
   Trash2,
-  MapPin
+  MapPin,
+  Edit2
 } from 'lucide-react';
 import Loading from '@/components/Loading';
 import { cn, formatPrice } from '@/lib/utils';
@@ -97,6 +98,12 @@ const CartComponent = () => {
   const [showCheckoutDialog, setShowCheckoutDialog] = useState(false);
   const [checkoutNotes, setCheckoutNotes] = useState('');
   const [isCheckingOut, setIsCheckingOut] = useState(false);
+  const [showEditNotesDialog, setShowEditNotesDialog] =
+    useState(false);
+  const [editingItemId, setEditingItemId] = useState<number | null>(
+    null
+  );
+  const [editingNotes, setEditingNotes] = useState('');
 
   useEffect(() => {
     setMounted(true);
@@ -236,6 +243,52 @@ const CartComponent = () => {
     }
   };
 
+  const handleOpenEditNotesDialog = (item: CartItem) => {
+    setEditingItemId(item.id);
+    setEditingNotes(item.notes || '');
+    setShowEditNotesDialog(true);
+  };
+
+  const handleUpdateItemNotes = async () => {
+    if (!editingItemId) return;
+
+    try {
+      setIsUpdating(true);
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(
+        `http://localhost:8000/api/cart/items/${editingItemId}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+            Accept: 'application/json'
+          },
+          body: JSON.stringify({ notes: editingNotes || null })
+        }
+      );
+
+      if (!response.ok) {
+        toast.error('Gagal mengupdate catatan');
+        return;
+      }
+
+      const data = await response.json();
+      if (data.success) {
+        toast.success('Catatan berhasil diperbarui');
+        setShowEditNotesDialog(false);
+        setEditingItemId(null);
+        setEditingNotes('');
+        await fetchCart();
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error('Terjadi kesalahan saat mengupdate catatan');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   const handleClearCart = async () => {
     try {
       setIsUpdating(true);
@@ -275,7 +328,6 @@ const CartComponent = () => {
       setIsCheckingOut(true);
       const token = localStorage.getItem('auth_token');
 
-      // Filter cart yang ada items
       const cartsWithItems = carts.filter(
         (cart) => cart.items.length > 0
       );
@@ -290,7 +342,6 @@ const CartComponent = () => {
       console.log('Carts with items:', cartsWithItems.length);
       console.log('Checkout notes:', checkoutNotes);
 
-      // Backend akan combine semua items dari berbagai restaurants menjadi 1 order
       const response = await fetch(
         'http://localhost:8000/api/orders',
         {
@@ -317,7 +368,6 @@ const CartComponent = () => {
       if (data.success) {
         toast.success('Pesanan berhasil dibuat!');
 
-        // Clear cart di server
         await fetch('http://localhost:8000/api/cart/clear', {
           method: 'DELETE',
           headers: {
@@ -326,15 +376,11 @@ const CartComponent = () => {
           }
         });
 
-        // Update state cart
         setCarts([]);
-
-        // Reset state dialog
         setShowCheckoutDialog(false);
         setCheckoutNotes('');
         setSheetOpen(false);
 
-        // Navigasi ke halaman checkout dengan order ID
         console.log('📍 Navigating to order:', data.data.id);
         router.push(`/checkout/${data.data.id}`);
       }
@@ -443,15 +489,20 @@ const CartComponent = () => {
                                 {cart.restaurant.address}
                               </p>
                             )}
+                            {/* Restaurant Total Items */}
+                            <p className="mt-2 text-xs font-medium text-emerald-700 dark:text-emerald-300">
+                              {cart.items.reduce(
+                                (sum, item) => sum + item.quantity,
+                                0
+                              )}{' '}
+                              item
+                            </p>
                           </div>
 
                           {/* Items */}
                           <div className="space-y-3">
-                            {cart.items.map((item, index) => (
-                              <div
-                                key={item.id + index}
-                                className="group"
-                              >
+                            {cart.items.map((item) => (
+                              <div key={item.id} className="group">
                                 <div className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4 transition-all hover:shadow-md dark:border-slate-700 dark:bg-slate-800/50">
                                   {/* Header: Name and Delete Button */}
                                   <div className="flex items-start justify-between gap-3">
@@ -472,17 +523,51 @@ const CartComponent = () => {
                                     </Button>
                                   </div>
 
-                                  {/* Notes */}
-                                  {item.notes && (
-                                    <div className="max-h-20 w-full overflow-y-auto overflow-x-hidden rounded-lg border border-blue-200 bg-blue-50 p-2 text-xs text-slate-600 dark:border-blue-800 dark:bg-blue-900/20 dark:text-slate-400">
-                                      <p className="whitespace-pre-wrap break-all">
-                                        <span className="font-medium">
-                                          💬
-                                        </span>{' '}
-                                        {item.notes}
-                                      </p>
-                                    </div>
-                                  )}
+                                  {/* Notes Section with Edit Button */}
+                                  <div className="space-y-2">
+                                    {item.notes ? (
+                                      <div className="flex items-start gap-2">
+                                        <div className="max-h-20 flex-1 overflow-y-auto overflow-x-hidden rounded-lg border border-blue-200 bg-blue-50 p-2 text-xs text-slate-600 dark:border-blue-800 dark:bg-blue-900/20 dark:text-slate-400">
+                                          <p className="whitespace-pre-wrap break-all">
+                                            <span className="font-medium">
+                                              💬
+                                            </span>{' '}
+                                            {item.notes}
+                                          </p>
+                                        </div>
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="icon"
+                                          disabled={isUpdating}
+                                          className="h-6 w-6 flex-shrink-0 text-slate-600 hover:bg-slate-200 dark:hover:bg-slate-700"
+                                          onClick={() =>
+                                            handleOpenEditNotesDialog(
+                                              item
+                                            )
+                                          }
+                                        >
+                                          <Edit2 className="h-3 w-3" />
+                                        </Button>
+                                      </div>
+                                    ) : (
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-8 w-full border-slate-300 text-xs dark:border-slate-600"
+                                        disabled={isUpdating}
+                                        onClick={() =>
+                                          handleOpenEditNotesDialog(
+                                            item
+                                          )
+                                        }
+                                      >
+                                        <Edit2 className="mr-1 h-3 w-3" />
+                                        Tambah Catatan
+                                      </Button>
+                                    )}
+                                  </div>
 
                                   {/* Price */}
                                   <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
@@ -633,6 +718,60 @@ const CartComponent = () => {
           </AlertDialogAction>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Edit Notes Dialog */}
+      <Dialog
+        open={showEditNotesDialog}
+        onOpenChange={setShowEditNotesDialog}
+      >
+        <DialogContent className="rounded-xl border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-2xl">
+              Edit Catatan Item
+            </DialogTitle>
+            <DialogDescription className="text-base text-slate-600 dark:text-slate-400">
+              Ubah catatan untuk pesanan ini
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-4 py-4">
+            <textarea
+              placeholder="Contoh: Pedas, Tidak pakai sambal, Extra, dll..."
+              value={editingNotes}
+              onChange={(e) => setEditingNotes(e.target.value)}
+              className="min-h-24 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm placeholder-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-600 dark:bg-slate-900 dark:text-white dark:placeholder-slate-500 dark:focus:border-emerald-400"
+              maxLength={200}
+            />
+            <div className="text-xs text-slate-500 dark:text-slate-400">
+              {editingNotes.length} / 200 karakter
+            </div>
+          </div>
+
+          <DialogFooter className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setShowEditNotesDialog(false);
+                setEditingItemId(null);
+                setEditingNotes('');
+              }}
+              disabled={isUpdating}
+              className="rounded-lg border-slate-300 dark:border-slate-600"
+            >
+              Batal
+            </Button>
+            <Button
+              type="button"
+              onClick={handleUpdateItemNotes}
+              disabled={isUpdating}
+              className="rounded-lg bg-emerald-600 text-white hover:bg-emerald-700"
+            >
+              {isUpdating ? '⏳ Menyimpan...' : '✓ Simpan'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Checkout Notes Dialog */}
       <Dialog
