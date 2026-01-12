@@ -38,7 +38,8 @@ import {
   X,
   Trash2,
   MapPin,
-  Edit2
+  Edit2,
+  AlertCircle
 } from 'lucide-react';
 import Loading from '@/components/Loading';
 import { cn, formatPrice } from '@/lib/utils';
@@ -104,6 +105,11 @@ const CartComponent = () => {
     null
   );
   const [editingNotes, setEditingNotes] = useState('');
+  const [showPendingPaymentDialog, setShowPendingPaymentDialog] =
+    useState(false);
+  const [pendingOrderId, setPendingOrderId] = useState<number | null>(
+    null
+  );
 
   useEffect(() => {
     setMounted(true);
@@ -168,6 +174,46 @@ const CartComponent = () => {
       console.error('Error fetching cart:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const checkPendingPayment = async (): Promise<boolean> => {
+    try {
+      const token = localStorage.getItem('auth_token');
+
+      if (!token) {
+        return false;
+      }
+
+      const response = await fetch(
+        'http://localhost:8000/api/orders',
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: 'application/json',
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      const data = await response.json();
+
+      if (data.success && data.data && data.data.length > 0) {
+        const pending = data.data.find(
+          (order: any) => order.status === 'pending'
+        );
+
+        if (pending) {
+          setPendingOrderId(pending.id);
+          return true;
+        }
+      }
+
+      setPendingOrderId(null);
+      return false;
+    } catch (error) {
+      console.error('Error checking pending payment:', error);
+      return false;
     }
   };
 
@@ -323,6 +369,18 @@ const CartComponent = () => {
     }
   };
 
+  const handleCheckoutClick = async () => {
+    // Check pending payment sebelum buka checkout dialog
+    const hasPending = await checkPendingPayment();
+
+    if (hasPending) {
+      setShowPendingPaymentDialog(true);
+      return;
+    }
+
+    setShowCheckoutDialog(true);
+  };
+
   const handleCheckoutSubmit = async () => {
     try {
       setIsCheckingOut(true);
@@ -342,7 +400,8 @@ const CartComponent = () => {
       console.log('Carts with items:', cartsWithItems.length);
       console.log('Checkout notes:', checkoutNotes);
 
-      const response = await fetch(
+      // Step 1: Create order
+      const createOrderResponse = await fetch(
         'http://localhost:8000/api/orders',
         {
           method: 'POST',
@@ -357,17 +416,21 @@ const CartComponent = () => {
         }
       );
 
-      const data = await response.json();
-      console.log('📦 Checkout response:', data);
+      const createOrderData = await createOrderResponse.json();
+      console.log('📦 Create order response:', createOrderData);
 
-      if (!response.ok) {
-        console.error('❌ Backend error:', data);
-        throw new Error(data.message || 'Failed to create order');
+      if (!createOrderResponse.ok) {
+        console.error('❌ Create order error:', createOrderData);
+        throw new Error(
+          createOrderData.message || 'Failed to create order'
+        );
       }
 
-      if (data.success) {
+      if (createOrderData.success) {
+        const orderId = createOrderData.data.id;
         toast.success('Pesanan berhasil dibuat!');
 
+        // Step 2: Clear cart
         await fetch('http://localhost:8000/api/cart/clear', {
           method: 'DELETE',
           headers: {
@@ -381,8 +444,9 @@ const CartComponent = () => {
         setCheckoutNotes('');
         setSheetOpen(false);
 
-        console.log('📍 Navigating to order:', data.data.id);
-        router.push(`/checkout/${data.data.id}`);
+        console.log('📍 Navigating to payment:', orderId);
+        // Redirect ke halaman payment/confirmation
+        router.push(`/checkout/${orderId}`);
       }
     } catch (error) {
       console.error('❌ Checkout error:', error);
@@ -667,7 +731,7 @@ const CartComponent = () => {
                       </Button>
                       <Button
                         type="button"
-                        onClick={() => setShowCheckoutDialog(true)}
+                        onClick={handleCheckoutClick}
                         className="h-10 w-full rounded-lg bg-emerald-600 font-medium text-white transition-colors hover:bg-emerald-700 disabled:pointer-events-none disabled:opacity-50"
                         disabled={isUpdating}
                       >
@@ -716,6 +780,48 @@ const CartComponent = () => {
           >
             {isUpdating ? '⏳ Menghapus...' : '🗑️ Hapus Semua'}
           </AlertDialogAction>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Pending Payment Dialog */}
+      <AlertDialog
+        open={showPendingPaymentDialog}
+        onOpenChange={setShowPendingPaymentDialog}
+      >
+        <AlertDialogContent className="rounded-xl border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 sm:max-w-md">
+          <AlertDialogHeader>
+            <div className="mb-4 flex justify-center">
+              <AlertCircle className="h-12 w-12 text-amber-600 dark:text-amber-400 sm:h-16 sm:w-16" />
+            </div>
+            <AlertDialogTitle className="text-center text-xl sm:text-2xl">
+              Pembayaran Belum Selesai
+            </AlertDialogTitle>
+            <AlertDialogDescription className="mt-4 text-center text-xs text-slate-600 dark:text-slate-400 sm:text-base">
+              Anda masih memiliki pesanan dengan status pembayaran
+              menunggu. Silakan selesaikan pembayaran terlebih dahulu
+              sebelum membuat pesanan baru.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="my-6 rounded-lg border-l-4 border-l-amber-600 bg-amber-50 p-4 dark:bg-amber-900/20">
+            <p className="text-xs font-semibold text-amber-800 dark:text-amber-300 sm:text-sm">
+              ⏳ Tunda pemesanan baru dan selesaikan pembayaran yang
+              tertunda terlebih dahulu
+            </p>
+          </div>
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:gap-3">
+            <AlertDialogCancel className="rounded-lg border-slate-300 dark:border-slate-700">
+              Batal
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setShowPendingPaymentDialog(false);
+                router.push(`/checkout/${pendingOrderId}`);
+              }}
+              className="rounded-lg bg-amber-600 text-white hover:bg-amber-700"
+            >
+              Selesaikan Pembayaran
+            </AlertDialogAction>
+          </div>
         </AlertDialogContent>
       </AlertDialog>
 

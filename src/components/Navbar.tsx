@@ -67,6 +67,7 @@ const Navbar = () => {
   const [isLoadingOrder, setIsLoadingOrder] = useState(false);
   const [showNoPaymentDialog, setShowNoPaymentDialog] =
     useState(false);
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
 
   // Check auth status on mount and listen for storage changes
   useEffect(() => {
@@ -260,6 +261,7 @@ const Navbar = () => {
 
         toast.success('Logout berhasil');
         router.push('/');
+        setShowLogoutDialog(false);
         return;
       }
 
@@ -294,6 +296,7 @@ const Navbar = () => {
 
       toast.success('Logout berhasil');
       router.push('/');
+      setShowLogoutDialog(false);
     } catch (error) {
       console.error('Logout error:', error);
 
@@ -308,6 +311,7 @@ const Navbar = () => {
 
       toast.success('Logout berhasil');
       router.push('/');
+      setShowLogoutDialog(false);
     } finally {
       setIsLoggingOut(false);
     }
@@ -503,7 +507,7 @@ const Navbar = () => {
                   )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
-                    onClick={handleLogout}
+                    onClick={() => setShowLogoutDialog(true)}
                     disabled={isLoggingOut}
                     className="cursor-pointer text-red-600 focus:bg-red-50 focus:text-red-600 dark:text-red-500 dark:focus:bg-red-950 dark:focus:text-red-500"
                   >
@@ -582,6 +586,36 @@ const Navbar = () => {
               className="rounded-lg bg-emerald-600 text-white hover:bg-emerald-700"
             >
               Pesan Sekarang
+            </AlertDialogAction>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Logout Confirmation Dialog */}
+      <AlertDialog
+        open={showLogoutDialog}
+        onOpenChange={setShowLogoutDialog}
+      >
+        <AlertDialogContent className="rounded-xl border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 sm:max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-center text-xl sm:text-2xl">
+              Konfirmasi Logout
+            </AlertDialogTitle>
+            <AlertDialogDescription className="mt-4 text-center text-xs text-slate-600 dark:text-slate-400 sm:text-base">
+              Apakah Anda yakin ingin logout? Anda akan perlu login
+              kembali untuk mengakses akun Anda.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:gap-3">
+            <AlertDialogCancel className="rounded-lg border-slate-300 dark:border-slate-700">
+              Batal
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleLogout}
+              disabled={isLoggingOut}
+              className="rounded-lg bg-red-600 text-white hover:bg-red-700"
+            >
+              {isLoggingOut ? 'Logging out...' : 'Logout'}
             </AlertDialogAction>
           </div>
         </AlertDialogContent>

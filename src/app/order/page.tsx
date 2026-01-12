@@ -10,7 +10,9 @@ import {
   ChevronRight,
   ShoppingBag,
   ArrowLeft,
-  Calendar
+  Calendar,
+  Hourglass,
+  Zap
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -28,6 +30,7 @@ interface Order {
   restaurant_id: number;
   total_price: number;
   status: string;
+  order_status: string;
   notes: string;
   created_at: string;
   updated_at: string;
@@ -110,33 +113,68 @@ const OrderListPage = () => {
     }
   };
 
-  const getStatusBadge = (status: string) => {
+  const getPaymentStatusBadge = (status: string) => {
     switch (status) {
       case 'pending':
         return (
-          <div className="flex items-center gap-1 rounded-full bg-yellow-100 px-3 py-1 text-xs font-semibold text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300 sm:text-sm">
+          <div className="flex items-center gap-1 rounded-full bg-yellow-100 px-2 py-1 text-xs font-semibold text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300 sm:text-sm">
             <Clock className="h-3 w-3 sm:h-4 sm:w-4" />
-            Menunggu Bayar
+            <span className="hidden sm:inline">Menunggu Bayar</span>
+            <span className="sm:hidden">Menunggu</span>
           </div>
         );
       case 'paid':
         return (
-          <div className="flex items-center gap-1 rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300 sm:text-sm">
+          <div className="flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300 sm:text-sm">
             <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4" />
-            Dibayar
+            <span className="hidden sm:inline">Dibayar</span>
+            <span className="sm:hidden">Bayar</span>
           </div>
         );
       case 'canceled':
         return (
-          <div className="flex items-center gap-1 rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-800 dark:bg-red-900/30 dark:text-red-300 sm:text-sm">
+          <div className="flex items-center gap-1 rounded-full bg-red-100 px-2 py-1 text-xs font-semibold text-red-800 dark:bg-red-900/30 dark:text-red-300 sm:text-sm">
             <AlertCircle className="h-3 w-3 sm:h-4 sm:w-4" />
-            Dibatalkan
+            Batal
           </div>
         );
       default:
         return (
-          <div className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-800 dark:bg-slate-700/30 dark:text-slate-300 sm:text-sm">
+          <div className="rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-800 dark:bg-slate-700/30 dark:text-slate-300 sm:text-sm">
             {status}
+          </div>
+        );
+    }
+  };
+
+  const getOrderStatusBadge = (orderStatus: string) => {
+    switch (orderStatus) {
+      case 'processing':
+        return (
+          <div className="flex items-center gap-1 rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 sm:text-sm">
+            <Hourglass className="h-3 w-3 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">Diproses</span>
+            <span className="sm:hidden">Proses</span>
+          </div>
+        );
+      case 'completed':
+        return (
+          <div className="flex items-center gap-1 rounded-full bg-green-100 px-2 py-1 text-xs font-semibold text-green-800 dark:bg-green-900/30 dark:text-green-300 sm:text-sm">
+            <Zap className="h-3 w-3 sm:h-4 sm:w-4" />
+            Selesai
+          </div>
+        );
+      case 'canceled':
+        return (
+          <div className="flex items-center gap-1 rounded-full bg-red-100 px-2 py-1 text-xs font-semibold text-red-800 dark:bg-red-900/30 dark:text-red-300 sm:text-sm">
+            <AlertCircle className="h-3 w-3 sm:h-4 sm:w-4" />
+            Batal
+          </div>
+        );
+      default:
+        return (
+          <div className="rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-800 dark:bg-slate-700/30 dark:text-slate-300 sm:text-sm">
+            {orderStatus}
           </div>
         );
     }
@@ -152,25 +190,15 @@ const OrderListPage = () => {
     });
   };
 
-  const formatDateOnly = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('id-ID', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  };
-
   const getFilteredOrders = () => {
     let filtered = orders;
 
-    // Filter by status
     if (filterStatus !== 'all') {
       filtered = filtered.filter(
         (order) => order.status === filterStatus
       );
     }
 
-    // Filter by date
     if (filterDate === 'today') {
       const today = new Date().toDateString();
       filtered = filtered.filter((order) => {
@@ -227,105 +255,97 @@ const OrderListPage = () => {
           </Button>
         </div>
 
-        {/* Status Filter */}
-        <div className="mb-6">
-          <p className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-300">
-            Filter Status
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              onClick={() => setFilterStatus('all')}
-              variant={filterStatus === 'all' ? 'default' : 'outline'}
-              size="sm"
-              className="rounded-full"
-            >
-              Semua
-            </Button>
-            <Button
-              onClick={() => setFilterStatus('pending')}
-              variant={
-                filterStatus === 'pending' ? 'default' : 'outline'
-              }
-              size="sm"
-              className="rounded-full"
-            >
-              Menunggu Bayar
-            </Button>
-            <Button
-              onClick={() => setFilterStatus('paid')}
-              variant={
-                filterStatus === 'paid' ? 'default' : 'outline'
-              }
-              size="sm"
-              className="rounded-full"
-            >
-              Dibayar
-            </Button>
-            <Button
-              onClick={() => setFilterStatus('canceled')}
-              variant={
-                filterStatus === 'canceled' ? 'default' : 'outline'
-              }
-              size="sm"
-              className="rounded-full"
-            >
-              Dibatalkan
-            </Button>
-          </div>
-        </div>
-
-        {/* Date Filter */}
+        {/* Filters Section */}
         <div className="mb-6 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
-          <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-300">
-            <Calendar className="h-4 w-4" />
-            Pilih Tanggal
-          </p>
-          <div className="space-y-3">
-            <div className="flex gap-2">
+          {/* Payment Status Filter */}
+          <div className="mb-4 border-b border-slate-200 pb-4 dark:border-slate-700">
+            <p className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-300">
+              Status Pembayaran
+            </p>
+            <div className="flex flex-wrap gap-2">
               <Button
-                onClick={() => setFilterDate('today')}
+                onClick={() => setFilterStatus('all')}
                 variant={
-                  filterDate === 'today' ? 'default' : 'outline'
+                  filterStatus === 'all' ? 'default' : 'outline'
                 }
                 size="sm"
-                className="flex-1 rounded-full"
+                className="rounded-full"
               >
-                Hari Ini
+                Semua
               </Button>
               <Button
-                onClick={() => setFilterDate('custom')}
+                onClick={() => setFilterStatus('pending')}
                 variant={
-                  filterDate === 'custom' ? 'default' : 'outline'
+                  filterStatus === 'pending' ? 'default' : 'outline'
                 }
                 size="sm"
-                className="flex-1 rounded-full"
+                className="rounded-full"
               >
-                Pilih Tanggal
+                Menunggu Bayar
+              </Button>
+              <Button
+                onClick={() => setFilterStatus('paid')}
+                variant={
+                  filterStatus === 'paid' ? 'default' : 'outline'
+                }
+                size="sm"
+                className="rounded-full"
+              >
+                Dibayar
+              </Button>
+              <Button
+                onClick={() => setFilterStatus('canceled')}
+                variant={
+                  filterStatus === 'canceled' ? 'default' : 'outline'
+                }
+                size="sm"
+                className="rounded-full"
+              >
+                Dibatalkan
               </Button>
             </div>
-            {filterDate === 'custom' && (
-              <input
-                type="date"
-                value={customDate}
-                onChange={(e) => setCustomDate(e.target.value)}
-                max={new Date().toISOString().split('T')[0]}
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-white"
-              />
-            )}
           </div>
-          {filterDate === 'custom' && customDate && (
-            <p className="mt-2 text-xs text-slate-600 dark:text-slate-400">
-              Menampilkan pesanan tanggal:{' '}
-              <span className="font-semibold">
-                {formatDateOnly(customDate)}
-              </span>
+
+          {/* Date Filter */}
+          <div>
+            <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-300">
+              <Calendar className="h-4 w-4" />
+              Tanggal
             </p>
-          )}
-          {filterDate === 'today' && (
-            <p className="mt-2 text-xs text-slate-600 dark:text-slate-400">
-              Menampilkan pesanan hari ini
-            </p>
-          )}
+            <div className="space-y-3">
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => setFilterDate('today')}
+                  variant={
+                    filterDate === 'today' ? 'default' : 'outline'
+                  }
+                  size="sm"
+                  className="flex-1 rounded-full"
+                >
+                  Hari Ini
+                </Button>
+                <Button
+                  onClick={() => setFilterDate('custom')}
+                  variant={
+                    filterDate === 'custom' ? 'default' : 'outline'
+                  }
+                  size="sm"
+                  className="flex-1 rounded-full"
+                >
+                  Pilih Tanggal
+                </Button>
+              </div>
+              {filterDate === 'custom' && (
+                <input
+                  type="date"
+                  value={customDate}
+                  onChange={(e) => setCustomDate(e.target.value)}
+                  max={new Date().toISOString().split('T')[0]}
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-white"
+                />
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Empty State */}
@@ -364,15 +384,25 @@ const OrderListPage = () => {
                   <div className="flex items-start justify-between gap-4">
                     {/* Left Content */}
                     <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
+                      <div className="mb-2 flex flex-wrap items-center gap-2">
                         <p className="font-mono font-semibold text-slate-900 dark:text-white">
                           {order.order_code}
                         </p>
-                        {getStatusBadge(order.status)}
+                        {getPaymentStatusBadge(order.status)}
+                        {order.status !== 'pending' &&
+                          getOrderStatusBadge(order.order_status)}
                       </div>
 
+                      <p className="mb-2 text-xs text-slate-600 dark:text-slate-400 sm:text-sm">
+                        {order.items.reduce(
+                          (sum, item) => sum + item.quantity,
+                          0
+                        )}{' '}
+                        item • {formatDate(order.created_at)}
+                      </p>
+
                       {order.notes && (
-                        <p className="mt-2 line-clamp-1 text-xs text-slate-600 dark:text-slate-400">
+                        <p className="line-clamp-1 text-xs text-slate-600 dark:text-slate-400">
                           💬 {order.notes}
                         </p>
                       )}

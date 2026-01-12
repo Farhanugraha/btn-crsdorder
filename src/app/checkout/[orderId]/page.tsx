@@ -21,7 +21,6 @@ import {
   Trash2,
   MapPin
 } from 'lucide-react';
-import Loading from '@/components/Loading';
 import Link from 'next/link';
 import { toast } from 'sonner';
 
@@ -49,6 +48,7 @@ interface Order {
   restaurant_id: number;
   total_price: number;
   status: string;
+  order_status: string | null;
   notes: string;
   created_at: string;
   updated_at: string;
@@ -86,9 +86,7 @@ const CheckoutConfirmationPage = () => {
   const [confirmationNotes, setConfirmationNotes] = useState('');
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  // Dummy data
   const BANK_ACCOUNT = '1234567890';
   const BANK_NAME = 'Bank Tabungan Negara (BTN)';
   const ACCOUNT_NAME = 'CRSD BTN';
@@ -100,12 +98,10 @@ const CheckoutConfirmationPage = () => {
     setMounted(true);
   }, []);
 
-  // Fetch order data ketika mounted dan orderId tersedia
   useEffect(() => {
     if (mounted && orderId) {
       loadOrderData();
     } else if (mounted && !orderId) {
-      // Jika tidak ada orderId, tampilkan dialog "Belum Ada Pembayaran"
       setShowNoPaymentDialog(true);
     }
   }, [mounted, orderId]);
@@ -113,7 +109,6 @@ const CheckoutConfirmationPage = () => {
   const loadOrderData = async () => {
     try {
       setIsLoading(true);
-      setError(null);
       setOrder(null);
 
       const token = localStorage.getItem('auth_token');
@@ -121,11 +116,6 @@ const CheckoutConfirmationPage = () => {
       if (!token) {
         toast.error('Silakan login terlebih dahulu');
         router.push('/auth/login');
-        return;
-      }
-
-      if (!orderId) {
-        setShowNoPaymentDialog(true);
         return;
       }
 
@@ -162,16 +152,13 @@ const CheckoutConfirmationPage = () => {
       const data = await response.json();
 
       if (data.success && data.data) {
-        // CEK STATUS - HANYA BOLEH PENDING
         if (data.data.status !== 'pending') {
           setShowNoPaymentDialog(true);
           return;
         }
 
         setOrder(data.data);
-        setError(null);
 
-        // Fetch restaurant data untuk setiap item
         if (data.data.items && data.data.items.length > 0) {
           await fetchRestaurantData(data.data.items);
         }
@@ -180,6 +167,7 @@ const CheckoutConfirmationPage = () => {
       }
     } catch (error) {
       console.error('Error loading order:', error);
+      toast.error('Gagal memuat data pesanan');
       setShowNoPaymentDialog(true);
     } finally {
       setIsLoading(false);
@@ -193,9 +181,7 @@ const CheckoutConfirmationPage = () => {
         items.map((item) => item.menu?.restaurant_id)
       );
 
-      const restaurantIdArray = Array.from(restaurantIds);
-
-      for (const restoId of restaurantIdArray) {
+      for (const restoId of Array.from(restaurantIds)) {
         try {
           const response = await fetch(
             `http://localhost:8000/api/restaurants/${restoId}`,
@@ -224,7 +210,6 @@ const CheckoutConfirmationPage = () => {
     }
   };
 
-  // Group items by restaurant
   const groupedItems = order?.items.reduce(
     (acc, item) => {
       const restoId = item.menu?.restaurant_id || 0;
@@ -277,6 +262,7 @@ const CheckoutConfirmationPage = () => {
         return;
       }
 
+      // Step 1: Upload bukti pembayaran
       const formData = new FormData();
       formData.append('proof_image', proofImage);
       formData.append('payment_method', paymentMethod);
@@ -284,7 +270,7 @@ const CheckoutConfirmationPage = () => {
         formData.append('notes', confirmationNotes);
       }
 
-      const response = await fetch(
+      const uploadResponse = await fetch(
         `http://localhost:8000/api/payments/orders/${order.id}/upload-proof`,
         {
           method: 'POST',
@@ -296,42 +282,43 @@ const CheckoutConfirmationPage = () => {
         }
       );
 
-      if (!response.ok) {
-        if (response.status === 401) {
-          toast.error('Session Anda telah berakhir');
-          localStorage.removeItem('auth_token');
-          router.push('/auth/login');
-          return;
-        }
-
-        if (response.status === 422) {
-          const errorData = await response.json();
-          toast.error(
-            'Validasi gagal: ' + JSON.stringify(errorData.errors)
-          );
-          return;
-        }
-
-        throw new Error(`HTTP Error: ${response.status}`);
+      if (!uploadResponse.ok) {
+        throw new Error(`Upload failed: ${uploadResponse.status}`);
       }
 
-      const data = await response.json();
+      toast.success('Bukti pembayaran berhasil diunggah');
 
-      if (data.success) {
-        toast.success('Pembayaran berhasil dikonfirmasi');
+      // Step 2: Update status pembayaran menjadi PAID
+      const statusResponse = await fetch(
+        `http://localhost:8000/api/orders/${order.id}/payment-status`,
+        {
+          method: 'PUT',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            Accept: 'application/json'
+          },
+          body: JSON.stringify({ status: 'paid' })
+        }
+      );
+
+      const statusData = await statusResponse.json();
+
+      if (statusData.success) {
+        toast.success('Pembayaran berhasil dikonfirmasi!');
         setShowSuccessModal(true);
 
-        // Reset form
         setProofImage(null);
         setProofImagePreview('');
         setConfirmationNotes('');
 
-        // Reload order data setelah 2 detik
         setTimeout(() => {
-          loadOrderData();
+          router.push('/order');
         }, 2000);
       } else {
-        toast.error(data.message || 'Gagal mengonfirmasi pembayaran');
+        toast.error(
+          statusData.message || 'Gagal update status pembayaran'
+        );
       }
     } catch (error) {
       console.error('Error:', error);
@@ -374,11 +361,6 @@ const CheckoutConfirmationPage = () => {
       );
 
       if (!response.ok) {
-        if (response.status === 401) {
-          toast.error('Session Anda telah berakhir');
-          router.push('/auth/login');
-          return;
-        }
         throw new Error('Failed to cancel order');
       }
 

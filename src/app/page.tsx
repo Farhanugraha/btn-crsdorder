@@ -36,7 +36,7 @@ export default function Home() {
           </p>
           <div className="flex gap-4">
             <Link
-              href="/menu"
+              href="/areas"
               className={cn(
                 buttonVariants({ variant: 'default' }),
                 'w-fit px-6'
