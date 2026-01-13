@@ -4,19 +4,22 @@ import { useState, useEffect } from 'react';
 import {
   Loader2,
   ArrowLeft,
-  CheckCircle2,
   AlertCircle,
-  Clock,
-  User,
-  Mail,
-  Phone,
   RefreshCw,
+  Copy,
   Check,
-  X,
-  Save
+  MapPin,
+  Calendar,
+  Clock,
+  DollarSign,
+  Package,
+  ChevronDown,
+  ChevronUp,
+  Edit3,
+  PrinterIcon
 } from 'lucide-react';
 
-interface PaymentItem {
+interface OrderItem {
   id: number;
   order_id: number;
   menu_id: number;
@@ -31,7 +34,7 @@ interface PaymentItem {
   };
 }
 
-interface OrderData {
+interface Order {
   id: number;
   order_code: string;
   user_id: number;
@@ -47,42 +50,34 @@ interface OrderData {
     name: string;
     email: string;
     phone: string;
+    divisi?: string;
+    unit_kerja?: string;
   };
-  items: PaymentItem[];
+  items: OrderItem[];
 }
 
-interface Payment {
-  id: number;
-  order_id: number;
-  payment_method: string;
-  payment_status: string;
-  transaction_id: string;
-  proof_image: string;
-  notes: string | null;
-  paid_at: string;
-  created_at: string;
-  updated_at: string;
-  order: OrderData;
-}
-
-export default function PaymentDetailPage({
+export default function OrderDetailPage({
   params
 }: {
   params: { id: string };
 }) {
-  const [user, setUser] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [payment, setPayment] = useState<Payment | null>(null);
-  const [isLoadingPayment, setIsLoadingPayment] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editStatus, setEditStatus] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
+  const [order, setOrder] = useState<Order | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [copiedCode, setCopiedCode] = useState(false);
+  const [expandedItems, setExpandedItems] = useState<number[]>([]);
 
   useEffect(() => {
     const checkAuth = () => {
-      const token = localStorage.getItem('auth_token');
-      const userData = localStorage.getItem('auth_user');
+      const token =
+        typeof window !== 'undefined'
+          ? localStorage?.getItem('auth_token')
+          : null;
+      const userData =
+        typeof window !== 'undefined'
+          ? localStorage?.getItem('auth_user')
+          : null;
 
       if (!token || !userData) {
         window.location.href = '/auth/login';
@@ -98,22 +93,25 @@ export default function PaymentDetailPage({
         return;
       }
 
-      setUser(parsedUser);
       setIsLoading(false);
-      fetchPayment();
+      fetchOrder();
     };
 
     checkAuth();
   }, []);
 
-  const fetchPayment = async () => {
-    setIsLoadingPayment(true);
+  const fetchOrder = async () => {
+    setIsLoading(true);
+    setError(null);
     try {
-      const token = localStorage.getItem('auth_token');
+      const token =
+        typeof window !== 'undefined'
+          ? localStorage?.getItem('auth_token')
+          : null;
       if (!token) return;
 
       const response = await fetch(
-        `http://localhost:8000/api/admin/payments/${params.id}`,
+        `http://localhost:8000/api/admin/orders/${params.id}`,
         {
           method: 'GET',
           headers: {
@@ -123,408 +121,463 @@ export default function PaymentDetailPage({
         }
       );
 
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const data = await response.json();
       if (data.success && data.data) {
-        setPayment(data.data);
-        setEditStatus(data.data.payment_status);
+        setOrder(data.data);
+      } else {
+        setError('Data pesanan tidak ditemukan');
       }
     } catch (error) {
-      console.error('Error fetching payment:', error);
+      console.error('Error fetching order:', error);
+      setError('Gagal memuat data pesanan. Silakan coba lagi.');
     } finally {
-      setIsLoadingPayment(false);
-    }
-  };
-
-  const handleUpdateStatus = async () => {
-    setIsSaving(true);
-    try {
-      const token = localStorage.getItem('auth_token');
-      if (!token) return;
-
-      const endpoint =
-        editStatus === 'completed'
-          ? `http://localhost:8000/api/admin/payments/${params.id}/confirm`
-          : `http://localhost:8000/api/admin/payments/${params.id}/reject`;
-
-      const response = await fetch(endpoint, {
-        method: 'PUT',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        setPayment(data.data);
-        setIsEditing(false);
-      }
-    } catch (error) {
-      console.error('Error updating payment:', error);
-    } finally {
-      setIsSaving(false);
+      setIsLoading(false);
     }
   };
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await fetchPayment();
+    await fetchOrder();
     setIsRefreshing(false);
+  };
+
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedCode(true);
+      setTimeout(() => setCopiedCode(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+
+  const toggleItemExpand = (itemId: number) => {
+    setExpandedItems((prev) =>
+      prev.includes(itemId)
+        ? prev.filter((id) => id !== itemId)
+        : [...prev, itemId]
+    );
   };
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-900">
-        <Loader2 className="h-12 w-12 animate-spin text-blue-500" />
-      </div>
-    );
-  }
-
-  if (!payment) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-900">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-white dark:bg-gray-900">
         <div className="text-center">
-          <AlertCircle className="mx-auto mb-4 h-12 w-12 text-red-500" />
-          <p className="text-lg font-semibold text-slate-900 dark:text-white">
-            Pembayaran tidak ditemukan
+          <Loader2 className="mx-auto mb-3 h-8 w-8 animate-spin text-blue-600" />
+          <p className="text-sm text-gray-700 dark:text-gray-400">
+            Memuat detail pesanan...
           </p>
         </div>
       </div>
     );
   }
 
-  const order = payment.order;
-  const getPaymentMethodLabel = (method: string) => {
-    const methods: any = {
-      qris: 'QRIS',
-      bank_transfer: 'Transfer Bank',
-      credit_card: 'Kartu Kredit',
-      e_wallet: 'E-Wallet'
+  if (!order) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <div className="text-center">
+          <AlertCircle className="mx-auto mb-4 h-12 w-12 text-gray-400 dark:text-gray-600" />
+          <p className="text-lg font-semibold text-gray-900 dark:text-white">
+            Pesanan tidak ditemukan
+          </p>
+          {error && (
+            <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+              {error}
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  const getStatusBadge = (status: string) => {
+    const styles: Record<
+      string,
+      { bg: string; text: string; label: string }
+    > = {
+      pending: {
+        bg: 'bg-amber-100 dark:bg-amber-900/30',
+        text: 'text-amber-800 dark:text-amber-300',
+        label: 'Menunggu Pembayaran'
+      },
+      paid: {
+        bg: 'bg-green-100 dark:bg-green-900/30',
+        text: 'text-green-800 dark:text-green-300',
+        label: 'Pembayaran Diterima'
+      },
+      processing: {
+        bg: 'bg-blue-100 dark:bg-blue-900/30',
+        text: 'text-blue-800 dark:text-blue-300',
+        label: 'Sedang Diproses'
+      },
+      completed: {
+        bg: 'bg-emerald-100 dark:bg-emerald-900/30',
+        text: 'text-emerald-800 dark:text-emerald-300',
+        label: 'Selesai'
+      },
+      canceled: {
+        bg: 'bg-red-100 dark:bg-red-900/30',
+        text: 'text-red-800 dark:text-red-300',
+        label: 'Dibatalkan'
+      }
     };
-    return methods[method] || method;
+
+    const style = styles[status] || styles.pending;
+    return { ...style };
+  };
+
+  const paymentBadge = getStatusBadge(order.status);
+  const orderBadge = getStatusBadge(order.order_status);
+
+  const formatCurrency = (amount: string | number) => {
+    return `Rp ${parseInt(String(amount)).toLocaleString('id-ID')}`;
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleString('id-ID', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
-      <div className="sticky top-0 z-40 border-b border-slate-200 bg-white/80 backdrop-blur-md dark:border-slate-700 dark:bg-slate-800/80">
-        <div className="mx-auto max-w-4xl px-4 py-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
+      <div className="sticky top-0 z-40 border-b-2 border-blue-600 bg-white shadow-sm dark:bg-gray-800">
+        <div className="mx-auto max-w-7xl px-3 py-3 sm:px-4 sm:py-4 md:px-6 lg:px-8">
+          <div className="flex items-center justify-between gap-2 sm:gap-4">
+            <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
               <a
-                href="/dashboard/admin/payments"
-                className="flex items-center justify-center rounded-lg p-2 transition-colors hover:bg-slate-100 dark:hover:bg-slate-700"
+                href="/dashboard/admin/orders"
+                className="flex flex-shrink-0 items-center justify-center rounded-lg p-2 transition-colors hover:bg-gray-100 dark:hover:bg-gray-700"
+                title="Kembali"
               >
-                <ArrowLeft className="h-5 w-5 text-slate-600 dark:text-slate-300" />
+                <ArrowLeft className="h-4 w-4 text-gray-600 dark:text-gray-400 sm:h-5 sm:w-5" />
               </a>
-              <h1 className="text-xl font-bold text-slate-900 dark:text-white sm:text-2xl">
-                Pembayaran #{payment.transaction_id}
-              </h1>
+              <div className="min-w-0">
+                <p className="truncate text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
+                  Pesanan #
+                </p>
+                <div className="mt-1 flex flex-wrap items-center gap-2">
+                  <h1 className="truncate text-base font-bold text-gray-900 dark:text-white sm:text-xl lg:text-2xl">
+                    {order.order_code}
+                  </h1>
+                  <button
+                    onClick={() => copyToClipboard(order.order_code)}
+                    className="flex-shrink-0 rounded-lg p-1.5 transition-colors hover:bg-gray-100 dark:hover:bg-gray-700"
+                    title="Salin nomor pesanan"
+                  >
+                    {copiedCode ? (
+                      <Check className="h-4 w-4 text-green-600" />
+                    ) : (
+                      <Copy className="h-4 w-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" />
+                    )}
+                  </button>
+                </div>
+              </div>
             </div>
-            <button
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-              className="flex items-center justify-center rounded-lg bg-blue-600 p-2 text-white hover:bg-blue-700 disabled:opacity-50 dark:bg-blue-700 dark:hover:bg-blue-600 sm:px-4 sm:py-2"
-            >
-              <RefreshCw
-                className={`h-4 w-4 ${
-                  isRefreshing ? 'animate-spin' : ''
-                }`}
-              />
-            </button>
+            <div className="flex flex-shrink-0 items-center gap-1 sm:gap-2">
+              <button
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                className="flex items-center justify-center rounded-lg bg-blue-600 p-2 text-white transition-all hover:bg-blue-700 disabled:opacity-50 dark:bg-blue-700 dark:hover:bg-blue-600"
+                title="Refresh data"
+              >
+                <RefreshCw
+                  className={`h-4 w-4 sm:h-5 sm:w-5 ${
+                    isRefreshing ? 'animate-spin' : ''
+                  }`}
+                />
+              </button>
+              <button
+                onClick={() => window.print()}
+                className="flex items-center justify-center rounded-lg bg-gray-200 p-2 text-gray-700 transition-all hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+                title="Cetak pesanan"
+              >
+                <PrinterIcon className="h-4 w-4 sm:h-5 sm:w-5" />
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
-      <main className="mx-auto max-w-4xl p-4 sm:p-6 lg:p-8">
-        <div className="grid gap-6">
-          {/* Payment Status Card */}
-          <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-                Status Pembayaran
-              </h2>
-              {!isEditing &&
-                payment.payment_status !== 'completed' && (
-                  <button
-                    onClick={() => setIsEditing(true)}
-                    className="flex items-center gap-2 rounded-lg bg-blue-100 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50"
-                  >
-                    Verifikasi
-                  </button>
-                )}
+      <main className="mx-auto max-w-7xl px-3 py-4 sm:px-4 sm:py-6 md:px-6 lg:px-8">
+        {/* Status Overview */}
+        <div className="mb-6 grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2">
+          {/* Payment Status */}
+          <div
+            className={`rounded-lg border-2 p-4 sm:rounded-xl sm:p-6 ${paymentBadge.bg}`}
+          >
+            <div className="mb-2 flex items-start justify-between">
+              <span
+                className={`text-xs font-bold uppercase tracking-wider ${paymentBadge.text}`}
+              >
+                💳 Status Pembayaran
+              </span>
             </div>
+            <p
+              className={`text-base font-bold sm:text-lg ${paymentBadge.text}`}
+            >
+              {paymentBadge.label}
+            </p>
+            <p className="mt-2 text-xs opacity-70">
+              Terakhir diperbarui:{' '}
+              {new Date(order.updated_at).toLocaleTimeString('id-ID')}
+            </p>
+          </div>
 
-            {isEditing ? (
-              <div className="space-y-4">
-                <div className="rounded-lg bg-slate-50 p-4 dark:bg-slate-700/50">
-                  <p className="mb-3 text-sm font-medium text-slate-900 dark:text-white">
-                    Pilih aksi:
+          {/* Order Status */}
+          <div
+            className={`rounded-lg border-2 p-4 sm:rounded-xl sm:p-6 ${orderBadge.bg}`}
+          >
+            <div className="mb-2 flex items-start justify-between">
+              <span
+                className={`text-xs font-bold uppercase tracking-wider ${orderBadge.text}`}
+              >
+                📦 Status Pesanan
+              </span>
+            </div>
+            <p
+              className={`text-base font-bold sm:text-lg ${orderBadge.text}`}
+            >
+              {orderBadge.label}
+            </p>
+            <p className="mt-2 text-xs opacity-70">
+              Dibuat: {formatDate(order.created_at).split(',')[0]}
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          {/* Left Column - Main Content */}
+          <div className="space-y-6 lg:col-span-2">
+            {/* Order Items */}
+            <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:rounded-xl sm:p-6">
+              <div className="mb-4 flex items-center justify-between gap-2">
+                <div>
+                  <h2 className="flex items-center gap-2 text-base font-bold text-gray-900 dark:text-white sm:text-lg">
+                    <Package className="h-4 w-4 flex-shrink-0 text-blue-600 sm:h-5 sm:w-5" />
+                    Menu Pesanan
+                  </h2>
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 sm:text-sm">
+                    {order.items?.length || 0} item(s)
                   </p>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setEditStatus('completed')}
-                      className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                        editStatus === 'completed'
-                          ? 'bg-green-600 text-white'
-                          : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300'
-                      }`}
-                    >
-                      <Check className="mr-1 inline h-4 w-4" />
-                      Konfirmasi
-                    </button>
-                    <button
-                      onClick={() => setEditStatus('rejected')}
-                      className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                        editStatus === 'rejected'
-                          ? 'bg-red-600 text-white'
-                          : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300'
-                      }`}
-                    >
-                      <X className="mr-1 inline h-4 w-4" />
-                      Tolak
-                    </button>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleUpdateStatus}
-                    disabled={isSaving}
-                    className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50 dark:bg-green-700 dark:hover:bg-green-600"
-                  >
-                    <Save className="h-4 w-4" />
-                    Simpan
-                  </button>
-                  <button
-                    onClick={() => {
-                      setIsEditing(false);
-                      setEditStatus(payment.payment_status);
-                    }}
-                    className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
-                  >
-                    Batal
-                  </button>
                 </div>
               </div>
-            ) : (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-600 dark:text-slate-400">
-                    Status Pembayaran
-                  </span>
-                  <span
-                    className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold ${
-                      payment.payment_status === 'completed'
-                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                        : payment.payment_status === 'pending'
-                          ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
-                          : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                    }`}
-                  >
-                    {payment.payment_status === 'completed' ? (
-                      <CheckCircle2 className="h-4 w-4" />
-                    ) : (
-                      <Clock className="h-4 w-4" />
-                    )}
-                    {payment.payment_status === 'completed'
-                      ? 'Terverifikasi'
-                      : payment.payment_status === 'pending'
-                        ? 'Pending'
-                        : 'Ditolak'}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-600 dark:text-slate-400">
-                    Metode Pembayaran
-                  </span>
-                  <span className="text-sm font-medium text-slate-900 dark:text-white">
-                    {getPaymentMethodLabel(payment.payment_method)}
-                  </span>
-                </div>
-                {payment.paid_at && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-slate-600 dark:text-slate-400">
-                      Waktu Pembayaran
-                    </span>
-                    <span className="text-sm font-medium text-slate-900 dark:text-white">
-                      {new Date(payment.paid_at).toLocaleDateString(
-                        'id-ID',
-                        { dateStyle: 'full', timeStyle: 'short' }
-                      )}
-                    </span>
+
+              <div className="space-y-2 sm:space-y-3">
+                {order.items && order.items.length > 0 ? (
+                  <>
+                    {order.items.map((item, index) => (
+                      <div
+                        key={item.id}
+                        className="overflow-hidden rounded-lg border border-gray-200 transition-shadow hover:shadow-md dark:border-gray-700 dark:bg-gray-700/50"
+                      >
+                        {/* Item Header */}
+                        <div className="flex items-center justify-between gap-2 p-3 sm:p-4">
+                          <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
+                            <span className="flex-shrink-0 whitespace-nowrap rounded bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 sm:text-sm">
+                              x{item.quantity}
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-semibold text-gray-900 dark:text-white sm:text-base">
+                                {item.menu?.name || 'Item'}
+                              </p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 sm:text-sm">
+                                Rp{' '}
+                                {parseInt(item.price).toLocaleString(
+                                  'id-ID'
+                                )}{' '}
+                                / item
+                              </p>
+                            </div>
+                          </div>
+                          <div className="ml-2 flex flex-shrink-0 items-center gap-2">
+                            <p className="min-w-fit text-right text-xs font-bold text-gray-900 dark:text-white sm:text-sm">
+                              {formatCurrency(
+                                parseInt(item.price) * item.quantity
+                              )}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Item Details - Always Visible */}
+                        {item.notes && (
+                          <div className="border-t border-gray-200 bg-blue-50 px-3 py-3 dark:border-gray-700 dark:bg-blue-900/20 sm:px-4 sm:py-3">
+                            <p className="mb-1 text-xs font-semibold uppercase text-blue-900 dark:text-blue-300">
+                              📝 Catatan Item
+                            </p>
+                            <p className="break-words text-xs text-blue-800 dark:text-blue-200 sm:text-sm">
+                              {item.notes}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+
+                    {/* Total */}
+                    <div className="mt-4 flex flex-col gap-2 rounded-lg border-t-2 border-gray-200 bg-gradient-to-r from-blue-50 to-blue-50 p-4 dark:border-gray-700 dark:from-blue-900/20 dark:to-blue-900/20 sm:mt-6 sm:flex-row sm:items-center sm:justify-between">
+                      <span className="text-base font-bold text-gray-900 dark:text-white sm:text-lg">
+                        Total Pesanan:
+                      </span>
+                      <span className="text-xl font-bold text-blue-600 dark:text-blue-400 sm:text-2xl">
+                        {formatCurrency(order.total_price)}
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="py-8 text-center text-gray-500 dark:text-gray-400">
+                    <Package className="mx-auto mb-2 h-8 w-8 opacity-50" />
+                    <p className="text-sm">
+                      Tidak ada item dalam pesanan ini
+                    </p>
                   </div>
                 )}
+              </div>
+            </div>
+
+            {/* Special Notes */}
+            {order.notes && (
+              <div className="rounded-lg border-2 border-purple-200 bg-purple-50 p-4 dark:border-purple-800 dark:bg-purple-900/20 sm:rounded-xl sm:p-6">
+                <p className="mb-3 flex items-center gap-2 text-xs font-bold text-purple-900 dark:text-purple-300 sm:text-sm">
+                  <span>📋</span> Catatan Pesanan
+                </p>
+                <p className="whitespace-pre-wrap break-words text-xs leading-relaxed text-purple-800 dark:text-purple-200 sm:text-sm">
+                  {order.notes}
+                </p>
               </div>
             )}
-          </div>
 
-          {/* Order Info */}
-          <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-            <h2 className="mb-4 text-lg font-bold text-slate-900 dark:text-white">
-              Informasi Pesanan
-            </h2>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-slate-600 dark:text-slate-400">
-                  Order Code
-                </span>
-                <span className="font-semibold text-slate-900 dark:text-white">
-                  #{order.order_code}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-slate-600 dark:text-slate-400">
-                  Total Harga
-                </span>
-                <span className="text-xl font-bold text-slate-900 dark:text-white">
-                  Rp{' '}
-                  {parseInt(order.total_price).toLocaleString(
-                    'id-ID'
-                  )}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-slate-600 dark:text-slate-400">
-                  Status Pesanan
-                </span>
-                <span
-                  className={`text-sm font-semibold ${
-                    order.order_status === 'processing'
-                      ? 'text-blue-600 dark:text-blue-400'
-                      : 'text-green-600 dark:text-green-400'
-                  }`}
-                >
-                  {order.order_status === 'processing'
-                    ? 'Sedang Diproses'
-                    : 'Selesai'}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Customer Info */}
-          <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-            <h2 className="mb-4 text-lg font-bold text-slate-900 dark:text-white">
-              Informasi Pelanggan
-            </h2>
-            <div className="space-y-3">
-              <div className="flex items-center gap-3">
-                <User className="h-5 w-5 text-slate-400" />
-                <div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
+            {/* Customer Info */}
+            <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:rounded-xl sm:p-6">
+              <h2 className="mb-4 flex items-center gap-2 text-base font-bold text-gray-900 dark:text-white sm:text-lg">
+                <MapPin className="h-4 w-4 flex-shrink-0 text-green-600 sm:h-5 sm:w-5" />
+                Informasi Pemesan
+              </h2>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
+                <div className="sm:col-span-2">
+                  <p className="mb-1 text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
                     Nama
                   </p>
-                  <p className="font-medium text-slate-900 dark:text-white">
+                  <p className="text-base font-semibold text-gray-900 dark:text-white sm:text-lg">
                     {order.user.name}
                   </p>
                 </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <Mail className="h-5 w-5 text-slate-400" />
                 <div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                  <p className="mb-1 text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
+                    Divisi
+                  </p>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white sm:text-base">
+                    {order.user.divisi || '-'}
+                  </p>
+                </div>
+                <div>
+                  <p className="mb-1 text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
+                    Unit Kerja
+                  </p>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white sm:text-base">
+                    {order.user.unit_kerja || '-'}
+                  </p>
+                </div>
+                <div className="sm:col-span-2">
+                  <p className="mb-1 text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
+                    Telepon
+                  </p>
+                  <a
+                    href={`tel:${order.user.phone}`}
+                    className="break-all text-sm font-semibold text-blue-600 hover:underline dark:text-blue-400 sm:text-base"
+                  >
+                    {order.user.phone}
+                  </a>
+                </div>
+                <div className="sm:col-span-2">
+                  <p className="mb-1 text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
                     Email
                   </p>
-                  <p className="font-medium text-slate-900 dark:text-white">
-                    {order.user.email}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <Phone className="h-5 w-5 text-slate-400" />
-                <div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Nomor Telepon
-                  </p>
-                  <p className="font-medium text-slate-900 dark:text-white">
-                    {order.user.phone}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Order Items */}
-          <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-            <h2 className="mb-4 text-lg font-bold text-slate-900 dark:text-white">
-              Item Pesanan
-            </h2>
-            <div className="space-y-3">
-              {order.items && order.items.length > 0 ? (
-                order.items.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex items-center justify-between rounded-lg bg-slate-50 p-4 dark:bg-slate-700/50"
+                  <a
+                    href={`mailto:${order.user.email}`}
+                    className="break-all text-sm font-semibold text-blue-600 hover:underline dark:text-blue-400 sm:text-base"
                   >
-                    <div className="flex-1">
-                      <p className="font-medium text-slate-900 dark:text-white">
-                        {item.menu?.name || 'Item'}
-                      </p>
-                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                        Qty: {item.quantity}
-                        {item.notes && ` • ${item.notes}`}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-bold text-slate-900 dark:text-white">
-                        Rp{' '}
-                        {parseInt(item.price).toLocaleString('id-ID')}
-                      </p>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <p className="text-sm text-slate-500 dark:text-slate-400">
-                  Tidak ada item
-                </p>
-              )}
+                    {order.user.email}
+                  </a>
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Proof Image */}
-          {payment.proof_image && (
-            <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-              <h2 className="mb-4 text-lg font-bold text-slate-900 dark:text-white">
-                📷 Bukti Pembayaran
-              </h2>
-              <div className="overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-700">
-                <img
-                  src={`http://localhost:8000/storage/${payment.proof_image}`}
-                  alt="Bukti Pembayaran"
-                  className="max-h-96 w-full object-cover"
-                />
+          {/* Right Column - Summary Sidebar */}
+          <div className="lg:col-span-1">
+            <div className="sticky top-20 space-y-4">
+              {/* Order Summary */}
+              <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:rounded-xl sm:p-6">
+                <h3 className="mb-4 flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-gray-700 dark:text-gray-300 sm:text-sm">
+                  <DollarSign className="h-3 w-3 flex-shrink-0 sm:h-4 sm:w-4" />
+                  Ringkasan
+                </h3>
+                <div className="space-y-3">
+                  <div className="flex justify-between text-xs sm:text-sm">
+                    <span className="text-gray-600 dark:text-gray-400">
+                      Total Item
+                    </span>
+                    <span className="font-bold text-gray-900 dark:text-white">
+                      {order.items?.length || 0}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-xs sm:text-sm">
+                    <span className="text-gray-600 dark:text-gray-400">
+                      Subtotal
+                    </span>
+                    <span className="ml-1 break-words text-right font-bold text-gray-900 dark:text-white">
+                      {formatCurrency(order.total_price)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between border-t border-gray-200 pt-3 dark:border-gray-700">
+                    <span className="text-xs font-semibold text-gray-900 dark:text-white sm:text-sm">
+                      Total Akhir
+                    </span>
+                    <span className="ml-1 break-words text-right text-base font-bold text-blue-600 dark:text-blue-400 sm:text-lg">
+                      {formatCurrency(order.total_price)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Timeline */}
+              <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:rounded-xl sm:p-6">
+                <h3 className="mb-4 flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-gray-700 dark:text-gray-300 sm:text-sm">
+                  <Clock className="h-3 w-3 flex-shrink-0 sm:h-4 sm:w-4" />
+                  Timeline
+                </h3>
+                <div className="space-y-3 text-xs sm:text-sm">
+                  <div>
+                    <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">
+                      Dibuat
+                    </p>
+                    <p className="mt-1 break-words text-xs font-semibold text-gray-900 dark:text-white sm:text-sm">
+                      {formatDate(order.created_at)}
+                    </p>
+                  </div>
+                  <div className="border-t border-gray-200 pt-3 dark:border-gray-700">
+                    <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">
+                      Terakhir Diupdate
+                    </p>
+                    <p className="mt-1 break-words text-xs font-semibold text-gray-900 dark:text-white sm:text-sm">
+                      {formatDate(order.updated_at)}
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
-          )}
-
-          {/* Notes */}
-          {(payment.notes || order.notes) && (
-            <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-900/30 dark:bg-blue-900/10">
-              <p className="mb-2 text-xs font-medium text-blue-600 dark:text-blue-400">
-                Catatan
-              </p>
-              {payment.notes && (
-                <div className="mb-2">
-                  <p className="text-xs font-medium text-slate-600 dark:text-slate-300">
-                    Catatan Pembayaran:
-                  </p>
-                  <p className="text-sm text-blue-800 dark:text-blue-300">
-                    {payment.notes}
-                  </p>
-                </div>
-              )}
-              {order.notes && (
-                <div>
-                  <p className="text-xs font-medium text-slate-600 dark:text-slate-300">
-                    Catatan Pesanan:
-                  </p>
-                  <p className="text-sm text-blue-800 dark:text-blue-300">
-                    {order.notes}
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
+          </div>
         </div>
       </main>
     </div>

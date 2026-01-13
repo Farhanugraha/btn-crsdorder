@@ -5,15 +5,14 @@ import {
   Loader2,
   Eye,
   Search,
-  Filter,
   ChevronLeft,
   ChevronRight,
-  Clock,
-  CheckCircle2,
   AlertCircle,
-  Package,
   RefreshCw,
-  X
+  Clock,
+  CheckCircle,
+  XCircle,
+  Calendar
 } from 'lucide-react';
 
 interface Order {
@@ -35,102 +34,140 @@ interface Order {
   };
 }
 
-export default function OrdersPage() {
-  const [user, setUser] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [isLoadingOrders, setIsLoadingOrders] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterStatus, setFilterStatus] = useState('');
-  const [filterPaymentStatus, setFilterPaymentStatus] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+const API_BASE_URL = 'http://localhost:8000/api';
 
-  const itemsPerPage = 10;
+function StatusBadge({
+  status,
+  type
+}: {
+  status: string;
+  type: 'order' | 'payment';
+}) {
+  const base =
+    'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold uppercase whitespace-nowrap';
 
-  useEffect(() => {
-    const checkAuth = () => {
-      const token = localStorage.getItem('auth_token');
-      const userData = localStorage.getItem('auth_user');
-
-      if (!token || !userData) {
-        window.location.href = '/auth/login';
-        return;
-      }
-
-      const parsedUser = JSON.parse(userData);
-      if (
-        parsedUser.role !== 'admin' &&
-        parsedUser.role !== 'superadmin'
-      ) {
-        window.location.href = '/areas';
-        return;
-      }
-
-      setUser(parsedUser);
-      setIsLoading(false);
-      fetchOrders();
-    };
-
-    checkAuth();
-  }, []);
-
-  const fetchOrders = async () => {
-    setIsLoadingOrders(true);
-    try {
-      const token = localStorage.getItem('auth_token');
-      if (!token) return;
-
-      const response = await fetch(
-        'http://localhost:8000/api/admin/orders',
-        {
-          method: 'GET',
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-
-      const data = await response.json();
-      if (data.success && data.data) {
-        setOrders(data.data);
-        setCurrentPage(1);
-      }
-    } catch (error) {
-      console.error('Error fetching orders:', error);
-    } finally {
-      setIsLoadingOrders(false);
+  const orderStyles: Record<
+    string,
+    { bg: string; text: string; icon: any }
+  > = {
+    processing: {
+      bg: 'bg-blue-100 dark:bg-blue-900/30',
+      text: 'text-blue-800 dark:text-blue-300',
+      icon: Clock
+    },
+    completed: {
+      bg: 'bg-green-100 dark:bg-green-900/30',
+      text: 'text-green-800 dark:text-green-300',
+      icon: CheckCircle
+    },
+    canceled: {
+      bg: 'bg-red-100 dark:bg-red-900/30',
+      text: 'text-red-800 dark:text-red-300',
+      icon: XCircle
     }
   };
 
-  const filteredOrders = orders.filter((order) => {
-    const matchSearch =
-      order.order_code
-        .toLowerCase()
-        .includes(searchQuery.toLowerCase()) ||
-      order.user.name
-        .toLowerCase()
-        .includes(searchQuery.toLowerCase()) ||
-      order.user.email
-        .toLowerCase()
-        .includes(searchQuery.toLowerCase());
+  const paymentStyles: Record<string, { bg: string; text: string }> =
+    {
+      pending: {
+        bg: 'bg-amber-100 dark:bg-amber-900/30',
+        text: 'text-amber-800 dark:text-amber-300'
+      },
+      paid: {
+        bg: 'bg-green-100 dark:bg-green-900/30',
+        text: 'text-green-800 dark:text-green-300'
+      },
+      canceled: {
+        bg: 'bg-red-100 dark:bg-red-900/30',
+        text: 'text-red-800 dark:text-red-300'
+      }
+    };
 
-    const matchStatus =
-      filterStatus === '' || order.order_status === filterStatus;
-    const matchPayment =
-      filterPaymentStatus === '' ||
-      order.status === filterPaymentStatus;
+  const displayStatus =
+    status === 'processing'
+      ? 'Proses'
+      : status === 'completed'
+        ? 'Selesai'
+        : status === 'pending'
+          ? 'Pending'
+          : status === 'paid'
+            ? 'Dibayar'
+            : 'Dibatalkan';
 
-    return matchSearch && matchStatus && matchPayment;
-  });
+  if (type === 'order') {
+    const style = orderStyles[status] || orderStyles.canceled;
+    const Icon = style.icon;
+    return (
+      <span className={`${base} ${style.bg} ${style.text}`}>
+        <Icon className="h-3.5 w-3.5" />
+        {displayStatus}
+      </span>
+    );
+  }
 
-  const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedOrders = filteredOrders.slice(
-    startIndex,
-    startIndex + itemsPerPage
+  const style = paymentStyles[status] || paymentStyles.canceled;
+  return (
+    <span className={`${base} ${style.bg} ${style.text}`}>
+      {displayStatus}
+    </span>
   );
+}
+
+export default function OrdersPage() {
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [dateFilter, setDateFilter] = useState<string>(
+    new Date().toISOString().split('T')[0]
+  );
+  const [page, setPage] = useState(1);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const perPage = 10;
+
+  useEffect(() => {
+    fetchOrders();
+  }, []);
+
+  const fetchOrders = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const token =
+        typeof window !== 'undefined'
+          ? localStorage?.getItem('auth_token')
+          : null;
+      if (!token) {
+        setError(
+          'Token tidak ditemukan. Silakan login terlebih dahulu.'
+        );
+        setLoading(false);
+        return;
+      }
+
+      const res = await fetch(`${API_BASE_URL}/admin/orders`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!res.ok) throw new Error('Failed to fetch orders');
+
+      const data = await res.json();
+      if (data.success && data.data) {
+        setOrders(data.data);
+      }
+      setPage(1);
+    } catch (err) {
+      console.error('Error fetching orders:', err);
+      setError('Gagal memuat pesanan');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -138,272 +175,415 @@ export default function OrdersPage() {
     setIsRefreshing(false);
   };
 
-  if (isLoading) {
+  // Filter: exclude pending orders, search, status filter, dan date filter
+  const filtered = orders.filter((o) => {
+    const hasContent =
+      o.order_code.toLowerCase().includes(search.toLowerCase()) ||
+      o.user.name.toLowerCase().includes(search.toLowerCase()) ||
+      o.user.email.toLowerCase().includes(search.toLowerCase());
+
+    const matchesStatus =
+      statusFilter === 'all' || o.order_status === statusFilter;
+
+    const orderDate = new Date(o.created_at)
+      .toISOString()
+      .split('T')[0];
+    const matchesDate = orderDate === dateFilter;
+
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-900">
-        <Loader2 className="h-12 w-12 animate-spin text-blue-500" />
+      o.order_status !== null &&
+      hasContent &&
+      matchesStatus &&
+      matchesDate
+    );
+  });
+
+  const pages = Math.ceil(filtered.length / perPage);
+  const data = filtered.slice((page - 1) * perPage, page * perPage);
+
+  const statusOptions = [
+    { value: 'all', label: 'Semua Status', icon: null },
+    { value: 'processing', label: 'Proses', icon: Clock },
+    { value: 'completed', label: 'Selesai', icon: CheckCircle },
+    { value: 'canceled', label: 'Dibatalkan', icon: XCircle }
+  ];
+
+  if (loading) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-white dark:bg-gray-900">
+        <div className="text-center">
+          <Loader2 className="mx-auto mb-3 h-8 w-8 animate-spin text-blue-600" />
+          <p className="text-sm text-gray-700 dark:text-gray-400">
+            Memuat pesanan...
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
-      {/* Header */}
-      <div className="sticky top-0 z-40 border-b border-slate-200 bg-white/80 backdrop-blur-md dark:border-slate-700 dark:bg-slate-800/80">
-        <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between gap-4">
-            <h1 className="text-xl font-bold text-slate-900 dark:text-white sm:text-2xl">
-              Manajemen Pesanan
-            </h1>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      {/* MAIN CONTENT */}
+      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+        {/* PAGE TITLE */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+            Pesanan
+          </h1>
+          <p className="mt-2 text-gray-600 dark:text-gray-400">
+            Kelola dan pantau semua pesanan pelanggan
+          </p>
+        </div>
+
+        {/* ERROR ALERT */}
+        {error && (
+          <div className="mb-6 flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 p-4 text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400">
+            <AlertCircle className="h-5 w-5 shrink-0" />
+            <p className="flex-1 text-sm font-medium">{error}</p>
             <button
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-              className="flex items-center justify-center rounded-lg bg-blue-600 p-2 text-white hover:bg-blue-700 disabled:opacity-50 dark:bg-blue-700 dark:hover:bg-blue-600 sm:px-4 sm:py-2"
+              onClick={() => setError(null)}
+              className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
             >
-              <RefreshCw
-                className={`h-4 w-4 ${
-                  isRefreshing ? 'animate-spin' : ''
-                }`}
-              />
+              <span className="text-xl">×</span>
             </button>
           </div>
-        </div>
-      </div>
+        )}
 
-      <main className="mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">
-        {/* Search & Filter */}
-        <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-4">
-          {/* Search */}
-          <div className="sm:col-span-2">
+        {/* TOOLBAR - SEARCH & REFRESH */}
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="max-w-md flex-1">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
               <input
-                type="text"
-                placeholder="Cari order code, nama, email..."
-                value={searchQuery}
+                value={search}
                 onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setCurrentPage(1);
+                  setSearch(e.target.value);
+                  setPage(1);
                 }}
-                className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm placeholder-slate-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-400"
+                placeholder="Cari order, nama, email..."
+                className="w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-4 text-sm text-gray-900 placeholder-gray-500 transition-all focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-400"
+              />
+            </div>
+          </div>
+          <button
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition-all hover:bg-blue-700 disabled:opacity-50 dark:bg-blue-700 dark:hover:bg-blue-600"
+            title="Refresh"
+          >
+            <RefreshCw
+              className={`h-4 w-4 ${
+                isRefreshing ? 'animate-spin' : ''
+              }`}
+            />
+            <span>Refresh</span>
+          </button>
+        </div>
+
+        {/* FILTER NAVBAR */}
+        <div className="mb-6 space-y-4 rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+          {/* Date Filter */}
+          <div>
+            <h3 className="mb-3 text-sm font-semibold text-gray-900 dark:text-white">
+              Filter Tanggal
+            </h3>
+            <div className="flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-gray-400 dark:text-gray-500" />
+              <input
+                type="date"
+                value={dateFilter}
+                onChange={(e) => {
+                  setDateFilter(e.target.value);
+                  setPage(1);
+                }}
+                max={new Date().toISOString().split('T')[0]}
+                className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-blue-400"
               />
             </div>
           </div>
 
           {/* Status Filter */}
-          <select
-            value={filterStatus}
-            onChange={(e) => {
-              setFilterStatus(e.target.value);
-              setCurrentPage(1);
-            }}
-            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
-          >
-            <option value="">Semua Status</option>
-            <option value="processing">Sedang Proses</option>
-            <option value="completed">Selesai</option>
-            <option value="canceled">Dibatalkan</option>
-          </select>
-
-          {/* Payment Status Filter */}
-          <select
-            value={filterPaymentStatus}
-            onChange={(e) => {
-              setFilterPaymentStatus(e.target.value);
-              setCurrentPage(1);
-            }}
-            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
-          >
-            <option value="">Semua Pembayaran</option>
-            <option value="pending">Pending</option>
-            <option value="paid">Dibayar</option>
-            <option value="canceled">Dibatalkan</option>
-          </select>
+          <div>
+            <h3 className="mb-3 text-sm font-semibold text-gray-900 dark:text-white">
+              Filter Status Pesanan
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              {statusOptions.map((option) => {
+                const Icon = option.icon;
+                return (
+                  <button
+                    key={option.value}
+                    onClick={() => {
+                      setStatusFilter(option.value);
+                      setPage(1);
+                    }}
+                    className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all ${
+                      statusFilter === option.value
+                        ? 'bg-blue-600 text-white shadow-md dark:bg-blue-700'
+                        : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+                    }`}
+                  >
+                    {Icon && <Icon className="h-4 w-4" />}
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
 
-        {/* Results Info */}
-        <div className="mb-4 text-xs text-slate-600 dark:text-slate-400 sm:text-sm">
-          Menampilkan{' '}
-          {paginatedOrders.length > 0 ? startIndex + 1 : 0} -{' '}
-          {Math.min(startIndex + itemsPerPage, filteredOrders.length)}{' '}
-          dari {filteredOrders.length} pesanan
+        {/* RESULTS INFO */}
+        <div className="mb-4 text-sm text-gray-600 dark:text-gray-400">
+          {filtered.length > 0 ? (
+            <>
+              Menampilkan {(page - 1) * perPage + 1} -
+              {Math.min(page * perPage, filtered.length)} dari{' '}
+              {filtered.length} pesanan
+            </>
+          ) : (
+            <>Tidak ada pesanan ditemukan</>
+          )}
         </div>
 
-        {/* Table */}
-        <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="border-b border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-700/50">
-                <tr>
-                  <th className="px-4 py-3 text-left font-semibold text-slate-900 dark:text-white">
-                    Order Code
-                  </th>
-                  <th className="px-4 py-3 text-left font-semibold text-slate-900 dark:text-white">
-                    Customer
-                  </th>
-                  <th className="px-4 py-3 text-left font-semibold text-slate-900 dark:text-white">
-                    Total
-                  </th>
-                  <th className="px-4 py-3 text-left font-semibold text-slate-900 dark:text-white">
-                    Status
-                  </th>
-                  <th className="px-4 py-3 text-left font-semibold text-slate-900 dark:text-white">
-                    Pembayaran
-                  </th>
-                  <th className="px-4 py-3 text-left font-semibold text-slate-900 dark:text-white">
-                    Tanggal
-                  </th>
-                  <th className="px-4 py-3 text-center font-semibold text-slate-900 dark:text-white">
-                    Aksi
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-                {isLoadingOrders ? (
+        {/* ORDERS TABLE - DESKTOP */}
+        {data.length > 0 ? (
+          <>
+            <div className="hidden overflow-x-auto rounded-lg border border-gray-200 shadow-sm dark:border-gray-700 md:block">
+              <table className="w-full divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">
+                <thead className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-gray-700 dark:to-gray-600">
                   <tr>
-                    <td colSpan={7} className="py-8 text-center">
-                      <Loader2 className="mx-auto h-6 w-6 animate-spin text-blue-500" />
-                    </td>
+                    <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-blue-900 dark:text-blue-300">
+                      Order Code
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-blue-900 dark:text-blue-300">
+                      Pelanggan
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-blue-900 dark:text-blue-300">
+                      Tanggal
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-blue-900 dark:text-blue-300">
+                      Status Pesanan
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-blue-900 dark:text-blue-300">
+                      Pembayaran
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-blue-900 dark:text-blue-300">
+                      Total
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-blue-900 dark:text-blue-300">
+                      Aksi
+                    </th>
                   </tr>
-                ) : paginatedOrders.length > 0 ? (
-                  paginatedOrders.map((order) => (
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {data.map((order) => (
                     <tr
                       key={order.id}
-                      className="transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/50"
+                      className="transition-colors hover:bg-blue-50 dark:hover:bg-gray-700"
                     >
-                      <td className="px-4 py-3 font-semibold text-slate-900 dark:text-white">
+                      <td className="whitespace-nowrap px-6 py-4 font-mono text-sm font-bold text-blue-600 dark:text-blue-400">
                         #{order.order_code}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-6 py-4">
                         <div>
-                          <p className="font-medium text-slate-900 dark:text-white">
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">
                             {order.user.name}
                           </p>
-                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
                             {order.user.email}
                           </p>
                         </div>
                       </td>
-                      <td className="px-4 py-3 font-bold text-slate-900 dark:text-white">
+                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
+                        {new Date(
+                          order.created_at
+                        ).toLocaleDateString('id-ID')}
+                      </td>
+                      <td className="whitespace-nowrap px-6 py-4">
+                        <StatusBadge
+                          status={order.order_status}
+                          type="order"
+                        />
+                      </td>
+                      <td className="whitespace-nowrap px-6 py-4">
+                        <StatusBadge
+                          status={order.status}
+                          type="payment"
+                        />
+                      </td>
+                      <td className="whitespace-nowrap px-6 py-4 text-sm font-bold text-gray-900 dark:text-white">
                         Rp{' '}
                         {parseInt(order.total_price).toLocaleString(
                           'id-ID'
                         )}
                       </td>
-                      <td className="px-4 py-3">
-                        <span
-                          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${
-                            order.order_status === 'processing'
-                              ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-                              : order.order_status === 'completed'
-                                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                                : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                          }`}
-                        >
-                          {order.order_status === 'processing' ? (
-                            <Clock className="h-3 w-3" />
-                          ) : order.order_status === 'completed' ? (
-                            <CheckCircle2 className="h-3 w-3" />
-                          ) : (
-                            <X className="h-3 w-3" />
-                          )}
-                          {order.order_status === 'processing'
-                            ? 'Proses'
-                            : order.order_status === 'completed'
-                              ? 'Selesai'
-                              : 'Dibatalkan'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span
-                          className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
-                            order.status === 'pending'
-                              ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
-                              : order.status === 'paid'
-                                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                                : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                          }`}
-                        >
-                          {order.status === 'pending'
-                            ? 'Pending'
-                            : order.status === 'paid'
-                              ? 'Dibayar'
-                              : 'Dibatalkan'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400">
-                        {new Date(
-                          order.created_at
-                        ).toLocaleDateString('id-ID')}
-                      </td>
-                      <td className="px-4 py-3 text-center">
+                      <td className="whitespace-nowrap px-6 py-4">
                         <a
                           href={`/dashboard/admin/orders/${order.id}`}
-                          className="inline-flex items-center justify-center rounded-lg bg-blue-600 p-2 text-white transition-colors hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600"
+                          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600"
                         >
                           <Eye className="h-4 w-4" />
+                          Detail
                         </a>
                       </td>
                     </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={7} className="py-12 text-center">
-                      <AlertCircle className="mx-auto mb-2 h-8 w-8 text-slate-300 dark:text-slate-600" />
-                      <p className="text-slate-600 dark:text-slate-400">
-                        Tidak ada pesanan ditemukan
-                      </p>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="mt-6 flex items-center justify-between">
-            <div className="text-xs text-slate-600 dark:text-slate-400">
-              Halaman {currentPage} dari {totalPages}
+                  ))}
+                </tbody>
+              </table>
             </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() =>
-                  setCurrentPage(Math.max(1, currentPage - 1))
-                }
-                disabled={currentPage === 1}
-                className="rounded-lg border border-slate-200 bg-white p-2 text-slate-600 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-400 dark:hover:bg-slate-600"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-              {Array.from(
-                { length: totalPages },
-                (_, i) => i + 1
-              ).map((page) => (
-                <button
-                  key={page}
-                  onClick={() => setCurrentPage(page)}
-                  className={`h-8 w-8 rounded-lg text-xs font-semibold transition-colors ${
-                    currentPage === page
-                      ? 'bg-blue-600 text-white'
-                      : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-400 dark:hover:bg-slate-600'
-                  }`}
+
+            {/* ORDERS CARDS - MOBILE */}
+            <div className="space-y-3 md:hidden">
+              {data.map((order) => (
+                <div
+                  key={order.id}
+                  className="rounded-lg border border-blue-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md dark:border-gray-700 dark:bg-gray-800"
                 >
-                  {page}
-                </button>
+                  {/* Top Row - Order Code & Status */}
+                  <div className="mb-3 flex items-center justify-between gap-2 border-b border-blue-200 pb-3 dark:border-gray-700">
+                    <span className="truncate font-mono text-sm font-bold text-blue-600 dark:text-blue-400">
+                      #{order.order_code}
+                    </span>
+                    <StatusBadge
+                      status={order.order_status}
+                      type="order"
+                    />
+                  </div>
+
+                  {/* Customer Info */}
+                  <div className="mb-3">
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                      {order.user.name}
+                    </p>
+                    <p className="truncate text-xs text-gray-600 dark:text-gray-400">
+                      {order.user.email}
+                    </p>
+                  </div>
+
+                  {/* Date & Payment Status */}
+                  <div className="mb-3 space-y-2 text-sm">
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600 dark:text-gray-400">
+                        Tanggal:
+                      </span>
+                      <span className="font-medium text-gray-900 dark:text-white">
+                        {new Date(
+                          order.created_at
+                        ).toLocaleDateString('id-ID')}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600 dark:text-gray-400">
+                        Pembayaran:
+                      </span>
+                      <StatusBadge
+                        status={order.status}
+                        type="payment"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Bottom Row - Price & Button */}
+                  <div className="flex items-center justify-between gap-3 border-t border-blue-200 pt-3 dark:border-gray-700">
+                    <p className="text-base font-bold text-gray-900 dark:text-white">
+                      Rp{' '}
+                      {parseInt(order.total_price).toLocaleString(
+                        'id-ID'
+                      )}
+                    </p>
+                    <a
+                      href={`/dashboard/admin/orders/${order.id}`}
+                      className="inline-flex items-center gap-2 whitespace-nowrap rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600"
+                    >
+                      <Eye className="h-4 w-4" />
+                      Lihat
+                    </a>
+                  </div>
+                </div>
               ))}
+            </div>
+          </>
+        ) : (
+          <div className="rounded-lg border border-gray-200 bg-white p-12 text-center dark:border-gray-700 dark:bg-gray-800">
+            <AlertCircle className="mx-auto mb-4 h-12 w-12 text-gray-300 dark:text-gray-600" />
+            <p className="text-lg font-semibold text-gray-900 dark:text-white">
+              Tidak ada pesanan ditemukan
+            </p>
+            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+              Coba ubah pencarian atau filter
+            </p>
+          </div>
+        )}
+
+        {/* PAGINATION */}
+        {pages > 1 && (
+          <div className="mt-8 flex flex-col items-center justify-center gap-4">
+            <div className="flex flex-wrap items-center justify-center gap-2">
               <button
-                onClick={() =>
-                  setCurrentPage(
-                    Math.min(totalPages, currentPage + 1)
-                  )
-                }
-                disabled={currentPage === totalPages}
-                className="rounded-lg border border-slate-200 bg-white p-2 text-slate-600 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-400 dark:hover:bg-slate-600"
+                disabled={page === 1}
+                onClick={() => setPage((p) => p - 1)}
+                className="flex items-center justify-center rounded-lg border border-gray-300 bg-white p-2 text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-30 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+                title="Previous page"
               >
-                <ChevronRight className="h-4 w-4" />
+                <ChevronLeft className="h-5 w-5" />
               </button>
+
+              <div className="flex flex-wrap items-center justify-center gap-1">
+                {pages <= 5 ? (
+                  Array.from({ length: pages }, (_, i) => i + 1).map(
+                    (p) => (
+                      <button
+                        key={p}
+                        onClick={() => setPage(p)}
+                        className={`h-10 w-10 rounded-lg text-sm font-semibold transition-colors ${
+                          page === p
+                            ? 'bg-blue-600 text-white dark:bg-blue-700'
+                            : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    )
+                  )
+                ) : (
+                  <>
+                    {[1, page, pages]
+                      .filter((p, i, arr) => arr.indexOf(p) === i)
+                      .map((p, i, arr) => (
+                        <div key={p}>
+                          {i > 0 && arr[i - 1] + 1 < p && (
+                            <span className="px-2 text-gray-400 dark:text-gray-600">
+                              ...
+                            </span>
+                          )}
+                          <button
+                            onClick={() => setPage(p)}
+                            className={`h-10 w-10 rounded-lg text-sm font-semibold transition-colors ${
+                              page === p
+                                ? 'bg-blue-600 text-white dark:bg-blue-700'
+                                : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
+                            }`}
+                          >
+                            {p}
+                          </button>
+                        </div>
+                      ))}
+                  </>
+                )}
+              </div>
+
+              <button
+                disabled={page === pages}
+                onClick={() => setPage((p) => p + 1)}
+                className="flex items-center justify-center rounded-lg border border-gray-300 bg-white p-2 text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-30 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+                title="Next page"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="text-sm font-medium text-gray-600 dark:text-gray-400">
+              Halaman {page} dari {pages}
             </div>
           </div>
         )}

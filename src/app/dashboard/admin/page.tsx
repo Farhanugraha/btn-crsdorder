@@ -5,6 +5,7 @@ import {
   Loader2,
   Eye,
   ChevronRight,
+  ChevronLeft,
   TrendingUp,
   Clock,
   AlertCircle,
@@ -68,11 +69,19 @@ export default function AdminDashboard() {
   const [isLoadingOrders, setIsLoadingOrders] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [filterStatus, setFilterStatus] = useState('processing');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 4;
 
   useEffect(() => {
     const checkAuth = () => {
-      const token = localStorage.getItem('auth_token');
-      const userData = localStorage.getItem('auth_user');
+      const token =
+        typeof window !== 'undefined'
+          ? localStorage?.getItem('auth_token')
+          : null;
+      const userData =
+        typeof window !== 'undefined'
+          ? localStorage?.getItem('auth_user')
+          : null;
 
       if (!token || !userData) {
         window.location.href = '/auth/login';
@@ -99,7 +108,10 @@ export default function AdminDashboard() {
 
   const fetchDashboardData = async () => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token =
+        typeof window !== 'undefined'
+          ? localStorage?.getItem('auth_token')
+          : null;
       if (!token) return;
 
       const response = await fetch(
@@ -125,7 +137,10 @@ export default function AdminDashboard() {
   const fetchOrders = async (status: string = 'processing') => {
     setIsLoadingOrders(true);
     try {
-      const token = localStorage.getItem('auth_token');
+      const token =
+        typeof window !== 'undefined'
+          ? localStorage?.getItem('auth_token')
+          : null;
       if (!token) return;
 
       const response = await fetch(
@@ -158,6 +173,7 @@ export default function AdminDashboard() {
           return true;
         });
         setOrders(filteredOrders);
+        setCurrentPage(1);
       }
     } catch (error) {
       console.error('Error fetching orders:', error);
@@ -179,6 +195,12 @@ export default function AdminDashboard() {
     ]);
     setIsRefreshing(false);
   };
+
+  // Pagination logic
+  const totalPages = Math.ceil(orders.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedOrders = orders.slice(startIndex, endIndex);
 
   if (isLoading) {
     return (
@@ -246,13 +268,7 @@ export default function AdminDashboard() {
               gradient="from-blue-500 to-blue-600"
             />
             <StatCard
-              title="Pending"
-              value={dashboardData.orders.pending}
-              icon={<Clock className="h-5 w-5" />}
-              gradient="from-amber-500 to-amber-600"
-            />
-            <StatCard
-              title="Proses"
+              title="Menunggu"
               value={dashboardData.orders.processing}
               icon={<Settings2 className="h-5 w-5" />}
               gradient="from-sky-500 to-blue-500"
@@ -264,7 +280,7 @@ export default function AdminDashboard() {
               gradient="from-emerald-500 to-emerald-600"
             />
             <StatCard
-              title="Revenue"
+              title="Pendapatan"
               value={formatCurrency(
                 dashboardData.payments.total_revenue
               )}
@@ -307,8 +323,8 @@ export default function AdminDashboard() {
                   <div className="flex items-center justify-center py-12 sm:py-16">
                     <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
                   </div>
-                ) : orders.length > 0 ? (
-                  orders.map((order) => (
+                ) : paginatedOrders.length > 0 ? (
+                  paginatedOrders.map((order) => (
                     <OrderRow key={order.id} order={order} />
                   ))
                 ) : (
@@ -325,6 +341,64 @@ export default function AdminDashboard() {
                   </div>
                 )}
               </div>
+
+              {/* Pagination - Only show if more than 4 items */}
+              {totalPages > 1 && (
+                <div className="border-t border-slate-100 bg-slate-50 px-4 py-4 transition-colors dark:border-slate-700 dark:bg-slate-700/50 sm:px-6">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs text-slate-600 dark:text-slate-400 sm:text-sm">
+                      Halaman {currentPage} dari {totalPages} (
+                      {orders.length} pesanan)
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() =>
+                          setCurrentPage((prev) =>
+                            Math.max(1, prev - 1)
+                          )
+                        }
+                        disabled={currentPage === 1}
+                        className="flex items-center justify-center rounded-lg border border-slate-300 bg-white p-2 text-slate-600 transition-all hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"
+                        title="Previous page"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </button>
+
+                      <div className="flex items-center gap-1">
+                        {Array.from(
+                          { length: totalPages },
+                          (_, i) => i + 1
+                        ).map((page) => (
+                          <button
+                            key={page}
+                            onClick={() => setCurrentPage(page)}
+                            className={`flex items-center justify-center rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all sm:px-3 sm:py-2 ${
+                              currentPage === page
+                                ? 'bg-blue-600 text-white'
+                                : 'border border-slate-300 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700'
+                            }`}
+                          >
+                            {page}
+                          </button>
+                        ))}
+                      </div>
+
+                      <button
+                        onClick={() =>
+                          setCurrentPage((prev) =>
+                            Math.min(totalPages, prev + 1)
+                          )
+                        }
+                        disabled={currentPage === totalPages}
+                        className="flex items-center justify-center rounded-lg border border-slate-300 bg-white p-2 text-slate-600 transition-all hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"
+                        title="Next page"
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -401,7 +475,7 @@ export default function AdminDashboard() {
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400 sm:h-5 sm:w-5" />
                 <p className="text-xs font-medium leading-relaxed text-blue-800 dark:text-blue-300 sm:text-sm">
                   Verifikasi bukti pembayaran sebelum memproses
-                  pesanan ke dapur.
+                  pesanan.
                 </p>
               </div>
             </div>
