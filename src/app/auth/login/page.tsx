@@ -19,7 +19,6 @@ import {
   FormMessage
 } from '@/components/ui/form';
 
-// Login validation schema
 const loginFormSchema = z.object({
   email: z.string().email('Email tidak valid'),
   password: z.string().min(6, 'Password minimal 6 karakter')
@@ -65,12 +64,21 @@ const Login = () => {
     }
   });
 
-  // Check if user already logged in
   useEffect(() => {
     const checkAuth = () => {
       const token = localStorage.getItem('auth_token');
-      if (token) {
-        router.push('/');
+      const user = localStorage.getItem('auth_user');
+
+      if (token && user) {
+        const userData = JSON.parse(user);
+        // Redirect ke dashboard sesuai role
+        if (userData.role === 'superadmin') {
+          router.push('/dashboard/superadmin');
+        } else if (userData.role === 'admin') {
+          router.push('/dashboard/admin');
+        } else {
+          router.push('/areas');
+        }
       }
       setIsLoading(false);
     };
@@ -120,24 +128,21 @@ const Login = () => {
 
         toast.success('Login berhasil!');
 
-        // Dispatch custom event untuk notify Navbar
+        // Dispatch custom event
         window.dispatchEvent(new Event('auth-changed'));
         window.dispatchEvent(new Event('login'));
 
-        // Redirect after short delay
+        // Redirect sesuai role
         setTimeout(() => {
-          const userId = responseData.user!.id;
           const userRole = responseData.user!.role;
 
           if (redirect === 'checkout') {
             router.push('/checkout');
-          } else if (
-            userRole === 'admin' ||
-            userRole === 'superadmin'
-          ) {
-            router.push(`/user/${userId}/admin`);
+          } else if (userRole === 'superadmin') {
+            router.push('/dashboard/superadmin');
+          } else if (userRole === 'admin') {
+            router.push('/dashboard/admin');
           } else {
-            // Redirect ke menu untuk regular users
             router.push('/areas');
           }
         }, 1000);
@@ -168,7 +173,6 @@ const Login = () => {
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-background to-muted px-4 py-8">
       <div className="w-full max-w-sm rounded-lg border border-border bg-card shadow-xl">
-        {/* Header */}
         <div className="border-b border-border bg-muted/50 px-6 py-8 text-center">
           <h1 className="mb-2 text-3xl font-bold text-foreground">
             Selamat Datang
@@ -178,14 +182,12 @@ const Login = () => {
           </p>
         </div>
 
-        {/* Form */}
         <div className="p-6">
           <Form {...form}>
             <form
               onSubmit={form.handleSubmit(onSubmit)}
               className="space-y-5"
             >
-              {/* Email Field */}
               <FormField
                 control={form.control}
                 name="email"
@@ -208,7 +210,6 @@ const Login = () => {
                 )}
               />
 
-              {/* Password Field */}
               <FormField
                 control={form.control}
                 name="password"
@@ -255,7 +256,6 @@ const Login = () => {
                 )}
               />
 
-              {/* Submit Button */}
               <Button
                 type="submit"
                 disabled={isSubmitting}
@@ -270,7 +270,6 @@ const Login = () => {
             </form>
           </Form>
 
-          {/* Register Link */}
           <p className="mt-6 text-center text-sm text-muted-foreground">
             Belum punya akun?{' '}
             <Link
@@ -282,7 +281,6 @@ const Login = () => {
           </p>
         </div>
 
-        {/* Footer */}
         <div className="border-t border-border bg-muted/30 px-6 py-4 text-center text-xs text-muted-foreground">
           <p>
             Dengan masuk, Anda setuju dengan{' '}

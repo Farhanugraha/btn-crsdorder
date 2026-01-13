@@ -1024,7 +1024,7 @@ const CheckoutConfirmationPage = () => {
               ⚠️ Pesanan {order?.order_code} akan dibatalkan
             </p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:gap-3">
             <AlertDialogCancel className="rounded-lg border-slate-300 dark:border-slate-700">
               Tidak, Lanjutkan
             </AlertDialogCancel>

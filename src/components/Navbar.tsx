@@ -34,7 +34,12 @@ import {
   Menu,
   Loader2,
   User as UserIcon,
-  AlertCircle
+  AlertCircle,
+  BarChart3,
+  ShoppingCart,
+  CreditCard,
+  Users,
+  FileText
 } from 'lucide-react';
 import logo from '../../public/logobtn.png';
 import { cn } from '@/lib/utils';
@@ -69,17 +74,67 @@ const Navbar = () => {
     useState(false);
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
 
-  // Check auth status on mount and listen for storage changes
+  // Check role authorization
+  const isAdmin =
+    user && (user.role === 'admin' || user.role === 'superadmin');
+  const isSuperAdmin = user && user.role === 'superadmin';
+
+  // Admin menu items structure
+  const adminMenuItems = [
+    {
+      label: 'Dashboard',
+      href: '/dashboard/admin',
+      icon: '📊',
+      roles: ['admin', 'superadmin']
+    },
+    {
+      label: 'Pesanan',
+      href: '/dashboard/admin/orders',
+      icon: '📦',
+      roles: ['admin', 'superadmin']
+    },
+    {
+      label: 'Pembayaran',
+      href: '/dashboard/admin/payments',
+      icon: '💳',
+      roles: ['admin', 'superadmin']
+    },
+    {
+      label: 'Statistik',
+      href: '/dashboard/admin/statistics',
+      icon: '📈',
+      roles: ['admin', 'superadmin']
+    },
+    {
+      label: 'Laporan',
+      href: '/dashboard/admin/reports',
+      icon: '📄',
+      roles: ['superadmin']
+    },
+    {
+      label: 'Manajemen User',
+      href: '/dashboard/admin/users',
+      icon: '👥',
+      roles: ['superadmin']
+    }
+  ];
+
+  // Filter menu berdasarkan role
+  const getAvailableMenuItems = () => {
+    if (!user) return [];
+    return adminMenuItems.filter((item) =>
+      item.roles.includes(user.role)
+    );
+  };
+
   useEffect(() => {
     const checkAuth = () => {
       try {
         const storedUser = localStorage.getItem('auth_user');
         const token = localStorage.getItem('auth_token');
 
-        // Check token expiration
         const expiresIn = localStorage.getItem('token_expires_in');
         if (expiresIn && Date.now() > Number(expiresIn)) {
-          // Token expired
           localStorage.removeItem('auth_user');
           localStorage.removeItem('auth_token');
           localStorage.removeItem('token_expires_in');
@@ -105,10 +160,8 @@ const Navbar = () => {
       }
     };
 
-    // Check auth on mount
     checkAuth();
 
-    // Listen for storage changes (e.g., login from another tab)
     const handleStorageChange = (e: StorageEvent) => {
       if (
         e.key === 'auth_user' ||
@@ -119,7 +172,6 @@ const Navbar = () => {
       }
     };
 
-    // Also listen for custom event from login page
     const handleAuthChange = () => {
       checkAuth();
     };
@@ -133,25 +185,24 @@ const Navbar = () => {
     };
   }, []);
 
-  // Fetch latest order ketika user berubah
   useEffect(() => {
-    if (user) {
+    if (user && !isAdmin) {
       fetchLatestOrder();
 
-      // Set up interval untuk refetch setiap 5 detik
       const interval = setInterval(() => {
         fetchLatestOrder();
       }, 5000);
 
       return () => clearInterval(interval);
     }
-  }, [user]);
+  }, [user, isAdmin]);
 
-  // Listen untuk payment success events
   useEffect(() => {
     const handlePaymentSuccess = () => {
       console.log('Payment success event received');
-      fetchLatestOrder();
+      if (!isAdmin) {
+        fetchLatestOrder();
+      }
     };
 
     window.addEventListener('payment-success', handlePaymentSuccess);
@@ -162,7 +213,7 @@ const Navbar = () => {
         handlePaymentSuccess
       );
     };
-  }, []);
+  }, [isAdmin]);
 
   const fetchLatestOrder = async () => {
     try {
@@ -186,7 +237,6 @@ const Navbar = () => {
 
       const data = await response.json();
       if (data.success && data.data && data.data.length > 0) {
-        // Ambil order dengan status pending (belum dibayar)
         const pendingOrder = data.data.find(
           (order: any) => order.status === 'pending'
         );
@@ -205,7 +255,6 @@ const Navbar = () => {
     if (!latestOrderId) {
       e.preventDefault();
 
-      // Refetch sekali lagi sebelum show dialog
       try {
         const token = localStorage.getItem('auth_token');
 
@@ -227,7 +276,6 @@ const Navbar = () => {
               (order: any) => order.status === 'pending'
             );
 
-            // Jika ada pending order, redirect ke checkout
             if (pendingOrder) {
               setLatestOrderId(pendingOrder.id);
               router.push(`/checkout/${pendingOrder.id}`);
@@ -239,7 +287,6 @@ const Navbar = () => {
         console.error('Error refetching orders:', error);
       }
 
-      // Jika tetap tidak ada, show dialog
       setShowNoPaymentDialog(true);
     }
   };
@@ -250,13 +297,11 @@ const Navbar = () => {
       const token = localStorage.getItem('auth_token');
 
       if (!token) {
-        // Clear storage
         localStorage.removeItem('auth_user');
         localStorage.removeItem('auth_token');
         localStorage.removeItem('token_expires_in');
         setUser(null);
 
-        // Dispatch logout event untuk clear cart
         window.dispatchEvent(new Event('logout'));
 
         toast.success('Logout berhasil');
@@ -266,32 +311,23 @@ const Navbar = () => {
       }
 
       try {
-        const response = await fetch(
-          'http://localhost:8000/api/auth/logout',
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Accept: 'application/json',
-              Authorization: `Bearer ${token}`
-            }
+        await fetch('http://localhost:8000/api/auth/logout', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            Authorization: `Bearer ${token}`
           }
-        );
-
-        const data = await response.json();
-        console.log('Logout response:', data);
+        });
       } catch (apiError) {
         console.error('Logout API error:', apiError);
-        // Continue dengan logout meski API fail
       }
 
-      // Clear storage regardless of API response
       localStorage.removeItem('auth_user');
       localStorage.removeItem('auth_token');
       localStorage.removeItem('token_expires_in');
       setUser(null);
 
-      // Dispatch logout event untuk clear cart
       window.dispatchEvent(new Event('logout'));
 
       toast.success('Logout berhasil');
@@ -300,13 +336,11 @@ const Navbar = () => {
     } catch (error) {
       console.error('Logout error:', error);
 
-      // Force clear even if unexpected error
       localStorage.removeItem('auth_user');
       localStorage.removeItem('auth_token');
       localStorage.removeItem('token_expires_in');
       setUser(null);
 
-      // Dispatch logout event untuk clear cart
       window.dispatchEvent(new Event('logout'));
 
       toast.success('Logout berhasil');
@@ -323,7 +357,7 @@ const Navbar = () => {
         {/* Desktop Navigation */}
         <div className="hidden flex-row items-center gap-8 md:flex">
           <Link
-            href="/"
+            href={isAdmin ? '/dashboard/admin' : '/'}
             className="transition-opacity hover:opacity-80"
           >
             <Image
@@ -337,57 +371,120 @@ const Navbar = () => {
           </Link>
           <div className="flex flex-row items-center gap-1">
             <Link
-              href="/"
+              href={isAdmin ? '/dashboard/admin' : '/'}
               className={cn(
                 buttonVariants({ variant: 'ghost' }),
                 'text-sm'
               )}
             >
-              Home
+              {isAdmin ? 'Dashboard' : 'Home'}
             </Link>
-            <Link
-              href="/areas"
-              className={cn(
-                buttonVariants({ variant: 'ghost' }),
-                'text-sm'
-              )}
-            >
-              Pesan Makanan
-            </Link>
-            <Link
-              href="/contact"
-              className={cn(
-                buttonVariants({ variant: 'ghost' }),
-                'text-sm'
-              )}
-            >
-              Contact
-            </Link>
-            <Link
-              href="/support"
-              className={cn(
-                buttonVariants({ variant: 'ghost' }),
-                'text-sm'
-              )}
-            >
-              Support
-            </Link>
-            <Link
-              href="/about"
-              className={cn(
-                buttonVariants({ variant: 'ghost' }),
-                'text-sm'
-              )}
-            >
-              About
-            </Link>
+
+            {/* Admin Navigation Menu */}
+            {isAdmin && (
+              <>
+                <Link
+                  href="/dashboard/admin/orders"
+                  className={cn(
+                    buttonVariants({ variant: 'ghost' }),
+                    'text-sm'
+                  )}
+                >
+                  Pesanan
+                </Link>
+                <Link
+                  href="/dashboard/admin/payments"
+                  className={cn(
+                    buttonVariants({ variant: 'ghost' }),
+                    'text-sm'
+                  )}
+                >
+                  Pembayaran
+                </Link>
+                <Link
+                  href="/dashboard/admin/statistics"
+                  className={cn(
+                    buttonVariants({ variant: 'ghost' }),
+                    'text-sm'
+                  )}
+                >
+                  Statistik
+                </Link>
+
+                {/* Laporan & User Management - Hanya Superadmin */}
+                {isSuperAdmin && (
+                  <>
+                    <Link
+                      href="/dashboard/admin/reports"
+                      className={cn(
+                        buttonVariants({ variant: 'ghost' }),
+                        'text-sm'
+                      )}
+                    >
+                      Laporan
+                    </Link>
+                    <Link
+                      href="/dashboard/admin/users"
+                      className={cn(
+                        buttonVariants({ variant: 'ghost' }),
+                        'text-sm'
+                      )}
+                    >
+                      User
+                    </Link>
+                  </>
+                )}
+              </>
+            )}
+
+            {/* Pesan Makanan - Hanya untuk non-admin */}
+            {!isAdmin && (
+              <>
+                <Link
+                  href="/areas"
+                  className={cn(
+                    buttonVariants({ variant: 'ghost' }),
+                    'text-sm'
+                  )}
+                >
+                  Pesan Makanan
+                </Link>
+                <Link
+                  href="/contact"
+                  className={cn(
+                    buttonVariants({ variant: 'ghost' }),
+                    'text-sm'
+                  )}
+                >
+                  Contact
+                </Link>
+                <Link
+                  href="/support"
+                  className={cn(
+                    buttonVariants({ variant: 'ghost' }),
+                    'text-sm'
+                  )}
+                >
+                  Support
+                </Link>
+                <Link
+                  href="/about"
+                  className={cn(
+                    buttonVariants({ variant: 'ghost' }),
+                    'text-sm'
+                  )}
+                >
+                  About
+                </Link>
+              </>
+            )}
           </div>
         </div>
 
         {/* Mobile Navigation */}
         <div className="flex items-center gap-4 md:hidden">
           <Link
-            href="/"
+            href={isAdmin ? '/dashboard/admin' : '/'}
             className="transition-opacity hover:opacity-80"
           >
             <Image
@@ -406,21 +503,67 @@ const Navbar = () => {
               </MenubarTrigger>
               <MenubarContent align="start">
                 <MenubarItem asChild>
-                  <Link href="/">Home</Link>
+                  <Link href={isAdmin ? '/dashboard/admin' : '/'}>
+                    {isAdmin ? 'Dashboard' : 'Home'}
+                  </Link>
                 </MenubarItem>
-                <MenubarItem asChild>
-                  <Link href="/areas">Pesan Makanan</Link>
-                </MenubarItem>
-                <MenubarSeparator />
-                <MenubarItem asChild>
-                  <Link href="/contact">Contact</Link>
-                </MenubarItem>
-                <MenubarItem asChild>
-                  <Link href="/support">Support</Link>
-                </MenubarItem>
-                <MenubarItem asChild>
-                  <Link href="/about">About</Link>
-                </MenubarItem>
+
+                {/* Admin Menu Items */}
+                {isAdmin && (
+                  <>
+                    <MenubarSeparator />
+                    <MenubarItem asChild>
+                      <Link href="/dashboard/admin/orders">
+                        Pesanan
+                      </Link>
+                    </MenubarItem>
+                    <MenubarItem asChild>
+                      <Link href="/dashboard/admin/payments">
+                        Pembayaran
+                      </Link>
+                    </MenubarItem>
+                    <MenubarItem asChild>
+                      <Link href="/dashboard/admin/statistics">
+                        Statistik
+                      </Link>
+                    </MenubarItem>
+
+                    {/* Laporan & User Management - Hanya Superadmin */}
+                    {isSuperAdmin && (
+                      <>
+                        <MenubarItem asChild>
+                          <Link href="/dashboard/admin/reports">
+                            Laporan
+                          </Link>
+                        </MenubarItem>
+                        <MenubarItem asChild>
+                          <Link href="/dashboard/admin/users">
+                            Manajemen User
+                          </Link>
+                        </MenubarItem>
+                      </>
+                    )}
+                  </>
+                )}
+
+                {/* User Menu Items */}
+                {!isAdmin && (
+                  <>
+                    <MenubarSeparator />
+                    <MenubarItem asChild>
+                      <Link href="/areas">Pesan Makanan</Link>
+                    </MenubarItem>
+                    <MenubarItem asChild>
+                      <Link href="/contact">Contact</Link>
+                    </MenubarItem>
+                    <MenubarItem asChild>
+                      <Link href="/support">Support</Link>
+                    </MenubarItem>
+                    <MenubarItem asChild>
+                      <Link href="/about">About</Link>
+                    </MenubarItem>
+                  </>
+                )}
               </MenubarContent>
             </MenubarMenu>
           </Menubar>
@@ -449,8 +592,14 @@ const Navbar = () => {
                     <p className="truncate text-xs text-muted-foreground">
                       {user.email}
                     </p>
+                    <p className="mt-1 text-xs font-medium text-muted-foreground">
+                      Role:{' '}
+                      <span className="capitalize">{user.role}</span>
+                    </p>
                   </div>
                   <DropdownMenuSeparator />
+
+                  {/* Profile - Untuk Semua */}
                   <DropdownMenuItem asChild>
                     <Link
                       href={`/user/${user.id}/user`}
@@ -459,52 +608,114 @@ const Navbar = () => {
                       Profile
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/order" className="cursor-pointer">
-                      Pesanan
-                    </Link>
-                  </DropdownMenuItem>
 
-                  <DropdownMenuItem asChild>
-                    <Link
-                      href={
-                        latestOrderId
-                          ? `/checkout/${latestOrderId}`
-                          : '#'
-                      }
-                      className="cursor-pointer"
-                      onClick={handlePaymentClick}
-                    >
-                      <div className="flex items-center gap-2">
-                        Pembayaran
-                        {isLoadingOrder && (
-                          <span className="inline-block animate-spin text-xs">
-                            ⏳
-                          </span>
-                        )}
-                        {latestOrderId && (
-                          <div className="relative inline-flex h-5 w-5 items-center justify-center">
-                            <span className="absolute h-5 w-5 animate-ping rounded-full bg-emerald-600"></span>
-                            <span className="relative h-3 w-3 rounded-full bg-emerald-600"></span>
-                          </div>
-                        )}
-                      </div>
-                    </Link>
-                  </DropdownMenuItem>
-                  {(user.role === 'admin' ||
-                    user.role === 'superadmin') && (
+                  {/* Admin Menu Items */}
+                  {isAdmin && (
                     <>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem asChild>
                         <Link
-                          href={`/user/${user.id}/admin`}
+                          href="/dashboard/admin"
                           className="cursor-pointer"
                         >
-                          Admin Panel
+                          <BarChart3 className="mr-2 h-4 w-4" />
+                          Dashboard
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link
+                          href="/dashboard/admin/orders"
+                          className="cursor-pointer"
+                        >
+                          <ShoppingCart className="mr-2 h-4 w-4" />
+                          Pesanan
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link
+                          href="/dashboard/admin/payments"
+                          className="cursor-pointer"
+                        >
+                          <CreditCard className="mr-2 h-4 w-4" />
+                          Pembayaran
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link
+                          href="/dashboard/admin/statistics"
+                          className="cursor-pointer"
+                        >
+                          <BarChart3 className="mr-2 h-4 w-4" />
+                          Statistik
+                        </Link>
+                      </DropdownMenuItem>
+
+                      {/* Superadmin Only */}
+                      {isSuperAdmin && (
+                        <>
+                          <DropdownMenuItem asChild>
+                            <Link
+                              href="/dashboard/admin/reports"
+                              className="cursor-pointer"
+                            >
+                              <FileText className="mr-2 h-4 w-4" />
+                              Laporan
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                            <Link
+                              href="/dashboard/admin/users"
+                              className="cursor-pointer"
+                            >
+                              <Users className="mr-2 h-4 w-4" />
+                              Manajemen User
+                            </Link>
+                          </DropdownMenuItem>
+                        </>
+                      )}
+                    </>
+                  )}
+
+                  {/* User Menu Items */}
+                  {!isAdmin && (
+                    <>
+                      <DropdownMenuItem asChild>
+                        <Link
+                          href="/order"
+                          className="cursor-pointer"
+                        >
+                          Pesanan
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link
+                          href={
+                            latestOrderId
+                              ? `/checkout/${latestOrderId}`
+                              : '#'
+                          }
+                          className="cursor-pointer"
+                          onClick={handlePaymentClick}
+                        >
+                          <div className="flex items-center gap-2">
+                            Pembayaran
+                            {isLoadingOrder && (
+                              <span className="inline-block animate-spin text-xs">
+                                ⏳
+                              </span>
+                            )}
+                            {latestOrderId && (
+                              <div className="relative inline-flex h-5 w-5 items-center justify-center">
+                                <span className="absolute h-5 w-5 animate-ping rounded-full bg-emerald-600"></span>
+                                <span className="relative h-3 w-3 rounded-full bg-emerald-600"></span>
+                              </div>
+                            )}
+                          </div>
                         </Link>
                       </DropdownMenuItem>
                     </>
                   )}
+
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={() => setShowLogoutDialog(true)}
@@ -539,13 +750,15 @@ const Navbar = () => {
               </Link>
             </>
           )}
-          {/* Cart - Hanya tampil jika user sudah login */}
-          {user && (
+
+          {/* Cart - Hanya untuk non-admin users */}
+          {user && !isAdmin && (
             <>
               <Separator orientation="vertical" className="h-6" />
               <Cart />
             </>
           )}
+
           <ToggleTheme />
         </div>
       </div>
