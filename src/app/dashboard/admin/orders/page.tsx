@@ -12,14 +12,42 @@ import {
   Clock,
   CheckCircle,
   XCircle,
-  Calendar
+  Calendar,
+  MapPin,
+  Building2
 } from 'lucide-react';
+
+interface Area {
+  id: number;
+  name: string;
+  slug: string;
+  icon?: string;
+}
+
+interface OrderItem {
+  id: number;
+  menu_id: number;
+  quantity: number;
+  price: string;
+  notes: string;
+  menu: {
+    id: number;
+    name: string;
+    restaurant_id: number;
+    restaurant: {
+      id: number;
+      name: string;
+      area_id: number;
+      area: Area;
+    };
+  };
+}
 
 interface Order {
   id: number;
   order_code: string;
   user_id: number;
-  restaurant_id: number;
+  restaurant_id: number | null;
   total_price: string;
   status: string;
   order_status: string;
@@ -32,6 +60,8 @@ interface Order {
     email: string;
     phone: string;
   };
+  items: OrderItem[];
+  areas: Area[];
 }
 
 const API_BASE_URL = 'http://localhost:8000/api';
@@ -85,7 +115,7 @@ function StatusBadge({
 
   const displayStatus =
     status === 'processing'
-      ? 'Proses'
+      ? 'Menunggu'
       : status === 'completed'
         ? 'Selesai'
         : status === 'pending'
@@ -115,10 +145,12 @@ function StatusBadge({
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [areas, setAreas] = useState<Area[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] =
     useState<string>('processing');
+  const [areaFilter, setAreaFilter] = useState<string>('all');
   const [dateFilter, setDateFilter] = useState<string>(
     new Date().toISOString().split('T')[0]
   );
@@ -129,8 +161,26 @@ export default function OrdersPage() {
   const perPage = 10;
 
   useEffect(() => {
-    fetchOrders();
+    fetchInitialData();
   }, []);
+
+  const fetchInitialData = async () => {
+    await Promise.all([fetchOrders(), fetchAreas()]);
+  };
+
+  const fetchAreas = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/areas`);
+      if (!res.ok) throw new Error('Failed to fetch areas');
+
+      const data = await res.json();
+      if (data.success && data.data) {
+        setAreas(data.data);
+      }
+    } catch (err) {
+      console.error('Error fetching areas:', err);
+    }
+  };
 
   const fetchOrders = async () => {
     setLoading(true);
@@ -176,15 +226,27 @@ export default function OrdersPage() {
     setIsRefreshing(false);
   };
 
-  // Filter: exclude pending orders, search, status filter, dan date filter
+  // Filter: search, status, area, dan date
   const filtered = orders.filter((o) => {
     const hasContent =
       o.order_code.toLowerCase().includes(search.toLowerCase()) ||
       o.user.name.toLowerCase().includes(search.toLowerCase()) ||
-      o.user.email.toLowerCase().includes(search.toLowerCase());
+      o.user.email.toLowerCase().includes(search.toLowerCase()) ||
+      o.items?.some(
+        (item) =>
+          item.menu?.restaurant?.name
+            .toLowerCase()
+            .includes(search.toLowerCase())
+      );
 
     const matchesStatus =
       statusFilter === 'all' || o.order_status === statusFilter;
+
+    // Filter berdasarkan area - cek apakah order punya item di area ini
+    const matchesArea =
+      areaFilter === 'all' ||
+      (o.areas &&
+        o.areas.some((area) => area.id.toString() === areaFilter));
 
     const orderDate = new Date(o.created_at)
       .toISOString()
@@ -195,6 +257,7 @@ export default function OrdersPage() {
       o.order_status !== null &&
       hasContent &&
       matchesStatus &&
+      matchesArea &&
       matchesDate
     );
   });
@@ -203,11 +266,23 @@ export default function OrdersPage() {
   const data = filtered.slice((page - 1) * perPage, page * perPage);
 
   const statusOptions = [
-    { value: 'processing', label: 'Proses', icon: Clock },
+    { value: 'processing', label: 'Menunggu', icon: Clock },
     { value: 'completed', label: 'Selesai', icon: CheckCircle },
     { value: 'canceled', label: 'Dibatalkan', icon: XCircle },
     { value: 'all', label: 'Semua Status', icon: null }
   ];
+
+  // Hitung jumlah order per area untuk badge
+  const getAreaOrderCount = (areaId: number) => {
+    return orders.filter(
+      (o) =>
+        o.areas &&
+        o.areas.some((area) => area.id === areaId) &&
+        o.order_status === statusFilter &&
+        new Date(o.created_at).toISOString().split('T')[0] ===
+          dateFilter
+    ).length;
+  };
 
   if (loading) {
     return (
@@ -224,7 +299,6 @@ export default function OrdersPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* MAIN CONTENT */}
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
         {/* PAGE TITLE */}
         <div className="mb-8">
@@ -250,6 +324,80 @@ export default function OrdersPage() {
           </div>
         )}
 
+        {/* AREA FILTER CHIPS - PRIORITAS PERTAMA */}
+        <div className="mb-6">
+          <label className="mb-3 flex items-center gap-2 text-sm font-bold text-gray-900 dark:text-white">
+            <MapPin className="h-5 w-5 text-blue-600" />
+            Filter Berdasarkan Area
+          </label>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => {
+                setAreaFilter('all');
+                setPage(1);
+              }}
+              className={`inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all ${
+                areaFilter === 'all'
+                  ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg'
+                  : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+              }`}
+            >
+              <Building2 className="h-4 w-4" />
+              Semua Area
+              <span
+                className={`ml-1 rounded-full px-2 py-0.5 text-xs font-bold ${
+                  areaFilter === 'all'
+                    ? 'bg-white/20'
+                    : 'bg-gray-200 dark:bg-gray-600'
+                }`}
+              >
+                {
+                  orders.filter(
+                    (o) =>
+                      o.order_status === statusFilter &&
+                      new Date(o.created_at)
+                        .toISOString()
+                        .split('T')[0] === dateFilter
+                  ).length
+                }
+              </span>
+            </button>
+            {areas.map((area) => {
+              const count = getAreaOrderCount(area.id);
+              return (
+                <button
+                  key={area.id}
+                  onClick={() => {
+                    setAreaFilter(area.id.toString());
+                    setPage(1);
+                  }}
+                  className={`inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all ${
+                    areaFilter === area.id.toString()
+                      ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg'
+                      : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  <span className="text-base">
+                    {area.icon || '🏢'}
+                  </span>
+                  {area.name}
+                  {count > 0 && (
+                    <span
+                      className={`ml-1 rounded-full px-2 py-0.5 text-xs font-bold ${
+                        areaFilter === area.id.toString()
+                          ? 'bg-white/20'
+                          : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                      }`}
+                    >
+                      {count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {/* TOOLBAR - SEARCH & REFRESH */}
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="max-w-md flex-1">
@@ -261,7 +409,7 @@ export default function OrdersPage() {
                   setSearch(e.target.value);
                   setPage(1);
                 }}
-                placeholder="Cari order, nama, email..."
+                placeholder="Cari order, nama, email, restaurant..."
                 className="w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-4 text-sm text-gray-900 placeholder-gray-500 transition-all focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-400"
               />
             </div>
@@ -288,6 +436,15 @@ export default function OrdersPage() {
               Menampilkan {(page - 1) * perPage + 1} -
               {Math.min(page * perPage, filtered.length)} dari{' '}
               {filtered.length} pesanan
+              {areaFilter !== 'all' && (
+                <span className="ml-1 font-semibold text-blue-600 dark:text-blue-400">
+                  di area{' '}
+                  {
+                    areas.find((a) => a.id.toString() === areaFilter)
+                      ?.name
+                  }
+                </span>
+              )}
             </>
           ) : (
             <>Tidak ada pesanan ditemukan</>
@@ -305,16 +462,22 @@ export default function OrdersPage() {
                       Order Code
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-blue-900 dark:text-blue-300">
+                      Restaurant / Area
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-blue-900 dark:text-blue-300">
                       Pelanggan
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-blue-900 dark:text-blue-300">
+                      No Telepon
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-blue-900 dark:text-blue-300">
                       Tanggal
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-blue-900 dark:text-blue-300">
-                      Status Pesanan
+                      Status Order
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-blue-900 dark:text-blue-300">
-                      Pembayaran
+                      Status Pembayaran
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-blue-900 dark:text-blue-300">
                       Total
@@ -335,6 +498,22 @@ export default function OrdersPage() {
                       </td>
                       <td className="px-6 py-4">
                         <div>
+                          {order.areas && order.areas.length > 0 ? (
+                            <div className="flex items-center gap-1">
+                              <MapPin className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                              <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                {order.areas
+                                  .map((a) => a.name)
+                                  .join(', ')}
+                              </p>
+                            </div>
+                          ) : (
+                            <p className="text-sm text-gray-400">-</p>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div>
                           <p className="text-sm font-medium text-gray-900 dark:text-white">
                             {order.user.name}
                           </p>
@@ -342,6 +521,9 @@ export default function OrdersPage() {
                             {order.user.email}
                           </p>
                         </div>
+                      </td>
+                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
+                        {order.user.phone}
                       </td>
                       <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
                         {new Date(
@@ -388,7 +570,7 @@ export default function OrdersPage() {
                   key={order.id}
                   className="rounded-lg border border-blue-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md dark:border-gray-700 dark:bg-gray-800"
                 >
-                  {/* Top Row - Order Code & Status */}
+                  {/* Order Code */}
                   <div className="mb-3 flex items-center justify-between gap-2 border-b border-blue-200 pb-3 dark:border-gray-700">
                     <span className="truncate font-mono text-sm font-bold text-blue-600 dark:text-blue-400">
                       #{order.order_code}
@@ -399,6 +581,20 @@ export default function OrdersPage() {
                     />
                   </div>
 
+                  {/* Area */}
+                  <div className="mb-3 rounded-lg bg-blue-50 p-3 dark:bg-blue-900/20">
+                    {order.areas && order.areas.length > 0 ? (
+                      <div className="flex items-center gap-2">
+                        <MapPin className="h-4 w-4 flex-shrink-0 text-blue-600 dark:text-blue-400" />
+                        <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                          {order.areas.map((a) => a.name).join(', ')}
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-400">-</p>
+                    )}
+                  </div>
+
                   {/* Customer Info */}
                   <div className="mb-3">
                     <p className="text-sm font-semibold text-gray-900 dark:text-white">
@@ -407,9 +603,12 @@ export default function OrdersPage() {
                     <p className="truncate text-xs text-gray-600 dark:text-gray-400">
                       {order.user.email}
                     </p>
+                    <p className="text-xs text-gray-600 dark:text-gray-400">
+                      {order.user.phone}
+                    </p>
                   </div>
 
-                  {/* Date & Payment Status */}
+                  {/* Date & Payment */}
                   <div className="mb-3 space-y-2 text-sm">
                     <div className="flex items-center justify-between">
                       <span className="text-gray-600 dark:text-gray-400">
@@ -423,6 +622,15 @@ export default function OrdersPage() {
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-gray-600 dark:text-gray-400">
+                        Order:
+                      </span>
+                      <StatusBadge
+                        status={order.order_status}
+                        type="order"
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600 dark:text-gray-400">
                         Pembayaran:
                       </span>
                       <StatusBadge
@@ -432,7 +640,7 @@ export default function OrdersPage() {
                     </div>
                   </div>
 
-                  {/* Bottom Row - Price & Button */}
+                  {/* Bottom Row */}
                   <div className="flex items-center justify-between gap-3 border-t border-blue-200 pt-3 dark:border-gray-700">
                     <p className="text-base font-bold text-gray-900 dark:text-white">
                       Rp{' '}
@@ -459,11 +667,14 @@ export default function OrdersPage() {
               Tidak ada pesanan ditemukan
             </p>
             <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-              Coba ubah pencarian atau filter
+              {areaFilter !== 'all'
+                ? `Tidak ada pesanan di area ${areas.find(
+                    (a) => a.id.toString() === areaFilter
+                  )?.name} untuk tanggal ini`
+                : 'Coba ubah pencarian atau filter'}
             </p>
           </div>
         )}
-
         {/* PAGINATION */}
         {pages > 1 && (
           <div className="mt-8 flex flex-col items-center justify-center gap-4">

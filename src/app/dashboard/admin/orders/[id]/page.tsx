@@ -30,6 +30,18 @@ interface OrderItem {
     name: string;
     price: string;
     image: string;
+    restaurant_id: number;
+    restaurant: {
+      id: number;
+      name: string;
+      area_id: number;
+      area: {
+        id: number;
+        name: string;
+        slug: string;
+        icon?: string;
+      };
+    };
   };
 }
 
@@ -334,6 +346,29 @@ export default function OrderDetailPage({
     });
   };
 
+  // Group items by restaurant
+  const groupedByRestaurant =
+    order.items?.reduce(
+      (acc, item) => {
+        const restaurantKey = item.menu?.restaurant?.id || 0;
+        if (!acc[restaurantKey]) {
+          acc[restaurantKey] = {
+            restaurant: item.menu?.restaurant,
+            items: []
+          };
+        }
+        acc[restaurantKey].items.push(item);
+        return acc;
+      },
+      {} as Record<
+        number,
+        {
+          restaurant: OrderItem['menu']['restaurant'];
+          items: OrderItem[];
+        }
+      >
+    ) || {};
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
@@ -445,171 +480,171 @@ export default function OrderDetailPage({
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           {/* Left Column - Main Content */}
           <div className="space-y-6 lg:col-span-2">
-            {/* Order Items dengan Checklist */}
-            <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:rounded-xl sm:p-6">
-              <div className="mb-4 flex items-center justify-between gap-2">
-                <div>
-                  <h2 className="flex items-center gap-2 text-base font-bold text-gray-900 dark:text-white sm:text-lg">
-                    <Package className="h-4 w-4 flex-shrink-0 text-blue-600 sm:h-5 sm:w-5" />
-                    Menu Pesanan
-                  </h2>
-                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 sm:text-sm">
-                    {order.items?.length || 0} item(s) -{' '}
-                    {order.items?.filter((item) => item.is_checked)
-                      .length || 0}{' '}
-                    pesanan diselesaikan
-                  </p>
-                </div>
-              </div>
+            {/* Order Items dengan Checklist - Grouped by Restaurant */}
+            <div className="space-y-6">
+              {Object.entries(groupedByRestaurant).map(
+                ([restaurantId, { restaurant, items }]) => (
+                  <div
+                    key={restaurantId}
+                    className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:rounded-xl sm:p-6"
+                  >
+                    {/* Restaurant Header */}
+                    <div className="mb-6 rounded-lg bg-gradient-to-r from-blue-50 to-blue-100 p-4 dark:from-blue-900/20 dark:to-blue-800/20">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1">
+                          <h3 className="text-base font-bold text-gray-900 dark:text-white sm:text-lg">
+                            {restaurant?.name || 'Restaurant'}
+                          </h3>
+                          <div className="mt-2 flex items-center gap-2">
+                            <MapPin className="h-3 w-3 flex-shrink-0 text-blue-600 dark:text-blue-400 sm:h-4 sm:w-4" />
+                            <p className="text-xs font-semibold text-blue-700 dark:text-blue-300 sm:text-sm">
+                              {restaurant?.area?.name || 'Area'}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
 
-              <div className="space-y-2 sm:space-y-3">
-                {order.items && order.items.length > 0 ? (
-                  <>
-                    {order.items.map((item) => {
-                      const isChecked = item.is_checked || false;
-                      const isLoading = isTogglingCheck === item.id;
-                      return (
-                        <div
-                          key={item.id}
-                          className="overflow-hidden rounded-lg border border-gray-200 transition-shadow hover:shadow-md dark:border-gray-700 dark:bg-gray-700/50"
-                        >
-                          {/* Item Header dengan Checkbox */}
+                    {/* Items List */}
+                    <div className="space-y-2 sm:space-y-3">
+                      {items.map((item) => {
+                        const isChecked = item.is_checked || false;
+                        const isLoading = isTogglingCheck === item.id;
+                        return (
                           <div
-                            className={`flex cursor-pointer items-center justify-between gap-2 p-3 sm:p-4 ${
-                              isChecked
-                                ? 'bg-emerald-50 dark:bg-emerald-900/20'
-                                : ''
-                            }`}
+                            key={item.id}
+                            className="overflow-hidden rounded-lg border border-gray-200 transition-shadow hover:shadow-md dark:border-gray-700 dark:bg-gray-700/50"
                           >
-                            <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
-                              <button
-                                onClick={() =>
-                                  toggleItemCheck(item.id)
-                                }
-                                disabled={isLoading}
-                                className="flex-shrink-0 rounded-lg p-1 transition-colors hover:bg-gray-100 disabled:opacity-50 dark:hover:bg-gray-700"
-                              >
-                                {isLoading ? (
-                                  <Loader2 className="h-5 w-5 animate-spin text-blue-600 sm:h-6 sm:w-6" />
-                                ) : isChecked ? (
-                                  <CheckCircle2 className="h-5 w-5 text-emerald-600 sm:h-6 sm:w-6" />
-                                ) : (
-                                  <Circle className="h-5 w-5 text-gray-400 sm:h-6 sm:w-6" />
-                                )}
-                              </button>
-                              <span className="flex-shrink-0 whitespace-nowrap rounded bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 sm:text-sm">
-                                x{item.quantity}
-                              </span>
-                              <div className="min-w-0 flex-1">
-                                <p
-                                  className={`truncate text-sm font-semibold sm:text-base ${
-                                    isChecked
-                                      ? 'text-emerald-700 line-through dark:text-emerald-300'
-                                      : 'text-gray-900 dark:text-white'
-                                  }`}
+                            {/* Item Header dengan Checkbox */}
+                            <div
+                              className={`flex cursor-pointer items-center justify-between gap-2 p-3 sm:p-4 ${
+                                isChecked
+                                  ? 'bg-emerald-50 dark:bg-emerald-900/20'
+                                  : ''
+                              }`}
+                            >
+                              <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
+                                <button
+                                  onClick={() =>
+                                    toggleItemCheck(item.id)
+                                  }
+                                  disabled={isLoading}
+                                  className="flex-shrink-0 rounded-lg p-1 transition-colors hover:bg-gray-100 disabled:opacity-50 dark:hover:bg-gray-700"
                                 >
-                                  {item.menu?.name || 'Item'}
-                                </p>
-                                <p className="text-xs text-gray-500 dark:text-gray-400 sm:text-sm">
-                                  Rp{' '}
-                                  {parseInt(
-                                    item.price
-                                  ).toLocaleString('id-ID')}{' '}
-                                  / item
+                                  {isLoading ? (
+                                    <Loader2 className="h-5 w-5 animate-spin text-blue-600 sm:h-6 sm:w-6" />
+                                  ) : isChecked ? (
+                                    <CheckCircle2 className="h-5 w-5 text-emerald-600 sm:h-6 sm:w-6" />
+                                  ) : (
+                                    <Circle className="h-5 w-5 text-gray-400 sm:h-6 sm:w-6" />
+                                  )}
+                                </button>
+                                <span className="flex-shrink-0 whitespace-nowrap rounded bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 sm:text-sm">
+                                  x{item.quantity}
+                                </span>
+                                <div className="min-w-0 flex-1">
+                                  <p
+                                    className={`truncate text-sm font-semibold sm:text-base ${
+                                      isChecked
+                                        ? 'text-emerald-700 line-through dark:text-emerald-300'
+                                        : 'text-gray-900 dark:text-white'
+                                    }`}
+                                  >
+                                    {item.menu?.name || 'Item'}
+                                  </p>
+                                  <p className="text-xs text-gray-500 dark:text-gray-400 sm:text-sm">
+                                    Rp{' '}
+                                    {parseInt(
+                                      item.price
+                                    ).toLocaleString('id-ID')}{' '}
+                                    / item
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="ml-2 flex flex-shrink-0 items-center gap-2">
+                                <p className="min-w-fit text-right text-xs font-bold text-gray-900 dark:text-white sm:text-sm">
+                                  {formatCurrency(
+                                    parseInt(item.price) *
+                                      item.quantity
+                                  )}
                                 </p>
                               </div>
                             </div>
-                            <div className="ml-2 flex flex-shrink-0 items-center gap-2">
-                              <p className="min-w-fit text-right text-xs font-bold text-gray-900 dark:text-white sm:text-sm">
-                                {formatCurrency(
-                                  parseInt(item.price) * item.quantity
-                                )}
-                              </p>
-                            </div>
-                          </div>
 
-                          {/* Item Notes */}
-                          {item.notes && (
-                            <div className="border-t border-gray-200 bg-blue-50 px-3 py-3 dark:border-gray-700 dark:bg-blue-900/20 sm:px-4 sm:py-3">
-                              <p className="mb-1 text-xs font-semibold uppercase text-blue-900 dark:text-blue-300">
-                                📝 Catatan Item
-                              </p>
-                              <p className="break-words text-xs text-blue-800 dark:text-blue-200 sm:text-sm">
-                                {item.notes}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-
-                    {/* Total */}
-                    <div className="mt-4 flex flex-col gap-2 rounded-lg border-t-2 border-gray-200 bg-gradient-to-r from-blue-50 to-blue-50 p-4 dark:border-gray-700 dark:from-blue-900/20 dark:to-blue-900/20 sm:mt-6 sm:flex-row sm:items-center sm:justify-between">
-                      <span className="text-base font-bold text-gray-900 dark:text-white sm:text-lg">
-                        Total Pesanan:
-                      </span>
-                      <span className="text-xl font-bold text-blue-600 dark:text-blue-400 sm:text-2xl">
-                        {formatCurrency(order.total_price)}
-                      </span>
-                    </div>
-
-                    {/* Complete Order Button */}
-                    {order.order_status === 'processing' &&
-                      order.status === 'paid' && (
-                        <div className="mt-6 space-y-3">
-                          {submitError && (
-                            <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-800 dark:bg-red-900/20">
-                              <AlertCircle className="h-4 w-4 flex-shrink-0 text-red-600 dark:text-red-400" />
-                              <p className="text-xs text-red-800 dark:text-red-300 sm:text-sm">
-                                {submitError}
-                              </p>
-                            </div>
-                          )}
-                          <button
-                            onClick={handleCompleteOrder}
-                            disabled={
-                              !allItemsChecked || isSubmitting
-                            }
-                            className={`w-full rounded-lg px-4 py-3 font-semibold text-white transition-all sm:rounded-xl ${
-                              allItemsChecked && !isSubmitting
-                                ? 'bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-700 dark:hover:bg-emerald-600'
-                                : 'cursor-not-allowed bg-gray-400 dark:bg-gray-600'
-                            }`}
-                          >
-                            {isSubmitting ? (
-                              <span className="flex items-center justify-center gap-2">
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                                Memproses...
-                              </span>
-                            ) : (
-                              <span className="flex items-center justify-center gap-2">
-                                <Check className="h-4 w-4" />
-                                Selesaikan Pesanan
-                              </span>
+                            {/* Item Notes */}
+                            {item.notes && (
+                              <div className="border-t border-gray-200 bg-blue-50 px-3 py-3 dark:border-gray-700 dark:bg-blue-900/20 sm:px-4 sm:py-3">
+                                <p className="mb-1 text-xs font-semibold uppercase text-blue-900 dark:text-blue-300">
+                                  📝 Catatan Item
+                                </p>
+                                <p className="break-words text-xs text-blue-800 dark:text-blue-200 sm:text-sm">
+                                  {item.notes}
+                                </p>
+                              </div>
                             )}
-                          </button>
-                          <p className="text-center text-xs text-gray-600 dark:text-gray-400">
-                            {allItemsChecked
-                              ? 'Semua item sudah dicek. Klik tombol di atas untuk menyelesaikan pesanan.'
-                              : `Centang ${
-                                  order.items?.filter(
-                                    (item) => !item.is_checked
-                                  ).length || 0
-                                } item lagi`}
-                          </p>
-                        </div>
-                      )}
-                  </>
-                ) : (
-                  <div className="py-8 text-center text-gray-500 dark:text-gray-400">
-                    <Package className="mx-auto mb-2 h-8 w-8 opacity-50" />
-                    <p className="text-sm">
-                      Tidak ada item dalam pesanan ini
-                    </p>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
-                )}
-              </div>
+                )
+              )}
             </div>
+
+            {/* Total */}
+            <div className="flex flex-col gap-2 rounded-lg border-t-2 border-gray-200 bg-gradient-to-r from-blue-50 to-blue-50 p-4 dark:border-gray-700 dark:from-blue-900/20 dark:to-blue-900/20 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+              <span className="text-base font-bold text-gray-900 dark:text-white sm:text-lg">
+                Total Pesanan:
+              </span>
+              <span className="text-xl font-bold text-blue-600 dark:text-blue-400 sm:text-2xl">
+                {formatCurrency(order.total_price)}
+              </span>
+            </div>
+
+            {/* Complete Order Button */}
+            {order.order_status === 'processing' &&
+              order.status === 'paid' && (
+                <div className="space-y-3">
+                  {submitError && (
+                    <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-800 dark:bg-red-900/20">
+                      <AlertCircle className="h-4 w-4 flex-shrink-0 text-red-600 dark:text-red-400" />
+                      <p className="text-xs text-red-800 dark:text-red-300 sm:text-sm">
+                        {submitError}
+                      </p>
+                    </div>
+                  )}
+                  <button
+                    onClick={handleCompleteOrder}
+                    disabled={!allItemsChecked || isSubmitting}
+                    className={`w-full rounded-lg px-4 py-3 font-semibold text-white transition-all sm:rounded-xl ${
+                      allItemsChecked && !isSubmitting
+                        ? 'bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-700 dark:hover:bg-emerald-600'
+                        : 'cursor-not-allowed bg-gray-400 dark:bg-gray-600'
+                    }`}
+                  >
+                    {isSubmitting ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Memproses...
+                      </span>
+                    ) : (
+                      <span className="flex items-center justify-center gap-2">
+                        <Check className="h-4 w-4" />
+                        Selesaikan Pesanan
+                      </span>
+                    )}
+                  </button>
+                  <p className="text-center text-xs text-gray-600 dark:text-gray-400">
+                    {allItemsChecked
+                      ? 'Semua item sudah dicek. Klik tombol di atas untuk menyelesaikan pesanan.'
+                      : `Selesaikan ${
+                          order.items?.filter(
+                            (item) => !item.is_checked
+                          ).length || 0
+                        } pesanan lagi`}
+                  </p>
+                </div>
+              )}
 
             {/* Special Notes */}
             {order.notes && (
