@@ -9,13 +9,11 @@ import {
   Copy,
   Check,
   MapPin,
-  Calendar,
   Clock,
   DollarSign,
   Package,
-  ChevronDown,
-  ChevronUp,
-  Edit3,
+  CheckCircle2,
+  Circle,
   PrinterIcon
 } from 'lucide-react';
 
@@ -26,6 +24,7 @@ interface OrderItem {
   quantity: number;
   price: string;
   notes: string;
+  is_checked: boolean;
   menu: {
     id: number;
     name: string;
@@ -66,7 +65,11 @@ export default function OrderDetailPage({
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copiedCode, setCopiedCode] = useState(false);
-  const [expandedItems, setExpandedItems] = useState<number[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isTogglingCheck, setIsTogglingCheck] = useState<
+    number | null
+  >(null);
 
   useEffect(() => {
     const checkAuth = () => {
@@ -155,12 +158,94 @@ export default function OrderDetailPage({
     }
   };
 
-  const toggleItemExpand = (itemId: number) => {
-    setExpandedItems((prev) =>
-      prev.includes(itemId)
-        ? prev.filter((id) => id !== itemId)
-        : [...prev, itemId]
-    );
+  const toggleItemCheck = async (itemId: number) => {
+    setIsTogglingCheck(itemId);
+    try {
+      const token =
+        typeof window !== 'undefined'
+          ? localStorage?.getItem('auth_token')
+          : null;
+      if (!token) return;
+
+      const response = await fetch(
+        `http://localhost:8000/api/admin/orders/${params.id}/items/${itemId}/toggle-check`,
+        {
+          method: 'PUT',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      if (data.success) {
+        await fetchOrder();
+      }
+    } catch (error) {
+      console.error('Error toggling item check:', error);
+    } finally {
+      setIsTogglingCheck(null);
+    }
+  };
+
+  const allItemsChecked =
+    order?.items &&
+    order.items.length > 0 &&
+    order.items.every((item) => item.is_checked);
+
+  const handleCompleteOrder = async () => {
+    if (!allItemsChecked) {
+      setSubmitError('Mohon centang semua item terlebih dahulu');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setSubmitError(null);
+
+    try {
+      const token =
+        typeof window !== 'undefined'
+          ? localStorage?.getItem('auth_token')
+          : null;
+      if (!token) return;
+
+      const response = await fetch(
+        `http://localhost:8000/api/admin/orders/${order?.id}/status`,
+        {
+          method: 'PUT',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            order_status: 'completed'
+          })
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      if (data.success) {
+        await fetchOrder();
+      } else {
+        setSubmitError(data.message || 'Gagal menyelesaikan pesanan');
+      }
+    } catch (error) {
+      console.error('Error completing order:', error);
+      setSubmitError(
+        'Gagal menyelesaikan pesanan. Silakan coba lagi.'
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (isLoading) {
@@ -360,7 +445,7 @@ export default function OrderDetailPage({
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           {/* Left Column - Main Content */}
           <div className="space-y-6 lg:col-span-2">
-            {/* Order Items */}
+            {/* Order Items dengan Checklist */}
             <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:rounded-xl sm:p-6">
               <div className="mb-4 flex items-center justify-between gap-2">
                 <div>
@@ -369,7 +454,10 @@ export default function OrderDetailPage({
                     Menu Pesanan
                   </h2>
                   <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 sm:text-sm">
-                    {order.items?.length || 0} item(s)
+                    {order.items?.length || 0} item(s) -{' '}
+                    {order.items?.filter((item) => item.is_checked)
+                      .length || 0}{' '}
+                    pesanan diselesaikan
                   </p>
                 </div>
               </div>
@@ -377,52 +465,83 @@ export default function OrderDetailPage({
               <div className="space-y-2 sm:space-y-3">
                 {order.items && order.items.length > 0 ? (
                   <>
-                    {order.items.map((item, index) => (
-                      <div
-                        key={item.id}
-                        className="overflow-hidden rounded-lg border border-gray-200 transition-shadow hover:shadow-md dark:border-gray-700 dark:bg-gray-700/50"
-                      >
-                        {/* Item Header */}
-                        <div className="flex items-center justify-between gap-2 p-3 sm:p-4">
-                          <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
-                            <span className="flex-shrink-0 whitespace-nowrap rounded bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 sm:text-sm">
-                              x{item.quantity}
-                            </span>
-                            <div className="min-w-0 flex-1">
-                              <p className="truncate text-sm font-semibold text-gray-900 dark:text-white sm:text-base">
-                                {item.menu?.name || 'Item'}
-                              </p>
-                              <p className="text-xs text-gray-500 dark:text-gray-400 sm:text-sm">
-                                Rp{' '}
-                                {parseInt(item.price).toLocaleString(
-                                  'id-ID'
-                                )}{' '}
-                                / item
+                    {order.items.map((item) => {
+                      const isChecked = item.is_checked || false;
+                      const isLoading = isTogglingCheck === item.id;
+                      return (
+                        <div
+                          key={item.id}
+                          className="overflow-hidden rounded-lg border border-gray-200 transition-shadow hover:shadow-md dark:border-gray-700 dark:bg-gray-700/50"
+                        >
+                          {/* Item Header dengan Checkbox */}
+                          <div
+                            className={`flex cursor-pointer items-center justify-between gap-2 p-3 sm:p-4 ${
+                              isChecked
+                                ? 'bg-emerald-50 dark:bg-emerald-900/20'
+                                : ''
+                            }`}
+                          >
+                            <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
+                              <button
+                                onClick={() =>
+                                  toggleItemCheck(item.id)
+                                }
+                                disabled={isLoading}
+                                className="flex-shrink-0 rounded-lg p-1 transition-colors hover:bg-gray-100 disabled:opacity-50 dark:hover:bg-gray-700"
+                              >
+                                {isLoading ? (
+                                  <Loader2 className="h-5 w-5 animate-spin text-blue-600 sm:h-6 sm:w-6" />
+                                ) : isChecked ? (
+                                  <CheckCircle2 className="h-5 w-5 text-emerald-600 sm:h-6 sm:w-6" />
+                                ) : (
+                                  <Circle className="h-5 w-5 text-gray-400 sm:h-6 sm:w-6" />
+                                )}
+                              </button>
+                              <span className="flex-shrink-0 whitespace-nowrap rounded bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 sm:text-sm">
+                                x{item.quantity}
+                              </span>
+                              <div className="min-w-0 flex-1">
+                                <p
+                                  className={`truncate text-sm font-semibold sm:text-base ${
+                                    isChecked
+                                      ? 'text-emerald-700 line-through dark:text-emerald-300'
+                                      : 'text-gray-900 dark:text-white'
+                                  }`}
+                                >
+                                  {item.menu?.name || 'Item'}
+                                </p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 sm:text-sm">
+                                  Rp{' '}
+                                  {parseInt(
+                                    item.price
+                                  ).toLocaleString('id-ID')}{' '}
+                                  / item
+                                </p>
+                              </div>
+                            </div>
+                            <div className="ml-2 flex flex-shrink-0 items-center gap-2">
+                              <p className="min-w-fit text-right text-xs font-bold text-gray-900 dark:text-white sm:text-sm">
+                                {formatCurrency(
+                                  parseInt(item.price) * item.quantity
+                                )}
                               </p>
                             </div>
                           </div>
-                          <div className="ml-2 flex flex-shrink-0 items-center gap-2">
-                            <p className="min-w-fit text-right text-xs font-bold text-gray-900 dark:text-white sm:text-sm">
-                              {formatCurrency(
-                                parseInt(item.price) * item.quantity
-                              )}
-                            </p>
-                          </div>
-                        </div>
 
-                        {/* Item Details - Always Visible */}
-                        {item.notes && (
-                          <div className="border-t border-gray-200 bg-blue-50 px-3 py-3 dark:border-gray-700 dark:bg-blue-900/20 sm:px-4 sm:py-3">
-                            <p className="mb-1 text-xs font-semibold uppercase text-blue-900 dark:text-blue-300">
-                              📝 Catatan Item
-                            </p>
-                            <p className="break-words text-xs text-blue-800 dark:text-blue-200 sm:text-sm">
-                              {item.notes}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                          {/* Item Notes */}
+                          {item.notes && (
+                            <div className="border-t border-gray-200 bg-blue-50 px-3 py-3 dark:border-gray-700 dark:bg-blue-900/20 sm:px-4 sm:py-3">
+                              <p className="mb-1 text-xs font-semibold uppercase text-blue-900 dark:text-blue-300">
+                                📝 Catatan Item
+                              </p>
+                              <p className="break-words text-xs text-blue-800 dark:text-blue-200 sm:text-sm">
+                                {item.notes}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
 
                     {/* Total */}
                     <div className="mt-4 flex flex-col gap-2 rounded-lg border-t-2 border-gray-200 bg-gradient-to-r from-blue-50 to-blue-50 p-4 dark:border-gray-700 dark:from-blue-900/20 dark:to-blue-900/20 sm:mt-6 sm:flex-row sm:items-center sm:justify-between">
@@ -433,6 +552,53 @@ export default function OrderDetailPage({
                         {formatCurrency(order.total_price)}
                       </span>
                     </div>
+
+                    {/* Complete Order Button */}
+                    {order.order_status === 'processing' &&
+                      order.status === 'paid' && (
+                        <div className="mt-6 space-y-3">
+                          {submitError && (
+                            <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-800 dark:bg-red-900/20">
+                              <AlertCircle className="h-4 w-4 flex-shrink-0 text-red-600 dark:text-red-400" />
+                              <p className="text-xs text-red-800 dark:text-red-300 sm:text-sm">
+                                {submitError}
+                              </p>
+                            </div>
+                          )}
+                          <button
+                            onClick={handleCompleteOrder}
+                            disabled={
+                              !allItemsChecked || isSubmitting
+                            }
+                            className={`w-full rounded-lg px-4 py-3 font-semibold text-white transition-all sm:rounded-xl ${
+                              allItemsChecked && !isSubmitting
+                                ? 'bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-700 dark:hover:bg-emerald-600'
+                                : 'cursor-not-allowed bg-gray-400 dark:bg-gray-600'
+                            }`}
+                          >
+                            {isSubmitting ? (
+                              <span className="flex items-center justify-center gap-2">
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                Memproses...
+                              </span>
+                            ) : (
+                              <span className="flex items-center justify-center gap-2">
+                                <Check className="h-4 w-4" />
+                                Selesaikan Pesanan
+                              </span>
+                            )}
+                          </button>
+                          <p className="text-center text-xs text-gray-600 dark:text-gray-400">
+                            {allItemsChecked
+                              ? 'Semua item sudah dicek. Klik tombol di atas untuk menyelesaikan pesanan.'
+                              : `Centang ${
+                                  order.items?.filter(
+                                    (item) => !item.is_checked
+                                  ).length || 0
+                                } item lagi`}
+                          </p>
+                        </div>
+                      )}
                   </>
                 ) : (
                   <div className="py-8 text-center text-gray-500 dark:text-gray-400">
@@ -530,6 +696,16 @@ export default function OrderDetailPage({
                     </span>
                     <span className="font-bold text-gray-900 dark:text-white">
                       {order.items?.length || 0}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-xs sm:text-sm">
+                    <span className="text-gray-600 dark:text-gray-400">
+                      Item Dicek
+                    </span>
+                    <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                      {order.items?.filter((item) => item.is_checked)
+                        .length || 0}
+                      /{order.items?.length || 0}
                     </span>
                   </div>
                   <div className="flex justify-between text-xs sm:text-sm">

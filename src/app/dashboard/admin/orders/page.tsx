@@ -117,7 +117,8 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] =
+    useState<string>('processing');
   const [dateFilter, setDateFilter] = useState<string>(
     new Date().toISOString().split('T')[0]
   );
@@ -202,10 +203,10 @@ export default function OrdersPage() {
   const data = filtered.slice((page - 1) * perPage, page * perPage);
 
   const statusOptions = [
-    { value: 'all', label: 'Semua Status', icon: null },
     { value: 'processing', label: 'Proses', icon: Clock },
     { value: 'completed', label: 'Selesai', icon: CheckCircle },
-    { value: 'canceled', label: 'Dibatalkan', icon: XCircle }
+    { value: 'canceled', label: 'Dibatalkan', icon: XCircle },
+    { value: 'all', label: 'Semua Status', icon: null }
   ];
 
   if (loading) {
@@ -278,58 +279,6 @@ export default function OrdersPage() {
             />
             <span>Refresh</span>
           </button>
-        </div>
-
-        {/* FILTER NAVBAR */}
-        <div className="mb-6 space-y-4 rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-          {/* Date Filter */}
-          <div>
-            <h3 className="mb-3 text-sm font-semibold text-gray-900 dark:text-white">
-              Filter Tanggal
-            </h3>
-            <div className="flex items-center gap-2">
-              <Calendar className="h-5 w-5 text-gray-400 dark:text-gray-500" />
-              <input
-                type="date"
-                value={dateFilter}
-                onChange={(e) => {
-                  setDateFilter(e.target.value);
-                  setPage(1);
-                }}
-                max={new Date().toISOString().split('T')[0]}
-                className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-blue-400"
-              />
-            </div>
-          </div>
-
-          {/* Status Filter */}
-          <div>
-            <h3 className="mb-3 text-sm font-semibold text-gray-900 dark:text-white">
-              Filter Status Pesanan
-            </h3>
-            <div className="flex flex-wrap gap-2">
-              {statusOptions.map((option) => {
-                const Icon = option.icon;
-                return (
-                  <button
-                    key={option.value}
-                    onClick={() => {
-                      setStatusFilter(option.value);
-                      setPage(1);
-                    }}
-                    className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all ${
-                      statusFilter === option.value
-                        ? 'bg-blue-600 text-white shadow-md dark:bg-blue-700'
-                        : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
-                    }`}
-                  >
-                    {Icon && <Icon className="h-4 w-4" />}
-                    {option.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
         </div>
 
         {/* RESULTS INFO */}
@@ -587,6 +536,63 @@ export default function OrdersPage() {
             </div>
           </div>
         )}
+
+        {/* FILTER SECTION - DI AKHIR */}
+        <div className="mt-12 border-t-2 border-gray-200 pt-8 dark:border-gray-700">
+          <h3 className="mb-6 text-lg font-bold text-gray-900 dark:text-white">
+            Filter Pesanan
+          </h3>
+          <div className="space-y-6 rounded-lg border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+            {/* Date Filter */}
+            <div>
+              <label className="mb-3 block text-sm font-semibold text-gray-900 dark:text-white">
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-5 w-5 text-gray-400 dark:text-gray-500" />
+                  Filter Tanggal
+                </div>
+              </label>
+              <input
+                type="date"
+                value={dateFilter}
+                onChange={(e) => {
+                  setDateFilter(e.target.value);
+                  setPage(1);
+                }}
+                max={new Date().toISOString().split('T')[0]}
+                className="rounded-lg border border-gray-300 px-4 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-blue-400"
+              />
+            </div>
+
+            {/* Status Filter */}
+            <div>
+              <label className="mb-4 block text-sm font-semibold text-gray-900 dark:text-white">
+                Filter Status Pesanan
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {statusOptions.map((option) => {
+                  const Icon = option.icon;
+                  return (
+                    <button
+                      key={option.value}
+                      onClick={() => {
+                        setStatusFilter(option.value);
+                        setPage(1);
+                      }}
+                      className={`inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all ${
+                        statusFilter === option.value
+                          ? 'bg-blue-600 text-white shadow-md dark:bg-blue-700'
+                          : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+                      }`}
+                    >
+                      {Icon && <Icon className="h-4 w-4" />}
+                      {option.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
       </main>
     </div>
   );
