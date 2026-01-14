@@ -264,7 +264,7 @@ export default function PaymentDetailPage({
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-white dark:bg-gray-900">
         <div className="text-center">
-          <Loader2 className="mx-auto mb-3 h-8 w-8 animate-spin text-blue-600" />
+          <Loader2 className="mx-auto mb-3 h-8 w-8 animate-spin text-blue-600 dark:text-blue-400" />
           <p className="text-sm text-gray-700 dark:text-gray-400">
             Memuat detail pembayaran...
           </p>
@@ -275,18 +275,20 @@ export default function PaymentDetailPage({
 
   if (!payment) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
-        <div className="w-full max-w-md rounded-xl border border-red-200 bg-red-50 p-6 text-center">
-          <AlertCircle className="mx-auto mb-4 h-12 w-12 text-red-500" />
-          <p className="mb-2 text-lg font-semibold text-gray-900">
+      <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 dark:bg-gray-900">
+        <div className="w-full max-w-md rounded-xl border border-red-200 bg-red-50 p-6 text-center dark:border-red-800 dark:bg-red-900/20">
+          <AlertCircle className="mx-auto mb-4 h-12 w-12 text-red-500 dark:text-red-400" />
+          <p className="mb-2 text-lg font-semibold text-gray-900 dark:text-white">
             Pembayaran Tidak Ditemukan
           </p>
           {error && (
-            <p className="mb-4 text-sm text-red-600">{error}</p>
+            <p className="mb-4 text-sm text-red-600 dark:text-red-400">
+              {error}
+            </p>
           )}
           <button
             onClick={() => router.back()}
-            className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700"
+            className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-600"
           >
             <ArrowLeft className="h-4 w-4" />
             Kembali
@@ -322,13 +324,13 @@ export default function PaymentDetailPage({
   const getPaymentStatusColor = (status: string): string => {
     switch (status) {
       case 'completed':
-        return 'bg-green-100 text-green-800';
+        return 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300';
       case 'pending':
-        return 'bg-amber-100 text-amber-800';
+        return 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300';
       case 'rejected':
-        return 'bg-red-100 text-red-800';
+        return 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300';
     }
   };
 
@@ -375,33 +377,33 @@ export default function PaymentDetailPage({
     switch (status) {
       case 'processing':
       case 'paid':
-        return 'text-blue-600';
+        return 'text-blue-600 dark:text-blue-400';
       case 'completed':
-        return 'text-green-600';
+        return 'text-green-600 dark:text-green-400';
       default:
-        return 'text-gray-600';
+        return 'text-gray-600 dark:text-gray-400';
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
-      <div className="sticky top-0 z-40 border-b border-gray-200 bg-white shadow-sm">
+      <div className="sticky top-0 z-40 border-b border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
         <div className="mx-auto max-w-6xl px-4 py-3 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
               <button
                 onClick={() => router.back()}
-                className="flex shrink-0 items-center justify-center rounded-lg p-2 text-gray-600 transition-colors hover:bg-gray-100"
+                className="flex shrink-0 items-center justify-center rounded-lg p-2 text-gray-600 transition-colors hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
                 title="Kembali"
               >
                 <ArrowLeft className="h-5 w-5" />
               </button>
               <div className="min-w-0">
-                <p className="text-xs text-gray-500 sm:text-sm">
+                <p className="text-xs text-gray-500 dark:text-gray-400 sm:text-sm">
                   Detail Transaksi
                 </p>
-                <h1 className="truncate text-base font-bold text-gray-900 sm:text-lg">
+                <h1 className="truncate text-base font-bold text-gray-900 dark:text-white sm:text-lg">
                   #{payment.transaction_id}
                 </h1>
               </div>
@@ -409,7 +411,7 @@ export default function PaymentDetailPage({
             <button
               onClick={handleRefresh}
               disabled={isRefreshing}
-              className="flex shrink-0 items-center justify-center rounded-lg bg-blue-600 p-2 text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+              className="flex shrink-0 items-center justify-center rounded-lg bg-blue-600 p-2 text-white transition-colors hover:bg-blue-700 disabled:opacity-50 dark:bg-blue-700 dark:hover:bg-blue-600"
               title="Refresh"
             >
               <RefreshCw
@@ -425,7 +427,7 @@ export default function PaymentDetailPage({
       <main className="mx-auto max-w-6xl px-4 py-4 sm:px-6 lg:px-8">
         {/* Error Alert */}
         {error && (
-          <div className="mb-4 flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">
+          <div className="mb-4 flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-4 text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400">
             <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
             <p className="text-sm font-medium">{error}</p>
           </div>
@@ -436,9 +438,9 @@ export default function PaymentDetailPage({
           {/* Left Column */}
           <div className="space-y-4 lg:col-span-2">
             {/* Status Card */}
-            <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-              <div className="border-b border-gray-200 bg-gradient-to-r from-slate-100 to-slate-50 px-6 py-4">
-                <h2 className="text-lg font-semibold text-gray-800">
+            <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+              <div className="border-b border-gray-200 bg-gradient-to-r from-slate-100 to-slate-50 px-6 py-4 dark:border-gray-700 dark:from-slate-800 dark:to-slate-900">
+                <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
                   Status Pembayaran
                 </h2>
               </div>
@@ -446,8 +448,8 @@ export default function PaymentDetailPage({
               <div className="p-6">
                 {isEditing ? (
                   <div className="space-y-4">
-                    <div className="rounded-lg bg-gradient-to-br from-gray-50 to-gray-100 p-4">
-                      <p className="mb-4 text-sm font-medium text-gray-900">
+                    <div className="rounded-lg bg-gradient-to-br from-gray-50 to-gray-100 p-4 dark:from-gray-700 dark:to-gray-800">
+                      <p className="mb-4 text-sm font-medium text-gray-900 dark:text-gray-100">
                         Pilih aksi untuk pembayaran ini:
                       </p>
                       <div className="grid gap-2 sm:grid-cols-2">
@@ -455,8 +457,8 @@ export default function PaymentDetailPage({
                           onClick={() => setEditStatus('completed')}
                           className={`rounded-lg px-4 py-3 text-sm font-medium transition-all ${
                             editStatus === 'completed'
-                              ? 'bg-green-600 text-white shadow-md'
-                              : 'border-2 border-green-200 bg-white text-green-700 hover:bg-green-50'
+                              ? 'bg-green-600 text-white shadow-md dark:bg-green-700'
+                              : 'border-2 border-green-200 bg-white text-green-700 hover:bg-green-50 dark:border-green-700 dark:bg-gray-900 dark:text-green-400 dark:hover:bg-green-900/20'
                           }`}
                         >
                           <Check className="mb-1 inline h-4 w-4" />
@@ -466,8 +468,8 @@ export default function PaymentDetailPage({
                           onClick={() => setEditStatus('rejected')}
                           className={`rounded-lg px-4 py-3 text-sm font-medium transition-all ${
                             editStatus === 'rejected'
-                              ? 'bg-red-600 text-white shadow-md'
-                              : 'border-2 border-red-200 bg-white text-red-700 hover:bg-red-50'
+                              ? 'bg-red-600 text-white shadow-md dark:bg-red-700'
+                              : 'border-2 border-red-200 bg-white text-red-700 hover:bg-red-50 dark:border-red-700 dark:bg-gray-900 dark:text-red-400 dark:hover:bg-red-900/20'
                           }`}
                         >
                           <X className="mb-1 inline h-4 w-4" />
@@ -479,7 +481,7 @@ export default function PaymentDetailPage({
                       <button
                         onClick={handleUpdateStatus}
                         disabled={isSaving}
-                        className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-green-700 disabled:opacity-50"
+                        className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-green-700 disabled:opacity-50 dark:bg-green-700 dark:hover:bg-green-600"
                       >
                         <Save className="h-4 w-4" />
                         {isSaving ? 'Menyimpan...' : 'Simpan'}
@@ -489,7 +491,7 @@ export default function PaymentDetailPage({
                           setIsEditing(false);
                           setEditStatus(payment.payment_status);
                         }}
-                        className="flex-1 rounded-lg border-2 border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                        className="flex-1 rounded-lg border-2 border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
                       >
                         Batal
                       </button>
@@ -497,9 +499,9 @@ export default function PaymentDetailPage({
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    <div className="rounded-lg bg-gradient-to-br from-blue-50 to-blue-100 p-4">
+                    <div className="rounded-lg bg-gradient-to-br from-blue-50 to-blue-100 p-4 dark:from-blue-900/30 dark:to-blue-800/30">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-gray-700">
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                           Status Saat Ini
                         </span>
                         <span
@@ -518,22 +520,22 @@ export default function PaymentDetailPage({
                     </div>
 
                     <div className="grid gap-4 sm:grid-cols-2">
-                      <div className="rounded-lg bg-gray-50 p-4">
-                        <p className="text-xs font-medium text-gray-600">
+                      <div className="rounded-lg bg-gray-50 p-4 dark:bg-gray-700/50">
+                        <p className="text-xs font-medium text-gray-600 dark:text-gray-400">
                           Metode Pembayaran
                         </p>
-                        <p className="mt-2 text-sm font-semibold text-gray-900">
+                        <p className="mt-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
                           {getPaymentMethodLabel(
                             payment.payment_method
                           )}
                         </p>
                       </div>
                       {payment.paid_at && (
-                        <div className="rounded-lg bg-gray-50 p-4">
-                          <p className="text-xs font-medium text-gray-600">
+                        <div className="rounded-lg bg-gray-50 p-4 dark:bg-gray-700/50">
+                          <p className="text-xs font-medium text-gray-600 dark:text-gray-400">
                             Waktu Pembayaran
                           </p>
-                          <p className="mt-2 text-sm font-semibold text-gray-900">
+                          <p className="mt-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
                             {formatDate(payment.paid_at)}
                           </p>
                         </div>
@@ -544,7 +546,7 @@ export default function PaymentDetailPage({
                       payment.payment_status !== 'completed' && (
                         <button
                           onClick={() => setIsEditing(true)}
-                          className="w-full rounded-lg bg-blue-600 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+                          className="w-full rounded-lg bg-blue-600 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600"
                         >
                           Verifikasi Pembayaran
                         </button>
@@ -556,15 +558,15 @@ export default function PaymentDetailPage({
 
             {/* Order Items */}
             {order.items && order.items.length > 0 && (
-              <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-                <div className="border-b border-gray-200 bg-gradient-to-r from-slate-100 to-slate-50 px-6 py-4">
-                  <h2 className="flex items-center gap-2 text-lg font-semibold text-gray-800">
+              <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                <div className="border-b border-gray-200 bg-gradient-to-r from-slate-100 to-slate-50 px-6 py-4 dark:border-gray-700 dark:from-slate-800 dark:to-slate-900">
+                  <h2 className="flex items-center gap-2 text-lg font-semibold text-gray-800 dark:text-gray-100">
                     <ShoppingCart className="h-5 w-5" />
                     Item Pesanan
                   </h2>
                 </div>
 
-                <div className="divide-y">
+                <div className="divide-y divide-gray-200 dark:divide-gray-700">
                   {order.items.map((item, idx) => {
                     const itemTotal =
                       parseInt(item.price) * item.quantity;
@@ -572,30 +574,30 @@ export default function PaymentDetailPage({
                     return (
                       <div
                         key={item.id}
-                        className="flex gap-4 p-4 transition-colors hover:bg-gray-50"
+                        className="flex gap-4 p-4 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/50"
                       >
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-sm font-bold text-blue-600">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-sm font-bold text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
                           {idx + 1}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="truncate font-semibold text-gray-900">
+                          <p className="truncate font-semibold text-gray-900 dark:text-gray-100">
                             {item.menu?.name || 'Item'}
                           </p>
-                          <div className="mt-2 space-y-1 text-xs text-gray-600">
+                          <div className="mt-2 space-y-1 text-xs text-gray-600 dark:text-gray-400">
                             <p>
                               Harga Satuan:{' '}
-                              <span className="font-medium text-gray-900">
+                              <span className="font-medium text-gray-900 dark:text-gray-200">
                                 Rp {formatCurrency(unitPrice)}
                               </span>
                             </p>
                             <p>
                               Jumlah:{' '}
-                              <span className="font-semibold text-gray-900">
+                              <span className="font-semibold text-gray-900 dark:text-gray-200">
                                 {item.quantity} x
                               </span>
                             </p>
                             {item.notes && (
-                              <p className="text-gray-500">
+                              <p className="text-gray-500 dark:text-gray-400">
                                 Catatan:{' '}
                                 <span className="italic">
                                   {item.notes}
@@ -605,10 +607,10 @@ export default function PaymentDetailPage({
                           </div>
                         </div>
                         <div className="shrink-0 text-right">
-                          <p className="mb-1 text-xs text-gray-600">
+                          <p className="mb-1 text-xs text-gray-600 dark:text-gray-400">
                             Subtotal
                           </p>
-                          <p className="text-lg font-bold text-blue-600">
+                          <p className="text-lg font-bold text-blue-600 dark:text-blue-400">
                             Rp {formatCurrency(itemTotal)}
                           </p>
                         </div>
@@ -621,9 +623,9 @@ export default function PaymentDetailPage({
 
             {/* Proof Image */}
             {payment.proof_image && (
-              <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-                <div className="border-b border-gray-200 bg-gradient-to-r from-slate-100 to-slate-50 px-6 py-4">
-                  <h2 className="text-lg font-semibold text-gray-800">
+              <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                <div className="border-b border-gray-200 bg-gradient-to-r from-slate-100 to-slate-50 px-6 py-4 dark:border-gray-700 dark:from-slate-800 dark:to-slate-900">
+                  <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
                     Bukti Pembayaran
                   </h2>
                 </div>
@@ -636,7 +638,7 @@ export default function PaymentDetailPage({
                       const target = e.target as HTMLImageElement;
                       target.alt = 'Gambar tidak dapat dimuat';
                       target.className =
-                        'w-full rounded-lg object-cover bg-gray-200';
+                        'w-full rounded-lg object-cover bg-gray-200 dark:bg-gray-700';
                     }}
                   />
                 </div>
@@ -647,9 +649,9 @@ export default function PaymentDetailPage({
           {/* Right Column */}
           <div className="space-y-4">
             {/* Order Summary Card */}
-            <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-              <div className="border-b border-gray-200 bg-gradient-to-r from-slate-100 to-slate-50 px-6 py-4">
-                <h2 className="flex items-center gap-2 text-lg font-semibold text-gray-800">
+            <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+              <div className="border-b border-gray-200 bg-gradient-to-r from-slate-100 to-slate-50 px-6 py-4 dark:border-gray-700 dark:from-slate-800 dark:to-slate-900">
+                <h2 className="flex items-center gap-2 text-lg font-semibold text-gray-800 dark:text-gray-100">
                   <FileText className="h-5 w-5" />
                   Ringkasan Pesanan
                 </h2>
@@ -657,32 +659,32 @@ export default function PaymentDetailPage({
 
               <div className="space-y-4 p-6">
                 <div>
-                  <p className="text-xs font-medium text-gray-600">
+                  <p className="text-xs font-medium text-gray-600 dark:text-gray-400">
                     Kode Order
                   </p>
-                  <p className="mt-1 text-lg font-bold text-gray-900">
+                  <p className="mt-1 text-lg font-bold text-gray-900 dark:text-gray-100">
                     #{order.order_code}
                   </p>
                 </div>
 
                 <div>
-                  <p className="text-xs font-medium text-gray-600">
+                  <p className="text-xs font-medium text-gray-600 dark:text-gray-400">
                     Total Harga
                   </p>
-                  <p className="mt-1 text-2xl font-bold text-blue-600">
+                  <p className="mt-1 text-2xl font-bold text-blue-600 dark:text-blue-400">
                     Rp {formatCurrency(order.total_price)}
                   </p>
                 </div>
 
-                <div className="space-y-3 border-t border-gray-200 pt-4">
+                <div className="space-y-3 border-t border-gray-200 pt-4 dark:border-gray-700">
                   {order.area && (
                     <div className="flex items-start gap-3">
-                      <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
+                      <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-gray-400 dark:text-gray-500" />
                       <div className="min-w-0">
-                        <p className="text-xs font-medium text-gray-600">
+                        <p className="text-xs font-medium text-gray-600 dark:text-gray-400">
                           Area
                         </p>
-                        <p className="mt-1 truncate text-sm font-semibold text-gray-900">
+                        <p className="mt-1 truncate text-sm font-semibold text-gray-900 dark:text-gray-100">
                           {order.area.name}
                         </p>
                       </div>
@@ -691,12 +693,12 @@ export default function PaymentDetailPage({
 
                   {order.restaurant && (
                     <div className="flex items-start gap-3">
-                      <Store className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
+                      <Store className="mt-0.5 h-4 w-4 shrink-0 text-gray-400 dark:text-gray-500" />
                       <div className="min-w-0">
-                        <p className="text-xs font-medium text-gray-600">
+                        <p className="text-xs font-medium text-gray-600 dark:text-gray-400">
                           Restoran
                         </p>
-                        <p className="mt-1 truncate text-sm font-semibold text-gray-900">
+                        <p className="mt-1 truncate text-sm font-semibold text-gray-900 dark:text-gray-100">
                           {order.restaurant.name}
                         </p>
                       </div>
@@ -705,13 +707,13 @@ export default function PaymentDetailPage({
                 </div>
 
                 <div>
-                  <p className="text-xs font-medium text-gray-600">
+                  <p className="text-xs font-medium text-gray-600 dark:text-gray-400">
                     Status Pesanan
                   </p>
                   <p
                     className={`mt-1 inline-block rounded-lg px-3 py-1 text-sm font-semibold ${getOrderStatusColor(
                       order.status
-                    )} bg-blue-50`}
+                    )} bg-blue-50 dark:bg-blue-900/30`}
                   >
                     {getOrderStatusLabel(order.status)}
                   </p>
@@ -720,9 +722,9 @@ export default function PaymentDetailPage({
             </div>
 
             {/* Customer Info */}
-            <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-              <div className="border-b border-gray-200 bg-gradient-to-r from-slate-100 to-slate-50 px-6 py-4">
-                <h2 className="flex items-center gap-2 text-lg font-semibold text-gray-800">
+            <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+              <div className="border-b border-gray-200 bg-gradient-to-r from-slate-100 to-slate-50 px-6 py-4 dark:border-gray-700 dark:from-slate-800 dark:to-slate-900">
+                <h2 className="flex items-center gap-2 text-lg font-semibold text-gray-800 dark:text-gray-100">
                   <User className="h-5 w-5" />
                   Pelanggan
                 </h2>
@@ -730,30 +732,30 @@ export default function PaymentDetailPage({
 
               <div className="space-y-4 p-6">
                 <div>
-                  <p className="text-xs font-medium text-gray-600">
+                  <p className="text-xs font-medium text-gray-600 dark:text-gray-400">
                     Nama
                   </p>
-                  <p className="mt-1 truncate font-semibold text-gray-900">
+                  <p className="mt-1 truncate font-semibold text-gray-900 dark:text-gray-100">
                     {order.user.name}
                   </p>
                 </div>
 
                 <div>
-                  <p className="flex items-center gap-2 text-xs font-medium text-gray-600">
+                  <p className="flex items-center gap-2 text-xs font-medium text-gray-600 dark:text-gray-400">
                     <Mail className="h-3.5 w-3.5" />
                     Email
                   </p>
-                  <p className="mt-1 truncate text-sm text-gray-900">
+                  <p className="mt-1 truncate text-sm text-gray-900 dark:text-gray-100">
                     {order.user.email}
                   </p>
                 </div>
 
                 <div>
-                  <p className="flex items-center gap-2 text-xs font-medium text-gray-600">
+                  <p className="flex items-center gap-2 text-xs font-medium text-gray-600 dark:text-gray-400">
                     <Phone className="h-3.5 w-3.5" />
                     Telepon
                   </p>
-                  <p className="mt-1 font-semibold text-gray-900">
+                  <p className="mt-1 font-semibold text-gray-900 dark:text-gray-100">
                     {order.user.phone}
                   </p>
                 </div>
@@ -762,9 +764,9 @@ export default function PaymentDetailPage({
 
             {/* Notes */}
             {(payment.notes || order.notes) && (
-              <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-                <div className="border-b border-gray-200 bg-gradient-to-r from-blue-100 to-blue-50 px-6 py-4">
-                  <h2 className="text-lg font-semibold text-gray-800">
+              <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                <div className="border-b border-gray-200 bg-gradient-to-r from-blue-100 to-blue-50 px-6 py-4 dark:border-gray-700 dark:from-blue-900/30 dark:to-blue-800/30">
+                  <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
                     Catatan
                   </h2>
                 </div>
@@ -772,10 +774,10 @@ export default function PaymentDetailPage({
                 <div className="space-y-3 p-6">
                   {payment.notes && (
                     <div>
-                      <p className="text-xs font-semibold text-blue-700">
+                      <p className="text-xs font-semibold text-blue-700 dark:text-blue-400">
                         Catatan Pembayaran
                       </p>
-                      <p className="mt-1 text-sm text-gray-700">
+                      <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">
                         {payment.notes}
                       </p>
                     </div>
@@ -784,14 +786,14 @@ export default function PaymentDetailPage({
                     <div
                       className={
                         payment.notes
-                          ? 'border-t border-gray-200 pt-3'
+                          ? 'border-t border-gray-200 pt-3 dark:border-gray-700'
                           : ''
                       }
                     >
-                      <p className="text-xs font-semibold text-blue-700">
+                      <p className="text-xs font-semibold text-blue-700 dark:text-blue-400">
                         Catatan Pesanan
                       </p>
-                      <p className="mt-1 text-sm text-gray-700">
+                      <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">
                         {order.notes}
                       </p>
                     </div>
