@@ -613,43 +613,6 @@ const Navbar = () => {
                   {isAdmin && (
                     <>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem asChild>
-                        <Link
-                          href="/dashboard/admin"
-                          className="cursor-pointer"
-                        >
-                          <BarChart3 className="mr-2 h-4 w-4" />
-                          Dashboard
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link
-                          href="/dashboard/admin/orders"
-                          className="cursor-pointer"
-                        >
-                          <ShoppingCart className="mr-2 h-4 w-4" />
-                          Pesanan
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link
-                          href="/dashboard/admin/payments"
-                          className="cursor-pointer"
-                        >
-                          <CreditCard className="mr-2 h-4 w-4" />
-                          Pembayaran
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link
-                          href="/dashboard/admin/statistics"
-                          className="cursor-pointer"
-                        >
-                          <BarChart3 className="mr-2 h-4 w-4" />
-                          Statistik
-                        </Link>
-                      </DropdownMenuItem>
-
                       {/* Superadmin Only */}
                       {isSuperAdmin && (
                         <>
