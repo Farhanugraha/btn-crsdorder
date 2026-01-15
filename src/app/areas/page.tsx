@@ -23,10 +23,12 @@ export default function AreasPage() {
     fetchAreas();
   }, []);
 
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+
   const fetchAreas = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch('http://localhost:8000/api/areas');
+      const response = await fetch(`${apiUrl}/api/areas`);
       const result = await response.json();
 
       if (result.success) {

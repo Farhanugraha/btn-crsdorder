@@ -41,11 +41,13 @@ export default function RestaurantsByAreaPage() {
     fetchData();
   }, [areaId]);
 
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+
   const fetchData = async () => {
     try {
       setIsLoading(true);
       const response = await fetch(
-        `http://localhost:8000/api/restaurants/area/${areaId}`
+        `${apiUrl}/api/restaurants/area/${areaId}`
       );
       const result = await response.json();
 
