@@ -75,6 +75,7 @@ const OrderDetailPage = () => {
   const [isCancelling, setIsCancelling] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
   useEffect(() => {
     setMounted(true);
@@ -100,7 +101,7 @@ const OrderDetailPage = () => {
       }
 
       const response = await fetch(
-        `http://localhost:8000/api/orders/${orderId}`,
+        `${apiUrl}/api/orders/${orderId}`,
         {
           method: 'GET',
           headers: {
@@ -161,7 +162,7 @@ const OrderDetailPage = () => {
       for (const restoId of restaurantIdArray) {
         try {
           const response = await fetch(
-            `http://localhost:8000/api/restaurants/${restoId}`,
+            `${apiUrl}/api/restaurants/${restoId}`,
             {
               headers: {
                 Authorization: `Bearer ${token}`,
@@ -204,7 +205,7 @@ const OrderDetailPage = () => {
       }
 
       const response = await fetch(
-        `http://localhost:8000/api/orders/${order.id}/cancel`,
+        `${apiUrl}/api/orders/${order.id}/cancel`,
         {
           method: 'POST',
           headers: {

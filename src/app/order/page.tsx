@@ -75,17 +75,15 @@ const OrderListPage = () => {
         return;
       }
 
-      const response = await fetch(
-        'http://localhost:8000/api/orders',
-        {
-          method: 'GET',
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: 'application/json',
-            'Content-Type': 'application/json'
-          }
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+      const response = await fetch(`${apiUrl}/api/orders`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/json',
+          'Content-Type': 'application/json'
         }
-      );
+      });
 
       if (!response.ok) {
         if (response.status === 401) {
