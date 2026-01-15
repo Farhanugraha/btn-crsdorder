@@ -72,6 +72,7 @@ const RestaurantMenuPage = () => {
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const [areaId, setAreaId] = useState<number | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
   // Check login status
   useEffect(() => {
@@ -81,7 +82,6 @@ const RestaurantMenuPage = () => {
 
   useEffect(() => {
     if (!restaurantId) return;
-
     const fetchData = async () => {
       try {
         setIsLoading(true);
@@ -91,7 +91,7 @@ const RestaurantMenuPage = () => {
         setDialogOpen({});
 
         const response = await fetch(
-          `http://localhost:8000/api/restaurants/${restaurantId}`
+          `${apiUrl}/api/restaurants/${restaurantId}`
         );
         const result = await response.json();
 
@@ -156,18 +156,15 @@ const RestaurantMenuPage = () => {
         notes: noteText
       };
 
-      const response = await fetch(
-        'http://localhost:8000/api/cart/add-item',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-            Authorization: `Bearer ${token}`
-          },
-          body: JSON.stringify(payload)
-        }
-      );
+      const response = await fetch(`${apiUrl}/api/cart/add-item`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
 
       const data = await response.json();
 

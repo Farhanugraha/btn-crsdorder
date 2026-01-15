@@ -37,6 +37,7 @@ const RestaurantListPage = () => {
     Restaurant[]
   >([]);
   const [error, setError] = useState<string | null>(null);
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
   useEffect(() => {
     fetchAreas();
@@ -45,7 +46,7 @@ const RestaurantListPage = () => {
   const fetchAreas = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch('http://localhost:8000/api/areas');
+      const response = await fetch(`${apiUrl}/api/areas`);
       const result = await response.json();
 
       if (result.success) {
@@ -66,7 +67,7 @@ const RestaurantListPage = () => {
     try {
       setIsLoading(true);
       const response = await fetch(
-        `http://localhost:8000/api/restaurants/area/${areaId}`
+        `${apiUrl}/api/restaurants/area/${areaId}`
       );
       const result = await response.json();
 
