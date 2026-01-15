@@ -14,7 +14,6 @@ export default function EmailVerifyPage() {
   const [message, setMessage] = useState('');
 
   useEffect(() => {
-    // Ambil parameter dari URL yang dikirim backend
     const successParam = searchParams.get('success');
     const messageParam = searchParams.get('message');
 
@@ -28,7 +27,6 @@ export default function EmailVerifyPage() {
           'Gagal memverifikasi email. Link mungkin sudah expired.'
       );
     } else {
-      // Jika tidak ada parameter, tampilkan pesan default
       setSuccess(false);
       setMessage('Email belum diverifikasi.');
     }

@@ -89,17 +89,16 @@ const Register = () => {
         unit_kerja: data.unit_kerja || null
       };
 
-      const response = await fetch(
-        'http://localhost:8000/api/auth/register',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Accept: 'application/json'
-          },
-          body: JSON.stringify(payload)
-        }
-      );
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+
+      const response = await fetch(`${apiUrl}/api/auth/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
 
       const responseData = await response.json();
 

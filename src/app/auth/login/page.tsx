@@ -47,6 +47,8 @@ interface LoginResponse {
   errors?: Record<string, string[]>;
 }
 
+const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+
 const Login = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -90,20 +92,17 @@ const Login = () => {
     try {
       setSubmitting(true);
 
-      const response = await fetch(
-        'http://localhost:8000/api/auth/login',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Accept: 'application/json'
-          },
-          body: JSON.stringify({
-            email: data.email,
-            password: data.password
-          })
-        }
-      );
+      const response = await fetch(`${apiUrl}/api/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json'
+        },
+        body: JSON.stringify({
+          email: data.email,
+          password: data.password
+        })
+      });
 
       const responseData: LoginResponse = await response.json();
 

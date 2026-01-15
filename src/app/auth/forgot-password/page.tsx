@@ -43,12 +43,13 @@ const ForgotPasswordPage = () => {
     }
   });
 
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
   const onSubmit = async (data: FormType) => {
     try {
       setSubmitting(true);
 
       const response = await fetch(
-        'http://localhost:8000/api/auth/forgot-password',
+        `${apiUrl}/api/auth/forgot-password`,
         {
           method: 'POST',
           headers: {
