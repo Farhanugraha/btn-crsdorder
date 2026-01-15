@@ -78,8 +78,6 @@ interface Payment {
   order: OrderData;
 }
 
-const API_BASE_URL = 'http://localhost:8000/api';
-
 interface PageParams {
   id: string;
 }
@@ -98,6 +96,7 @@ export default function PaymentDetailPage({
   const [isSaving, setIsSaving] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
   useEffect(() => {
     const checkAuth = () => {
@@ -143,7 +142,7 @@ export default function PaymentDetailPage({
       }
 
       const response = await fetch(
-        `${API_BASE_URL}/admin/payments/${params.id}`,
+        `${apiUrl}/api/admin/payments/${params.id}`,
         {
           method: 'GET',
           headers: {
@@ -214,8 +213,8 @@ export default function PaymentDetailPage({
 
       const endpoint =
         editStatus === 'completed'
-          ? `${API_BASE_URL}/admin/payments/${payment.id}/confirm`
-          : `${API_BASE_URL}/admin/payments/${payment.id}/reject`;
+          ? `${apiUrl}/api/admin/payments/${payment.id}/confirm`
+          : `${apiUrl}/api/admin/payments/${payment.id}/reject`;
 
       const response = await fetch(endpoint, {
         method: 'PUT',

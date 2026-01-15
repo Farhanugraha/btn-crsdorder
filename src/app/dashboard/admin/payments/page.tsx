@@ -46,7 +46,7 @@ interface Payment {
   };
 }
 
-const API_BASE_URL = 'http://localhost:8000/api';
+const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
 function StatusBadge({
   status,
@@ -170,7 +170,7 @@ export default function PaymentsPage() {
       }
 
       const res = await fetch(
-        `${API_BASE_URL}/admin/payments?per_page=100`,
+        `${apiUrl}/api/admin/payments?per_page=100`,
         {
           method: 'GET',
           headers: {
