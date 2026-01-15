@@ -106,6 +106,8 @@ export default function AdminDashboard() {
     checkAuth();
   }, []);
 
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+
   const fetchDashboardData = async () => {
     try {
       const token =
@@ -114,16 +116,13 @@ export default function AdminDashboard() {
           : null;
       if (!token) return;
 
-      const response = await fetch(
-        'http://localhost:8000/api/admin/dashboard',
-        {
-          method: 'GET',
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
+      const response = await fetch(`${apiUrl}/api/admin/dashboard`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
-      );
+      });
 
       const data = await response.json();
       if (data.success && data.data) {
@@ -143,16 +142,13 @@ export default function AdminDashboard() {
           : null;
       if (!token) return;
 
-      const response = await fetch(
-        `http://localhost:8000/api/admin/orders`,
-        {
-          method: 'GET',
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
+      const response = await fetch(`${apiUrl}/api/admin/orders`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
-      );
+      });
 
       const data = await response.json();
       if (data.success && data.data) {

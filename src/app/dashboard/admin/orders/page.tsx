@@ -64,7 +64,8 @@ interface Order {
   areas: Area[];
 }
 
-const API_BASE_URL = 'http://localhost:8000/api';
+const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+console.log('API URL:', apiUrl);
 
 function StatusBadge({
   status,
@@ -170,7 +171,7 @@ export default function OrdersPage() {
 
   const fetchAreas = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/areas`);
+      const res = await fetch(`${apiUrl}/api/areas`);
       if (!res.ok) throw new Error('Failed to fetch areas');
 
       const data = await res.json();
@@ -198,7 +199,7 @@ export default function OrdersPage() {
         return;
       }
 
-      const res = await fetch(`${API_BASE_URL}/admin/orders`, {
+      const res = await fetch(`${apiUrl}/api/admin/orders`, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json'

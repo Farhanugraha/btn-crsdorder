@@ -83,6 +83,8 @@ export default function OrderDetailPage({
     number | null
   >(null);
 
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+
   useEffect(() => {
     const checkAuth = () => {
       const token =
@@ -126,7 +128,7 @@ export default function OrderDetailPage({
       if (!token) return;
 
       const response = await fetch(
-        `http://localhost:8000/api/admin/orders/${params.id}`,
+        `${apiUrl}/api/admin/orders/${params.id}`,
         {
           method: 'GET',
           headers: {
@@ -180,7 +182,7 @@ export default function OrderDetailPage({
       if (!token) return;
 
       const response = await fetch(
-        `http://localhost:8000/api/admin/orders/${params.id}/items/${itemId}/toggle-check`,
+        `${apiUrl}/api/admin/orders/${params.id}/items/${itemId}/toggle-check`,
         {
           method: 'PUT',
           headers: {
@@ -227,7 +229,7 @@ export default function OrderDetailPage({
       if (!token) return;
 
       const response = await fetch(
-        `http://localhost:8000/api/admin/orders/${order?.id}/status`,
+        `${apiUrl}/api/admin/orders/${order?.id}/status`,
         {
           method: 'PUT',
           headers: {

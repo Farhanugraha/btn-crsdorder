@@ -93,6 +93,7 @@ const CheckoutConfirmationPage = () => {
   const QRIS_CODE =
     'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=00020126360014ID.CO.QRISDDATA5204500753033606107' +
     '12345678906304F500';
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
   useEffect(() => {
     setMounted(true);
@@ -120,7 +121,7 @@ const CheckoutConfirmationPage = () => {
       }
 
       const response = await fetch(
-        `http://localhost:8000/api/orders/${orderId}`,
+        `${apiUrl}:8000/api/orders/${orderId}`,
         {
           method: 'GET',
           headers: {
@@ -184,7 +185,7 @@ const CheckoutConfirmationPage = () => {
       for (const restoId of Array.from(restaurantIds)) {
         try {
           const response = await fetch(
-            `http://localhost:8000/api/restaurants/${restoId}`,
+            `${apiUrl}/api/restaurants/${restoId}`,
             {
               headers: {
                 Authorization: `Bearer ${token}`,
@@ -271,7 +272,7 @@ const CheckoutConfirmationPage = () => {
       }
 
       const uploadResponse = await fetch(
-        `http://localhost:8000/api/payments/orders/${order.id}/upload-proof`,
+        `${apiUrl}/api/payments/orders/${order.id}/upload-proof`,
         {
           method: 'POST',
           headers: {
@@ -290,7 +291,7 @@ const CheckoutConfirmationPage = () => {
 
       // Step 2: Update status pembayaran menjadi PAID
       const statusResponse = await fetch(
-        `http://localhost:8000/api/orders/${order.id}/payment-status`,
+        `${apiUrl}/api/orders/${order.id}/payment-status`,
         {
           method: 'PUT',
           headers: {
@@ -349,7 +350,7 @@ const CheckoutConfirmationPage = () => {
       }
 
       const response = await fetch(
-        `http://localhost:8000/api/orders/${order.id}/cancel`,
+        `${apiUrl}/api/orders/${order.id}/cancel`,
         {
           method: 'POST',
           headers: {
