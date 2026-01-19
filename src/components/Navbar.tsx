@@ -407,6 +407,16 @@ const Navbar = () => {
                   Statistik
                 </Link>
 
+                <Link
+                  href="/dashboard/admin/reports"
+                  className={cn(
+                    buttonVariants({ variant: 'ghost' }),
+                    'text-sm'
+                  )}
+                >
+                  Laporan
+                </Link>
+
                 {/* Laporan & User Management - Hanya Superadmin */}
                 {isSuperAdmin && (
                   <>
@@ -521,6 +531,11 @@ const Navbar = () => {
                     <MenubarItem asChild>
                       <Link href="/dashboard/admin/statistics">
                         Statistik
+                      </Link>
+                    </MenubarItem>
+                    <MenubarItem asChild>
+                      <Link href="/dashboard/admin/reports">
+                        Laporan
                       </Link>
                     </MenubarItem>
 
