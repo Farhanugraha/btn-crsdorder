@@ -723,7 +723,6 @@ export default function OrderDetailPage({
               {/* Order Summary */}
               <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:rounded-xl sm:p-6">
                 <h3 className="mb-4 flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-gray-700 dark:text-gray-300 sm:text-sm">
-                  <DollarSign className="h-3 w-3 flex-shrink-0 sm:h-4 sm:w-4" />
                   Ringkasan
                 </h3>
                 <div className="space-y-3">

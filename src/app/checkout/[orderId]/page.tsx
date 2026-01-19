@@ -121,7 +121,7 @@ const CheckoutConfirmationPage = () => {
       }
 
       const response = await fetch(
-        `${apiUrl}:8000/api/orders/${orderId}`,
+        `${apiUrl}/api/orders/${orderId}`,
         {
           method: 'GET',
           headers: {

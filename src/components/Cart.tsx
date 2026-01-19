@@ -111,6 +111,8 @@ const CartComponent = () => {
     null
   );
 
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+
   useEffect(() => {
     setMounted(true);
     fetchCart();
@@ -154,7 +156,7 @@ const CartComponent = () => {
         return;
       }
 
-      const response = await fetch('http://localhost:8000/api/cart', {
+      const response = await fetch(`${apiUrl}/api/cart`, {
         headers: {
           Authorization: `Bearer ${token}`,
           Accept: 'application/json',
@@ -185,16 +187,13 @@ const CartComponent = () => {
         return false;
       }
 
-      const response = await fetch(
-        'http://localhost:8000/api/orders',
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: 'application/json',
-            'Content-Type': 'application/json'
-          }
+      const response = await fetch(`${apiUrl}/api/orders`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/json',
+          'Content-Type': 'application/json'
         }
-      );
+      });
 
       const data = await response.json();
 
@@ -222,7 +221,7 @@ const CartComponent = () => {
       setIsUpdating(true);
       const token = localStorage.getItem('auth_token');
       const response = await fetch(
-        `http://localhost:8000/api/cart/items/${itemId}`,
+        `${apiUrl}/api/cart/items/${itemId}`,
         {
           method: 'DELETE',
           headers: {
@@ -260,7 +259,7 @@ const CartComponent = () => {
       setIsUpdating(true);
       const token = localStorage.getItem('auth_token');
       const response = await fetch(
-        `http://localhost:8000/api/cart/items/${itemId}`,
+        `${apiUrl}/api/cart/items/${itemId}`,
         {
           method: 'PUT',
           headers: {
@@ -302,7 +301,7 @@ const CartComponent = () => {
       setIsUpdating(true);
       const token = localStorage.getItem('auth_token');
       const response = await fetch(
-        `http://localhost:8000/api/cart/items/${editingItemId}`,
+        `${apiUrl}/api/cart/items/${editingItemId}`,
         {
           method: 'PUT',
           headers: {
@@ -339,16 +338,13 @@ const CartComponent = () => {
     try {
       setIsUpdating(true);
       const token = localStorage.getItem('auth_token');
-      const response = await fetch(
-        `http://localhost:8000/api/cart/clear`,
-        {
-          method: 'DELETE',
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: 'application/json'
-          }
+      const response = await fetch(`${apiUrl}/api/cart/clear`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/json'
         }
-      );
+      });
 
       if (!response.ok) {
         toast.error('Gagal mengosongkan keranjang');
@@ -402,7 +398,7 @@ const CartComponent = () => {
 
       // Step 1: Create order
       const createOrderResponse = await fetch(
-        'http://localhost:8000/api/orders',
+        `${apiUrl}/api/orders`,
         {
           method: 'POST',
           headers: {
@@ -431,7 +427,7 @@ const CartComponent = () => {
         toast.success('Pesanan berhasil dibuat!');
 
         // Step 2: Clear cart
-        await fetch('http://localhost:8000/api/cart/clear', {
+        await fetch(`${apiUrl}/api/cart/clear`, {
           method: 'DELETE',
           headers: {
             Authorization: `Bearer ${token}`,

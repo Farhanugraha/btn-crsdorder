@@ -119,6 +119,8 @@ const Navbar = () => {
     }
   ];
 
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+
   // Filter menu berdasarkan role
   const getAvailableMenuItems = () => {
     if (!user) return [];
@@ -224,16 +226,13 @@ const Navbar = () => {
         return;
       }
 
-      const response = await fetch(
-        'http://localhost:8000/api/orders',
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: 'application/json',
-            'Content-Type': 'application/json'
-          }
+      const response = await fetch(`${apiUrl}/api/orders`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/json',
+          'Content-Type': 'application/json'
         }
-      );
+      });
 
       const data = await response.json();
       if (data.success && data.data && data.data.length > 0) {
@@ -259,16 +258,13 @@ const Navbar = () => {
         const token = localStorage.getItem('auth_token');
 
         if (token) {
-          const response = await fetch(
-            'http://localhost:8000/api/orders',
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-                Accept: 'application/json',
-                'Content-Type': 'application/json'
-              }
+          const response = await fetch(`${apiUrl}/api/orders`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              Accept: 'application/json',
+              'Content-Type': 'application/json'
             }
-          );
+          });
 
           const data = await response.json();
           if (data.success && data.data && data.data.length > 0) {
@@ -311,7 +307,7 @@ const Navbar = () => {
       }
 
       try {
-        await fetch('http://localhost:8000/api/auth/logout', {
+        await fetch(`${apiUrl}/api/auth/logout`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
