@@ -1,22 +1,23 @@
+// app/dashboard/admin/reports/page.tsx
+
 'use client';
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  FileText,
-  Download,
-  Calendar,
-  TrendingUp,
-  Users,
-  CreditCard,
-  ShoppingCart,
-  AlertCircle,
-  Loader2,
-  RefreshCw,
-  Filter,
-  CheckCircle2
-} from 'lucide-react';
+import { Loader2, RefreshCw } from 'lucide-react';
 
+// Import Components
+import { FilterCard } from '@/components/reports/FilterCard';
+import { Tabs } from '@/components/reports/Tabs';
+import { DashboardTab } from '@/components/reports/DashboardTab';
+import { BasicTab } from '@/components/reports/BasicTab';
+import { StatisticsTab } from '@/components/reports/StatisticsTab';
+import {
+  SuccessAlert,
+  ErrorAlert
+} from '@/components/reports/Alerts';
+
+// Types
 interface DashboardData {
   orders: {
     total: number;
@@ -81,6 +82,9 @@ type ReportTab = 'dashboard' | 'basic' | 'statistics';
 
 const ReportsPage = () => {
   const router = useRouter();
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+
+  // State Management
   const [activeTab, setActiveTab] = useState<ReportTab>('dashboard');
   const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
@@ -89,6 +93,7 @@ const ReportsPage = () => {
     null
   );
 
+  // Data State
   const [dashboardData, setDashboardData] =
     useState<DashboardData | null>(null);
   const [reportsData, setReportsData] = useState<ReportsData | null>(
@@ -97,14 +102,14 @@ const ReportsPage = () => {
   const [statisticsData, setStatisticsData] =
     useState<StatisticsData | null>(null);
 
+  // Filter State
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [exportFormat, setExportFormat] = useState<'csv' | 'pdf'>(
     'csv'
   );
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-
+  // Initialize dates on mount
   useEffect(() => {
     const today = new Date();
     const monthAgo = new Date(today);
@@ -123,7 +128,24 @@ const ReportsPage = () => {
     return () => clearTimeout(timer);
   }, []);
 
-  const fetchAllData = async (start: string, end: string) => {
+  /**
+   * Format currency to IDR
+   */
+  const formatCurrency = (value: number): string => {
+    return new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+      minimumFractionDigits: 0
+    }).format(value);
+  };
+
+  /**
+   * Fetch all data from API
+   */
+  const fetchAllData = async (
+    start: string,
+    end: string
+  ): Promise<void> => {
     try {
       setIsLoading(true);
       setError(null);
@@ -136,86 +158,18 @@ const ReportsPage = () => {
 
       if (!apiUrl) {
         setError('API tidak terkonfigurasi');
+        setIsLoading(false);
         return;
       }
 
-      // Fetch Dashboard
-      try {
-        const dashResponse = await fetch(
-          `${apiUrl}/api/admin/dashboard`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              Accept: 'application/json'
-            },
-            cache: 'no-cache'
-          }
-        );
+      // Fetch Dashboard Data
+      await fetchDashboard(token);
 
-        if (dashResponse.status === 401) {
-          router.push('/auth/login');
-          return;
-        }
+      // Fetch Reports Data
+      await fetchReports(token);
 
-        if (dashResponse.ok) {
-          const data = await dashResponse.json();
-          if (data.success && data.data) {
-            setDashboardData(data.data);
-          }
-        }
-      } catch (err) {
-        console.error('Dashboard fetch error:', err);
-      }
-
-      // Fetch Reports
-      try {
-        const reportsResponse = await fetch(
-          `${apiUrl}/api/admin/reports`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              Accept: 'application/json'
-            },
-            cache: 'no-cache'
-          }
-        );
-
-        if (reportsResponse.ok) {
-          const data = await reportsResponse.json();
-          if (data.success && data.data) {
-            setReportsData(data.data);
-          }
-        }
-      } catch (err) {
-        console.error('Reports fetch error:', err);
-      }
-
-      // Fetch Statistics
-      try {
-        const params = new URLSearchParams();
-        params.append('start_date', start);
-        params.append('end_date', end);
-
-        const statsResponse = await fetch(
-          `${apiUrl}/api/admin/statistics?${params.toString()}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              Accept: 'application/json'
-            },
-            cache: 'no-cache'
-          }
-        );
-
-        if (statsResponse.ok) {
-          const data = await statsResponse.json();
-          if (data.success && data.data) {
-            setStatisticsData(data.data);
-          }
-        }
-      } catch (err) {
-        console.error('Statistics fetch error:', err);
-      }
+      // Fetch Statistics Data
+      await fetchStatistics(token, start, end);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : 'Gagal memuat data'
@@ -225,7 +179,98 @@ const ReportsPage = () => {
     }
   };
 
-  const handleApplyFilter = async () => {
+  /**
+   * Fetch dashboard data
+   */
+  const fetchDashboard = async (token: string): Promise<void> => {
+    try {
+      const response = await fetch(`${apiUrl}/api/admin/dashboard`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/json'
+        },
+        cache: 'no-cache'
+      });
+
+      if (response.status === 401) {
+        router.push('/auth/login');
+        return;
+      }
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.data) {
+          setDashboardData(data.data);
+        }
+      }
+    } catch (err) {
+      console.error('Dashboard fetch error:', err);
+    }
+  };
+
+  /**
+   * Fetch reports data
+   */
+  const fetchReports = async (token: string): Promise<void> => {
+    try {
+      const response = await fetch(`${apiUrl}/api/admin/reports`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/json'
+        },
+        cache: 'no-cache'
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.data) {
+          setReportsData(data.data);
+        }
+      }
+    } catch (err) {
+      console.error('Reports fetch error:', err);
+    }
+  };
+
+  /**
+   * Fetch statistics data with date range
+   */
+  const fetchStatistics = async (
+    token: string,
+    start: string,
+    end: string
+  ): Promise<void> => {
+    try {
+      const params = new URLSearchParams();
+      params.append('start_date', start);
+      params.append('end_date', end);
+
+      const response = await fetch(
+        `${apiUrl}/api/admin/statistics?${params.toString()}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: 'application/json'
+          },
+          cache: 'no-cache'
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.data) {
+          setStatisticsData(data.data);
+        }
+      }
+    } catch (err) {
+      console.error('Statistics fetch error:', err);
+    }
+  };
+
+  /**
+   * Handle apply filter
+   */
+  const handleApplyFilter = (): void => {
     if (!startDate || !endDate) {
       setError('Silakan pilih tanggal awal dan akhir');
       return;
@@ -236,10 +281,13 @@ const ReportsPage = () => {
       return;
     }
 
-    await fetchAllData(startDate, endDate);
+    fetchAllData(startDate, endDate);
   };
 
-  const handleExport = async () => {
+  /**
+   * Handle export
+   */
+  const handleExport = (): void => {
     try {
       setIsExporting(true);
       setError(null);
@@ -261,33 +309,42 @@ const ReportsPage = () => {
     }
   };
 
-  const exportToCsv = () => {
-    let csv = 'Laporan Admin\n';
+  /**
+   * Export data as CSV
+   */
+  const exportToCsv = (): void => {
+    let csv = 'LAPORAN ADMIN\n';
     csv += `Periode: ${startDate} sampai ${endDate}\n`;
     csv += `Tanggal Export: ${new Date().toLocaleString(
       'id-ID'
     )}\n\n`;
 
+    // Dashboard Section
     if (dashboardData) {
       csv += '=== DASHBOARD ===\n';
-      csv += `Total Pesanan,${dashboardData.orders.total}\n`;
-      csv += `Pesanan Tertunda,${dashboardData.orders.pending}\n`;
-      csv += `Pesanan Diproses,${dashboardData.orders.processing}\n`;
-      csv += `Pesanan Selesai,${dashboardData.orders.completed}\n`;
-      csv += `Pesanan Dibatalkan,${dashboardData.orders.canceled}\n`;
+      csv += 'PESANAN\n';
+      csv += `Total,${dashboardData.orders.total}\n`;
+      csv += `Tertunda,${dashboardData.orders.pending}\n`;
+      csv += `Diproses,${dashboardData.orders.processing}\n`;
+      csv += `Selesai,${dashboardData.orders.completed}\n`;
+      csv += `Dibatalkan,${dashboardData.orders.canceled}\n\n`;
+      csv += 'PEMBAYARAN\n';
       csv += `Total Revenue,${dashboardData.payments.total_revenue}\n`;
-      csv += `Pembayaran Tertunda,${dashboardData.payments.pending_payments}\n`;
+      csv += `Tertunda,${dashboardData.payments.pending_payments}\n\n`;
+      csv += 'PENGGUNA\n';
       csv += `Total Pengguna,${dashboardData.users.total_users}\n`;
       csv += `Total Admin,${dashboardData.users.total_admins}\n\n`;
     }
 
+    // Reports Section
     if (reportsData) {
-      csv += '=== BASIC REPORTS ===\n';
+      csv += '=== LAPORAN DASAR ===\n';
       csv += `Total Pesanan,${reportsData.total_orders}\n`;
-      csv += `Total Pengguna Aktif,${reportsData.user_statistics.active_users}\n\n`;
+      csv += `Pengguna Aktif,${reportsData.user_statistics.active_users}\n\n`;
 
       if (reportsData.orders_by_status.length > 0) {
-        csv += '=== PESANAN BERDASARKAN STATUS ===\n';
+        csv += 'PESANAN BERDASARKAN STATUS\n';
+        csv += 'Status,Jumlah\n';
         reportsData.orders_by_status.forEach((item) => {
           csv += `${item.status},${item.total}\n`;
         });
@@ -295,7 +352,7 @@ const ReportsPage = () => {
       }
 
       if (reportsData.payment_summary.length > 0) {
-        csv += '=== RINGKASAN PEMBAYARAN ===\n';
+        csv += 'RINGKASAN PEMBAYARAN\n';
         csv += 'Status,Transaksi,Jumlah\n';
         reportsData.payment_summary.forEach((item) => {
           csv += `${item.status},${item.total},${item.total_amount}\n`;
@@ -304,14 +361,16 @@ const ReportsPage = () => {
       }
 
       if (reportsData.top_users.length > 0) {
-        csv += '=== TOP 10 PENGGUNA ===\n';
-        csv += 'Nama,Email,Jumlah Pesanan\n';
+        csv += 'TOP 10 PENGGUNA\n';
+        csv += 'Nama,Email,Pesanan\n';
         reportsData.top_users.forEach((user) => {
           csv += `"${user.name}","${user.email}",${user.orders_count}\n`;
         });
+        csv += '\n';
       }
     }
 
+    // Statistics Section
     if (statisticsData) {
       csv += '=== STATISTIK ===\n';
       csv += `Total Pesanan,${statisticsData.totalOrders}\n`;
@@ -321,6 +380,7 @@ const ReportsPage = () => {
       csv += `Pesanan Diproses,${statisticsData.processingOrders}\n`;
       csv += `Pesanan Dibatalkan,${statisticsData.canceledOrders}\n`;
       csv += `Pesanan Hari Ini,${statisticsData.todayOrders}\n`;
+      csv += `Revenue Hari Ini,${statisticsData.todayRevenue}\n`;
       csv += `Pertumbuhan Revenue,${statisticsData.revenueGrowth.toFixed(
         2
       )}%\n`;
@@ -331,43 +391,55 @@ const ReportsPage = () => {
 
     downloadFile(
       csv,
-      `report-${startDate}-to-${endDate}.csv`,
+      `laporan-${startDate}-ke-${endDate}.csv`,
       'text/csv'
     );
   };
 
-  const exportToPdf = () => {
+  /**
+   * Export data as PDF (Text format)
+   */
+  const exportToPdf = (): void => {
     let text = 'LAPORAN ADMIN\n';
     text += '='.repeat(80) + '\n';
     text += `Periode: ${startDate} sampai ${endDate}\n`;
     text += `Tanggal Export: ${new Date().toLocaleString('id-ID')}\n`;
+    text += `Waktu Pembuatan: ${new Date().toLocaleTimeString(
+      'id-ID'
+    )}\n`;
     text += '='.repeat(80) + '\n\n';
 
+    // Dashboard Section
     if (dashboardData) {
       text += 'DASHBOARD\n';
       text += '-'.repeat(80) + '\n';
-      text += `Total Pesanan: ${dashboardData.orders.total}\n`;
-      text += `Pesanan Tertunda: ${dashboardData.orders.pending}\n`;
-      text += `Pesanan Diproses: ${dashboardData.orders.processing}\n`;
-      text += `Pesanan Selesai: ${dashboardData.orders.completed}\n`;
-      text += `Pesanan Dibatalkan: ${dashboardData.orders.canceled}\n`;
-      text += `Total Revenue: ${formatCurrency(
+      text += 'PESANAN:\n';
+      text += `  Total: ${dashboardData.orders.total}\n`;
+      text += `  Tertunda: ${dashboardData.orders.pending}\n`;
+      text += `  Diproses: ${dashboardData.orders.processing}\n`;
+      text += `  Selesai: ${dashboardData.orders.completed}\n`;
+      text += `  Dibatalkan: ${dashboardData.orders.canceled}\n\n`;
+      text += 'PEMBAYARAN:\n';
+      text += `  Total Revenue: ${formatCurrency(
         dashboardData.payments.total_revenue
       )}\n`;
-      text += `Pembayaran Tertunda: ${dashboardData.payments.pending_payments}\n`;
-      text += `Total Pengguna: ${dashboardData.users.total_users}\n`;
-      text += `Total Admin: ${dashboardData.users.total_admins}\n\n`;
+      text += `  Tertunda: ${dashboardData.payments.pending_payments}\n\n`;
+      text += 'PENGGUNA:\n';
+      text += `  Total Pengguna: ${dashboardData.users.total_users}\n`;
+      text += `  Total Admin: ${dashboardData.users.total_admins}\n\n`;
     }
 
+    // Reports Section
     if (reportsData) {
-      text += 'BASIC REPORTS\n';
+      text += 'LAPORAN DASAR\n';
       text += '-'.repeat(80) + '\n';
       text += `Total Pesanan: ${reportsData.total_orders}\n`;
-      text += `Total Pengguna Aktif: ${reportsData.user_statistics.active_users}\n\n`;
+      text += `Pengguna Aktif: ${reportsData.user_statistics.active_users}\n\n`;
     }
 
+    // Statistics Section
     if (statisticsData) {
-      text += 'STATISTIK PERIODE\n';
+      text += 'STATISTIK\n';
       text += '-'.repeat(80) + '\n';
       text += `Total Pesanan: ${statisticsData.totalOrders}\n`;
       text += `Total Revenue: ${formatCurrency(
@@ -375,6 +447,13 @@ const ReportsPage = () => {
       )}\n`;
       text += `Rata-rata Nilai Pesanan: ${formatCurrency(
         statisticsData.averageOrderValue
+      )}\n`;
+      text += `Pesanan Selesai: ${statisticsData.completedOrders}\n`;
+      text += `Pesanan Diproses: ${statisticsData.processingOrders}\n`;
+      text += `Pesanan Dibatalkan: ${statisticsData.canceledOrders}\n`;
+      text += `Pesanan Hari Ini: ${statisticsData.todayOrders}\n`;
+      text += `Revenue Hari Ini: ${formatCurrency(
+        statisticsData.todayRevenue
       )}\n`;
       text += `Pertumbuhan Revenue: ${statisticsData.revenueGrowth.toFixed(
         2
@@ -386,16 +465,19 @@ const ReportsPage = () => {
 
     downloadFile(
       text,
-      `report-${startDate}-to-${endDate}.txt`,
+      `laporan-${startDate}-ke-${endDate}.txt`,
       'text/plain'
     );
   };
 
+  /**
+   * Download file utility
+   */
   const downloadFile = (
     content: string,
     fileName: string,
     type: string
-  ) => {
+  ): void => {
     const blob = new Blob([content], { type });
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -405,42 +487,7 @@ const ReportsPage = () => {
     window.URL.revokeObjectURL(url);
   };
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 0
-    }).format(value);
-  };
-
-  const StatBox = ({
-    title,
-    value,
-    icon: Icon,
-    color
-  }: {
-    title: string;
-    value: string | number;
-    icon: React.ReactNode;
-    color: string;
-  }) => (
-    <div className="flex flex-col rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex-1">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-            {title}
-          </p>
-          <p className="mt-2 text-2xl font-bold text-slate-900 dark:text-white">
-            {value}
-          </p>
-        </div>
-        <div className={`rounded-lg ${color} flex-shrink-0 p-2.5`}>
-          {Icon}
-        </div>
-      </div>
-    </div>
-  );
-
+  // Loading State
   if (isLoading) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-white dark:bg-gray-900">
@@ -457,7 +504,7 @@ const ReportsPage = () => {
   return (
     <div className="min-h-screen bg-slate-50 p-4 dark:bg-slate-900 sm:p-6">
       <div className="mx-auto max-w-7xl space-y-6">
-        {/* Header */}
+        {/* Header Section */}
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
           <div>
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white sm:text-3xl">
@@ -476,583 +523,58 @@ const ReportsPage = () => {
           </button>
         </div>
 
-        {/* Alerts */}
+        {/* Alerts Section */}
         {successMessage && (
-          <div className="flex items-center gap-3 rounded-lg border border-green-200 bg-green-50 p-4 dark:border-green-800 dark:bg-green-900/20">
-            <CheckCircle2 className="h-5 w-5 flex-shrink-0 text-green-600 dark:text-green-400" />
-            <p className="flex-1 text-sm font-medium text-green-800 dark:text-green-300">
-              {successMessage}
-            </p>
-            <button
-              onClick={() => setSuccessMessage(null)}
-              className="text-green-600 hover:text-green-800 dark:text-green-400"
-            >
-              ✕
-            </button>
-          </div>
+          <SuccessAlert
+            message={successMessage}
+            onClose={() => setSuccessMessage(null)}
+          />
         )}
 
         {error && (
-          <div className="flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-900/20">
-            <AlertCircle className="h-5 w-5 flex-shrink-0 text-red-600 dark:text-red-400" />
-            <p className="flex-1 text-sm font-medium text-red-800 dark:text-red-300">
-              {error}
-            </p>
-            <button
-              onClick={() => setError(null)}
-              className="text-red-600 hover:text-red-800 dark:text-red-400"
-            >
-              ✕
-            </button>
-          </div>
+          <ErrorAlert
+            message={error}
+            onClose={() => setError(null)}
+          />
         )}
 
         {/* Filter Card */}
-        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-          <h2 className="mb-4 flex items-center gap-2 text-lg font-bold text-slate-900 dark:text-white">
-            <Filter className="h-5 w-5" />
-            Filter & Export
-          </h2>
+        <FilterCard
+          startDate={startDate}
+          endDate={endDate}
+          exportFormat={exportFormat}
+          isExporting={isExporting}
+          onStartDateChange={setStartDate}
+          onEndDateChange={setEndDate}
+          onExportFormatChange={setExportFormat}
+          onApplyFilter={handleApplyFilter}
+          onExport={handleExport}
+          onRefresh={() => fetchAllData(startDate, endDate)}
+        />
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
-            <div>
-              <label className="mb-2 block text-xs font-semibold uppercase text-slate-600 dark:text-slate-400">
-                Tanggal Mulai
-              </label>
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                max={new Date().toISOString().split('T')[0]}
-                className="w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
-              />
-            </div>
+        {/* Tabs Navigation */}
+        <Tabs activeTab={activeTab} onTabChange={setActiveTab} />
 
-            <div>
-              <label className="mb-2 block text-xs font-semibold uppercase text-slate-600 dark:text-slate-400">
-                Tanggal Selesai
-              </label>
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                max={new Date().toISOString().split('T')[0]}
-                className="w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
-              />
-            </div>
-
-            <div>
-              <label className="mb-2 block text-xs font-semibold uppercase text-slate-600 dark:text-slate-400">
-                Format Export
-              </label>
-              <select
-                value={exportFormat}
-                onChange={(e) =>
-                  setExportFormat(e.target.value as 'csv' | 'pdf')
-                }
-                className="w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
-              >
-                <option value="csv">CSV</option>
-                <option value="pdf">PDF (Text)</option>
-              </select>
-            </div>
-
-            <button
-              onClick={handleApplyFilter}
-              className="mt-6 w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600"
-            >
-              Terapkan
-            </button>
-
-            <button
-              onClick={handleExport}
-              disabled={isExporting}
-              className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600"
-            >
-              <Download className="h-4 w-4" />
-              {isExporting ? 'Export...' : 'Export'}
-            </button>
-          </div>
-        </div>
-
-        {/* Tabs */}
-        <div className="border-b border-slate-200 dark:border-slate-700">
-          <div className="flex gap-1 rounded-t-lg bg-white dark:bg-slate-800">
-            {(
-              ['dashboard', 'basic', 'statistics'] as ReportTab[]
-            ).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`flex-1 border-b-2 px-4 py-3 text-center text-sm font-semibold transition-colors ${
-                  activeTab === tab
-                    ? 'border-blue-600 text-blue-600 dark:text-blue-400'
-                    : 'border-transparent text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
-                }`}
-              >
-                {tab === 'dashboard' && '📊 Dashboard'}
-                {tab === 'basic' && '📋 Laporan Dasar'}
-                {tab === 'statistics' && '📈 Statistik'}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Content - Dashboard Tab */}
+        {/* Tab Content */}
         {activeTab === 'dashboard' && dashboardData && (
-          <div className="space-y-6">
-            {/* Orders Section */}
-            <div>
-              <h2 className="mb-4 text-lg font-bold text-slate-900 dark:text-white">
-                Ringkasan Pesanan
-              </h2>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
-                <StatBox
-                  title="Total"
-                  value={dashboardData.orders.total}
-                  icon={
-                    <ShoppingCart className="h-5 w-5 text-blue-600" />
-                  }
-                  color="bg-blue-100 dark:bg-blue-900/30"
-                />
-                <StatBox
-                  title="Tertunda"
-                  value={dashboardData.orders.pending}
-                  icon={
-                    <Calendar className="h-5 w-5 text-yellow-600" />
-                  }
-                  color="bg-yellow-100 dark:bg-yellow-900/30"
-                />
-                <StatBox
-                  title="Diproses"
-                  value={dashboardData.orders.processing}
-                  icon={
-                    <FileText className="h-5 w-5 text-amber-600" />
-                  }
-                  color="bg-amber-100 dark:bg-amber-900/30"
-                />
-                <StatBox
-                  title="Selesai"
-                  value={dashboardData.orders.completed}
-                  icon={
-                    <CheckCircle2 className="h-5 w-5 text-green-600" />
-                  }
-                  color="bg-green-100 dark:bg-green-900/30"
-                />
-                <StatBox
-                  title="Dibatalkan"
-                  value={dashboardData.orders.canceled}
-                  icon={
-                    <AlertCircle className="h-5 w-5 text-red-600" />
-                  }
-                  color="bg-red-100 dark:bg-red-900/30"
-                />
-              </div>
-            </div>
-
-            {/* Payments Section */}
-            <div>
-              <h2 className="mb-4 text-lg font-bold text-slate-900 dark:text-white">
-                Ringkasan Pembayaran
-              </h2>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <StatBox
-                  title="Total Revenue"
-                  value={formatCurrency(
-                    dashboardData.payments.total_revenue
-                  )}
-                  icon={
-                    <TrendingUp className="h-5 w-5 text-green-600" />
-                  }
-                  color="bg-green-100 dark:bg-green-900/30"
-                />
-                <StatBox
-                  title="Pembayaran Tertunda"
-                  value={dashboardData.payments.pending_payments}
-                  icon={
-                    <CreditCard className="h-5 w-5 text-blue-600" />
-                  }
-                  color="bg-blue-100 dark:bg-blue-900/30"
-                />
-              </div>
-            </div>
-
-            {/* Users Section */}
-            <div>
-              <h2 className="mb-4 text-lg font-bold text-slate-900 dark:text-white">
-                Ringkasan Pengguna
-              </h2>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <StatBox
-                  title="Total Pengguna"
-                  value={dashboardData.users.total_users}
-                  icon={<Users className="h-5 w-5 text-blue-600" />}
-                  color="bg-blue-100 dark:bg-blue-900/30"
-                />
-                <StatBox
-                  title="Total Admin"
-                  value={dashboardData.users.total_admins}
-                  icon={
-                    <FileText className="h-5 w-5 text-purple-600" />
-                  }
-                  color="bg-purple-100 dark:bg-purple-900/30"
-                />
-              </div>
-            </div>
-          </div>
+          <DashboardTab
+            data={dashboardData}
+            formatCurrency={formatCurrency}
+          />
         )}
 
-        {/* Content - Basic Tab */}
         {activeTab === 'basic' && reportsData && (
-          <div className="space-y-6">
-            {/* Summary */}
-            <div>
-              <h2 className="mb-4 text-lg font-bold text-slate-900 dark:text-white">
-                Ringkasan
-              </h2>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <StatBox
-                  title="Total Pesanan"
-                  value={reportsData.total_orders}
-                  icon={
-                    <ShoppingCart className="h-5 w-5 text-blue-600" />
-                  }
-                  color="bg-blue-100 dark:bg-blue-900/30"
-                />
-                <StatBox
-                  title="Pengguna Aktif"
-                  value={reportsData.user_statistics.active_users}
-                  icon={<Users className="h-5 w-5 text-green-600" />}
-                  color="bg-green-100 dark:bg-green-900/30"
-                />
-              </div>
-            </div>
-
-            {/* Orders by Status Table */}
-            {reportsData.orders_by_status.length > 0 && (
-              <div className="overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
-                <div className="border-b border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-900">
-                  <h3 className="font-bold text-slate-900 dark:text-white">
-                    Pesanan Berdasarkan Status
-                  </h3>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead className="border-b border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900">
-                      <tr>
-                        <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">
-                          Status
-                        </th>
-                        <th className="px-4 py-3 text-right font-semibold text-slate-700 dark:text-slate-300">
-                          Jumlah
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {reportsData.orders_by_status.map(
-                        (item, idx) => (
-                          <tr
-                            key={idx}
-                            className="border-t border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-700/50"
-                          >
-                            <td className="px-4 py-3 capitalize text-slate-700 dark:text-slate-300">
-                              {item.status}
-                            </td>
-                            <td className="px-4 py-3 text-right font-semibold text-slate-900 dark:text-white">
-                              {item.total}
-                            </td>
-                          </tr>
-                        )
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-
-            {/* Payment Summary */}
-            {reportsData.payment_summary.length > 0 && (
-              <div className="overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
-                <div className="border-b border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-900">
-                  <h3 className="font-bold text-slate-900 dark:text-white">
-                    Ringkasan Pembayaran
-                  </h3>
-                </div>
-
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead className="border-b border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900">
-                      <tr>
-                        <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">
-                          Status
-                        </th>
-                        <th className="px-4 py-3 text-right font-semibold text-slate-700 dark:text-slate-300">
-                          Transaksi
-                        </th>
-                        <th className="px-4 py-3 text-right font-semibold text-slate-700 dark:text-slate-300">
-                          Jumlah
-                        </th>
-                      </tr>
-                    </thead>
-
-                    <tbody>
-                      {reportsData.payment_summary.map(
-                        (item, idx) => (
-                          <tr
-                            key={idx}
-                            className="border-t border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-700/50"
-                          >
-                            <td className="px-4 py-3 capitalize text-slate-700 dark:text-slate-300">
-                              {item.status}
-                            </td>
-                            <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300">
-                              {item.total}
-                            </td>
-                            <td className="px-4 py-3 text-right font-semibold text-slate-900 dark:text-white">
-                              {formatCurrency(item.total_amount)}
-                            </td>
-                          </tr>
-                        )
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-
-            {/* Top Users */}
-            {reportsData.top_users.length > 0 && (
-              <div className="overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
-                <div className="border-b border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-900">
-                  <h3 className="font-bold text-slate-900 dark:text-white">
-                    Top 10 Pengguna
-                  </h3>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead className="border-b border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900">
-                      <tr>
-                        <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">
-                          Nama
-                        </th>
-                        <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">
-                          Email
-                        </th>
-                        <th className="px-4 py-3 text-right font-semibold text-slate-700 dark:text-slate-300">
-                          Pesanan
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {reportsData.top_users.map((user) => (
-                        <tr
-                          key={user.id}
-                          className="border-t border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-700/50"
-                        >
-                          <td className="px-4 py-3 font-medium text-slate-900 dark:text-white">
-                            {user.name}
-                          </td>
-                          <td className="px-4 py-3 text-slate-600 dark:text-slate-400">
-                            {user.email}
-                          </td>
-                          <td className="px-4 py-3 text-right font-semibold text-slate-900 dark:text-white">
-                            {user.orders_count}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-          </div>
+          <BasicTab
+            data={reportsData}
+            formatCurrency={formatCurrency}
+          />
         )}
 
-        {/* Content - Statistics Tab */}
         {activeTab === 'statistics' && statisticsData && (
-          <div className="space-y-6">
-            {/* Main Statistics */}
-            <div>
-              <h2 className="mb-4 text-lg font-bold text-slate-900 dark:text-white">
-                📊 Statistik Periode
-              </h2>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <StatBox
-                  title="Total Pesanan"
-                  value={statisticsData.totalOrders}
-                  icon={
-                    <ShoppingCart className="h-5 w-5 text-blue-600" />
-                  }
-                  color="bg-blue-100 dark:bg-blue-900/30"
-                />
-                <StatBox
-                  title="Total Revenue"
-                  value={formatCurrency(statisticsData.totalRevenue)}
-                  icon={
-                    <TrendingUp className="h-5 w-5 text-green-600" />
-                  }
-                  color="bg-green-100 dark:bg-green-900/30"
-                />
-                <StatBox
-                  title="Rata-rata Pesanan"
-                  value={formatCurrency(
-                    statisticsData.averageOrderValue
-                  )}
-                  icon={
-                    <CreditCard className="h-5 w-5 text-purple-600" />
-                  }
-                  color="bg-purple-100 dark:bg-purple-900/30"
-                />
-                <StatBox
-                  title="Pesanan Selesai"
-                  value={statisticsData.completedOrders}
-                  icon={
-                    <CheckCircle2 className="h-5 w-5 text-green-600" />
-                  }
-                  color="bg-green-100 dark:bg-green-900/30"
-                />
-              </div>
-            </div>
-
-            {/* Growth Metrics */}
-            <div>
-              <h2 className="mb-4 text-lg font-bold text-slate-900 dark:text-white">
-                📈 Pertumbuhan & Hari Ini
-              </h2>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                <div className="flex flex-col rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                    Pertumbuhan Revenue
-                  </p>
-                  <p
-                    className={`mt-3 text-2xl font-bold ${
-                      statisticsData.revenueGrowth >= 0
-                        ? 'text-green-600 dark:text-green-400'
-                        : 'text-red-600 dark:text-red-400'
-                    }`}
-                  >
-                    {statisticsData.revenueGrowth >= 0 ? '↑' : '↓'}{' '}
-                    {Math.abs(statisticsData.revenueGrowth).toFixed(
-                      2
-                    )}
-                    %
-                  </p>
-                </div>
-
-                <div className="flex flex-col rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                    Pertumbuhan Pesanan
-                  </p>
-                  <p
-                    className={`mt-3 text-2xl font-bold ${
-                      statisticsData.orderGrowth >= 0
-                        ? 'text-green-600 dark:text-green-400'
-                        : 'text-red-600 dark:text-red-400'
-                    }`}
-                  >
-                    {statisticsData.orderGrowth >= 0 ? '↑' : '↓'}{' '}
-                    {Math.abs(statisticsData.orderGrowth).toFixed(2)}%
-                  </p>
-                </div>
-
-                <div className="flex flex-col rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                    Revenue Hari Ini
-                  </p>
-                  <p className="mt-3 text-2xl font-bold text-slate-900 dark:text-white">
-                    {formatCurrency(statisticsData.todayRevenue)}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Order Status Breakdown */}
-            <div>
-              <h2 className="mb-4 text-lg font-bold text-slate-900 dark:text-white">
-                📦 Rincian Pesanan
-              </h2>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
-                <StatBox
-                  title="Diproses"
-                  value={statisticsData.processingOrders}
-                  icon={
-                    <FileText className="h-5 w-5 text-amber-600" />
-                  }
-                  color="bg-amber-100 dark:bg-amber-900/30"
-                />
-                <StatBox
-                  title="Selesai"
-                  value={statisticsData.completedOrders}
-                  icon={
-                    <CheckCircle2 className="h-5 w-5 text-green-600" />
-                  }
-                  color="bg-green-100 dark:bg-green-900/30"
-                />
-                <StatBox
-                  title="Dibatalkan"
-                  value={statisticsData.canceledOrders}
-                  icon={
-                    <AlertCircle className="h-5 w-5 text-red-600" />
-                  }
-                  color="bg-red-100 dark:bg-red-900/30"
-                />
-                <StatBox
-                  title="Hari Ini"
-                  value={statisticsData.todayOrders}
-                  icon={
-                    <Calendar className="h-5 w-5 text-blue-600" />
-                  }
-                  color="bg-blue-100 dark:bg-blue-900/30"
-                />
-              </div>
-            </div>
-
-            {/* Trend Table */}
-            {statisticsData.chartData.length > 0 && (
-              <div className="overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
-                <div className="border-b border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-900">
-                  <h3 className="font-bold text-slate-900 dark:text-white">
-                    📅 Tren Harian Pesanan & Revenue
-                  </h3>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead className="border-b border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900">
-                      <tr>
-                        <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">
-                          Tanggal
-                        </th>
-                        <th className="px-4 py-3 text-right font-semibold text-slate-700 dark:text-slate-300">
-                          Pesanan
-                        </th>
-                        <th className="px-4 py-3 text-right font-semibold text-slate-700 dark:text-slate-300">
-                          Revenue
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {statisticsData.chartData.map((item, idx) => (
-                        <tr
-                          key={idx}
-                          className="border-t border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-700/50"
-                        >
-                          <td className="px-4 py-3 font-medium text-slate-700 dark:text-slate-300">
-                            {item.date}
-                          </td>
-                          <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300">
-                            {item.orders}
-                          </td>
-                          <td className="px-4 py-3 text-right font-semibold text-slate-900 dark:text-white">
-                            {formatCurrency(item.revenue)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-          </div>
+          <StatisticsTab
+            data={statisticsData}
+            formatCurrency={formatCurrency}
+          />
         )}
       </div>
     </div>
