@@ -6,9 +6,7 @@ interface TabsProps {
 }
 
 const TABS: { id: ReportTab; label: string; icon: string }[] = [
-  { id: 'dashboard', label: 'Dashboard', icon: '📊' },
-  { id: 'basic', label: 'Laporan Dasar', icon: '📋' },
-  { id: 'statistics', label: 'Statistik', icon: '📈' }
+  { id: 'dashboard', label: 'Dashboard', icon: '📊' }
 ];
 
 export const Tabs = ({ activeTab, onTabChange }: TabsProps) => {

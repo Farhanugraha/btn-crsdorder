@@ -2,7 +2,6 @@ import { ShoppingCart, Users, Download } from 'lucide-react';
 import { StatBox } from './StatBox';
 import {
   generateOrdersAuditCSV,
-  generateOrdersAuditCSVExcel,
   downloadFile
 } from '@/lib/exportOrdersAudit';
 
@@ -86,25 +85,17 @@ export const BasicTab = ({
   const handleExportOrdersCSV = () => {
     if (!ordersDetail) return;
 
-    let csv = generateOrdersAuditCSV(ordersDetail);
+    try {
+      let csv = generateOrdersAuditCSV(ordersDetail);
 
-    downloadFile(
-      csv,
-      `audit-orders-${ordersDetail.period.start_date}-to-${ordersDetail.period.end_date}.txt`,
-      'text/plain;charset=utf-8'
-    );
-  };
-
-  const handleExportOrdersExcel = () => {
-    if (!ordersDetail) return;
-
-    let csv = generateOrdersAuditCSVExcel(ordersDetail);
-
-    downloadFile(
-      csv,
-      `audit-orders-${ordersDetail.period.start_date}-to-${ordersDetail.period.end_date}.csv`,
-      'text/csv;charset=utf-8'
-    );
+      downloadFile(
+        csv,
+        `audit-orders-${ordersDetail.period.start_date}-to-${ordersDetail.period.end_date}.csv`,
+        'text/csv;charset=utf-8'
+      );
+    } catch (error) {
+      console.error('Export error:', error);
+    }
   };
 
   return (
@@ -133,18 +124,10 @@ export const BasicTab = ({
       {/* Orders Detail with Items */}
       {ordersDetail && (
         <div className="space-y-6">
-          {/* Export Buttons */}
+          {/* Export Button */}
           <div className="flex flex-wrap justify-end gap-3">
             <button
               onClick={handleExportOrdersCSV}
-              disabled={isLoadingOrdersDetail}
-              className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 dark:bg-blue-700 dark:hover:bg-blue-600"
-            >
-              <Download className="h-4 w-4" />
-              Export (.TXT)
-            </button>
-            <button
-              onClick={handleExportOrdersExcel}
               disabled={isLoadingOrdersDetail}
               className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50 dark:bg-green-700 dark:hover:bg-green-600"
             >
