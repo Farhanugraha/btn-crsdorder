@@ -17,6 +17,14 @@ import {
   ErrorAlert
 } from '@/components/reports/Alerts';
 
+// Import Export Functions
+import {
+  generateOrdersAuditTXT,
+  generateOrdersAuditCSV,
+  downloadFile,
+  type OrdersDetail
+} from '@/lib/exportOrdersAudit';
+
 // Types
 interface DashboardData {
   orders: {
@@ -79,6 +87,7 @@ interface StatisticsData {
 }
 
 type ReportTab = 'dashboard' | 'basic' | 'statistics';
+type ExportFormat = 'csv' | 'pdf';
 
 const ReportsPage = () => {
   const router = useRouter();
@@ -101,13 +110,17 @@ const ReportsPage = () => {
   );
   const [statisticsData, setStatisticsData] =
     useState<StatisticsData | null>(null);
+  const [ordersDetailData, setOrdersDetailData] = useState<
+    OrdersDetail | undefined
+  >(undefined);
+  const [isLoadingOrdersDetail, setIsLoadingOrdersDetail] =
+    useState(false);
 
   // Filter State
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [exportFormat, setExportFormat] = useState<'csv' | 'pdf'>(
-    'csv'
-  );
+  const [exportFormat, setExportFormat] =
+    useState<ExportFormat>('csv');
 
   // Initialize dates on mount
   useEffect(() => {
@@ -170,6 +183,9 @@ const ReportsPage = () => {
 
       // Fetch Statistics Data
       await fetchStatistics(token, start, end);
+
+      // Fetch Orders Detail
+      await fetchOrdersDetail(token, start, end);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : 'Gagal memuat data'
@@ -268,6 +284,44 @@ const ReportsPage = () => {
   };
 
   /**
+   * Fetch orders detail with items
+   */
+  const fetchOrdersDetail = async (
+    token: string,
+    start: string,
+    end: string
+  ): Promise<void> => {
+    try {
+      setIsLoadingOrdersDetail(true);
+      const params = new URLSearchParams();
+      params.append('start_date', start);
+      params.append('end_date', end);
+
+      const response = await fetch(
+        `${apiUrl}/api/admin/orders-detail?${params.toString()}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: 'application/json'
+          },
+          cache: 'no-cache'
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.data) {
+          setOrdersDetailData(data.data);
+        }
+      }
+    } catch (err) {
+      console.error('Orders detail fetch error:', err);
+    } finally {
+      setIsLoadingOrdersDetail(false);
+    }
+  };
+
+  /**
    * Handle apply filter
    */
   const handleApplyFilter = (): void => {
@@ -285,17 +339,25 @@ const ReportsPage = () => {
   };
 
   /**
-   * Handle export
+   * Handle export - Main Export Function
+   * Menggunakan generateOrdersAuditTXT & generateOrdersAuditCSV dari exportOrdersAudit.ts
    */
   const handleExport = (): void => {
     try {
       setIsExporting(true);
       setError(null);
 
+      // Check if ordersDetailData exists
+      if (!ordersDetailData) {
+        setError('Data pesanan tidak tersedia untuk di-export');
+        setIsExporting(false);
+        return;
+      }
+
       if (exportFormat === 'csv') {
-        exportToCsv();
+        exportOrdersDetailAsCSV();
       } else {
-        exportToPdf();
+        exportOrdersDetailAsPDF();
       }
 
       setSuccessMessage(
@@ -304,187 +366,50 @@ const ReportsPage = () => {
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
       setError('Gagal export laporan');
+      console.error('Export error:', err);
     } finally {
       setIsExporting(false);
     }
   };
 
   /**
-   * Export data as CSV
+   * Export orders detail as PDF (TXT) format
+   * Menggunakan generateOrdersAuditTXT dari exportOrdersAudit.ts
    */
-  const exportToCsv = (): void => {
-    let csv = 'LAPORAN ADMIN\n';
-    csv += `Periode: ${startDate} sampai ${endDate}\n`;
-    csv += `Tanggal Export: ${new Date().toLocaleString(
-      'id-ID'
-    )}\n\n`;
+  const exportOrdersDetailAsPDF = (): void => {
+    if (!ordersDetailData) return;
 
-    // Dashboard Section
-    if (dashboardData) {
-      csv += '=== DASHBOARD ===\n';
-      csv += 'PESANAN\n';
-      csv += `Total,${dashboardData.orders.total}\n`;
-      csv += `Tertunda,${dashboardData.orders.pending}\n`;
-      csv += `Diproses,${dashboardData.orders.processing}\n`;
-      csv += `Selesai,${dashboardData.orders.completed}\n`;
-      csv += `Dibatalkan,${dashboardData.orders.canceled}\n\n`;
-      csv += 'PEMBAYARAN\n';
-      csv += `Total Revenue,${dashboardData.payments.total_revenue}\n`;
-      csv += `Tertunda,${dashboardData.payments.pending_payments}\n\n`;
-      csv += 'PENGGUNA\n';
-      csv += `Total Pengguna,${dashboardData.users.total_users}\n`;
-      csv += `Total Admin,${dashboardData.users.total_admins}\n\n`;
+    try {
+      const txtContent = generateOrdersAuditTXT(ordersDetailData);
+      downloadFile(
+        txtContent,
+        `audit-orders-${ordersDetailData.period.start_date}-to-${ordersDetailData.period.end_date}.txt`,
+        'text/plain;charset=utf-8'
+      );
+    } catch (err) {
+      console.error('PDF export error:', err);
+      throw err;
     }
-
-    // Reports Section
-    if (reportsData) {
-      csv += '=== LAPORAN DASAR ===\n';
-      csv += `Total Pesanan,${reportsData.total_orders}\n`;
-      csv += `Pengguna Aktif,${reportsData.user_statistics.active_users}\n\n`;
-
-      if (reportsData.orders_by_status.length > 0) {
-        csv += 'PESANAN BERDASARKAN STATUS\n';
-        csv += 'Status,Jumlah\n';
-        reportsData.orders_by_status.forEach((item) => {
-          csv += `${item.status},${item.total}\n`;
-        });
-        csv += '\n';
-      }
-
-      if (reportsData.payment_summary.length > 0) {
-        csv += 'RINGKASAN PEMBAYARAN\n';
-        csv += 'Status,Transaksi,Jumlah\n';
-        reportsData.payment_summary.forEach((item) => {
-          csv += `${item.status},${item.total},${item.total_amount}\n`;
-        });
-        csv += '\n';
-      }
-
-      if (reportsData.top_users.length > 0) {
-        csv += 'TOP 10 PENGGUNA\n';
-        csv += 'Nama,Email,Pesanan\n';
-        reportsData.top_users.forEach((user) => {
-          csv += `"${user.name}","${user.email}",${user.orders_count}\n`;
-        });
-        csv += '\n';
-      }
-    }
-
-    // Statistics Section
-    if (statisticsData) {
-      csv += '=== STATISTIK ===\n';
-      csv += `Total Pesanan,${statisticsData.totalOrders}\n`;
-      csv += `Total Revenue,${statisticsData.totalRevenue}\n`;
-      csv += `Rata-rata Nilai Pesanan,${statisticsData.averageOrderValue}\n`;
-      csv += `Pesanan Selesai,${statisticsData.completedOrders}\n`;
-      csv += `Pesanan Diproses,${statisticsData.processingOrders}\n`;
-      csv += `Pesanan Dibatalkan,${statisticsData.canceledOrders}\n`;
-      csv += `Pesanan Hari Ini,${statisticsData.todayOrders}\n`;
-      csv += `Revenue Hari Ini,${statisticsData.todayRevenue}\n`;
-      csv += `Pertumbuhan Revenue,${statisticsData.revenueGrowth.toFixed(
-        2
-      )}%\n`;
-      csv += `Pertumbuhan Pesanan,${statisticsData.orderGrowth.toFixed(
-        2
-      )}%\n`;
-    }
-
-    downloadFile(
-      csv,
-      `laporan-${startDate}-ke-${endDate}.csv`,
-      'text/csv'
-    );
   };
 
   /**
-   * Export data as PDF (Text format)
+   * Export orders detail as CSV format
+   * Menggunakan generateOrdersAuditCSV dari exportOrdersAudit.ts
    */
-  const exportToPdf = (): void => {
-    let text = 'LAPORAN ADMIN\n';
-    text += '='.repeat(80) + '\n';
-    text += `Periode: ${startDate} sampai ${endDate}\n`;
-    text += `Tanggal Export: ${new Date().toLocaleString('id-ID')}\n`;
-    text += `Waktu Pembuatan: ${new Date().toLocaleTimeString(
-      'id-ID'
-    )}\n`;
-    text += '='.repeat(80) + '\n\n';
+  const exportOrdersDetailAsCSV = (): void => {
+    if (!ordersDetailData) return;
 
-    // Dashboard Section
-    if (dashboardData) {
-      text += 'DASHBOARD\n';
-      text += '-'.repeat(80) + '\n';
-      text += 'PESANAN:\n';
-      text += `  Total: ${dashboardData.orders.total}\n`;
-      text += `  Tertunda: ${dashboardData.orders.pending}\n`;
-      text += `  Diproses: ${dashboardData.orders.processing}\n`;
-      text += `  Selesai: ${dashboardData.orders.completed}\n`;
-      text += `  Dibatalkan: ${dashboardData.orders.canceled}\n\n`;
-      text += 'PEMBAYARAN:\n';
-      text += `  Total Revenue: ${formatCurrency(
-        dashboardData.payments.total_revenue
-      )}\n`;
-      text += `  Tertunda: ${dashboardData.payments.pending_payments}\n\n`;
-      text += 'PENGGUNA:\n';
-      text += `  Total Pengguna: ${dashboardData.users.total_users}\n`;
-      text += `  Total Admin: ${dashboardData.users.total_admins}\n\n`;
+    try {
+      const csvContent = generateOrdersAuditCSV(ordersDetailData);
+      downloadFile(
+        csvContent,
+        `audit-orders-${ordersDetailData.period.start_date}-to-${ordersDetailData.period.end_date}.csv`,
+        'text/csv;charset=utf-8'
+      );
+    } catch (err) {
+      console.error('CSV export error:', err);
+      throw err;
     }
-
-    // Reports Section
-    if (reportsData) {
-      text += 'LAPORAN DASAR\n';
-      text += '-'.repeat(80) + '\n';
-      text += `Total Pesanan: ${reportsData.total_orders}\n`;
-      text += `Pengguna Aktif: ${reportsData.user_statistics.active_users}\n\n`;
-    }
-
-    // Statistics Section
-    if (statisticsData) {
-      text += 'STATISTIK\n';
-      text += '-'.repeat(80) + '\n';
-      text += `Total Pesanan: ${statisticsData.totalOrders}\n`;
-      text += `Total Revenue: ${formatCurrency(
-        statisticsData.totalRevenue
-      )}\n`;
-      text += `Rata-rata Nilai Pesanan: ${formatCurrency(
-        statisticsData.averageOrderValue
-      )}\n`;
-      text += `Pesanan Selesai: ${statisticsData.completedOrders}\n`;
-      text += `Pesanan Diproses: ${statisticsData.processingOrders}\n`;
-      text += `Pesanan Dibatalkan: ${statisticsData.canceledOrders}\n`;
-      text += `Pesanan Hari Ini: ${statisticsData.todayOrders}\n`;
-      text += `Revenue Hari Ini: ${formatCurrency(
-        statisticsData.todayRevenue
-      )}\n`;
-      text += `Pertumbuhan Revenue: ${statisticsData.revenueGrowth.toFixed(
-        2
-      )}%\n`;
-      text += `Pertumbuhan Pesanan: ${statisticsData.orderGrowth.toFixed(
-        2
-      )}%\n`;
-    }
-
-    downloadFile(
-      text,
-      `laporan-${startDate}-ke-${endDate}.txt`,
-      'text/plain'
-    );
-  };
-
-  /**
-   * Download file utility
-   */
-  const downloadFile = (
-    content: string,
-    fileName: string,
-    type: string
-  ): void => {
-    const blob = new Blob([content], { type });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = fileName;
-    link.click();
-    window.URL.revokeObjectURL(url);
   };
 
   // Loading State
@@ -566,7 +491,9 @@ const ReportsPage = () => {
         {activeTab === 'basic' && reportsData && (
           <BasicTab
             data={reportsData}
+            ordersDetail={ordersDetailData}
             formatCurrency={formatCurrency}
+            isLoadingOrdersDetail={isLoadingOrdersDetail}
           />
         )}
 

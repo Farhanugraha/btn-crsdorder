@@ -23,7 +23,7 @@ interface OrderByDate {
   orders: Order[];
 }
 
-interface OrdersDetail {
+export interface OrdersDetail {
   period: {
     start_date: string;
     end_date: string;
@@ -37,9 +37,9 @@ interface OrdersDetail {
 }
 
 /**
- * Generate professional CSV export untuk audit
+ * Generate professional TXT export untuk audit (format pretty)
  */
-export const generateOrdersAuditCSV = (
+export const generateOrdersAuditTXT = (
   data: OrdersDetail
 ): string => {
   const now = new Date();
@@ -109,10 +109,7 @@ export const generateOrdersAuditCSV = (
   );
   lines.push('');
 
-  let totalChecks = 0;
   data.orders_by_date.forEach((dayData, dayIdx) => {
-    totalChecks++;
-
     // Day Header
     lines.push(
       '┌─────────────────────────────────────────────────────────────┐'
@@ -285,7 +282,7 @@ export const generateOrdersAuditCSV = (
 /**
  * Generate Excel-style CSV dengan separator
  */
-export const generateOrdersAuditCSVExcel = (
+export const generateOrdersAuditCSV = (
   data: OrdersDetail
 ): string => {
   const now = new Date();
@@ -369,6 +366,15 @@ export const generateOrdersAuditCSVExcel = (
 };
 
 /**
+ * Generate Excel-style CSV (alias for backward compatibility)
+ */
+export const generateOrdersAuditCSVExcel = (
+  data: OrdersDetail
+): string => {
+  return generateOrdersAuditCSV(data);
+};
+
+/**
  * Download file utility
  */
 export const downloadFile = (
@@ -381,6 +387,8 @@ export const downloadFile = (
   const link = document.createElement('a');
   link.href = url;
   link.download = fileName;
+  document.body.appendChild(link);
   link.click();
+  document.body.removeChild(link);
   window.URL.revokeObjectURL(url);
 };
