@@ -112,7 +112,7 @@ const ReportsPage = () => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [exportFormat, setExportFormat] =
-    useState<ExportFormat>('csv');
+    useState<ExportFormat>('excel');
 
   // Track current active filter dates
   const [activeFilterStartDate, setActiveFilterStartDate] =
@@ -473,9 +473,9 @@ const ReportsPage = () => {
   if (isLoading) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-white dark:bg-gray-900">
-        <div className="text-center">
+        <div className="px-4 text-center">
           <Loader2 className="mx-auto mb-3 h-8 w-8 animate-spin text-blue-600" />
-          <p className="text-sm text-gray-700 dark:text-gray-400">
+          <p className="text-xs text-gray-700 dark:text-gray-400 sm:text-sm">
             Memuat data laporan...
           </p>
         </div>
@@ -484,11 +484,12 @@ const ReportsPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 dark:bg-slate-900 sm:p-6">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white sm:text-3xl">
+    <div className="min-h-screen w-full bg-slate-50 px-4 py-5 dark:bg-slate-900 sm:px-6 md:px-10 lg:px-16 xl:px-20">
+      <div className="w-full space-y-4 sm:space-y-6">
+        {/* Header Section */}
+        <div className="w-full space-y-3 sm:flex sm:flex-row sm:items-start sm:justify-between sm:space-y-0">
+          <div className="flex-1">
+            <h1 className="text-xl font-bold text-slate-900 dark:text-white sm:text-2xl lg:text-3xl">
               Laporan & Statistik
             </h1>
             <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
@@ -505,13 +506,14 @@ const ReportsPage = () => {
             onClick={() =>
               fetchAllData(activeFilterStartDate, activeFilterEndDate)
             }
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600"
+            className="inline-flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-blue-600 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600 sm:w-auto sm:py-2"
           >
             <RefreshCw className="h-4 w-4" />
-            Refresh
+            <span className="hidden sm:inline">Refresh</span>
           </button>
         </div>
 
+        {/* Alerts */}
         {successMessage && (
           <SuccessAlert
             message={successMessage}
@@ -526,6 +528,7 @@ const ReportsPage = () => {
           />
         )}
 
+        {/* Filter Card */}
         <FilterCard
           startDate={startDate}
           endDate={endDate}
@@ -541,8 +544,10 @@ const ReportsPage = () => {
           }
         />
 
+        {/* Tabs */}
         <Tabs activeTab={activeTab} onTabChange={setActiveTab} />
 
+        {/* Tab Content */}
         {activeTab === 'dashboard' && dashboardData && (
           <DashboardTab
             data={dashboardData}

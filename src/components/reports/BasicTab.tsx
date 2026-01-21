@@ -99,13 +99,13 @@ export const BasicTab = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Summary */}
       <div>
-        <h2 className="mb-4 text-lg font-bold text-slate-900 dark:text-white">
+        <h2 className="mb-3 text-base font-bold text-slate-900 dark:text-white sm:mb-4 sm:text-lg">
           Ringkasan
         </h2>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
           <StatBox
             title="Total Pesanan"
             value={data.total_orders}
@@ -123,26 +123,27 @@ export const BasicTab = ({
 
       {/* Orders Detail with Items */}
       {ordersDetail && (
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {/* Export Button */}
-          <div className="flex flex-wrap justify-end gap-3">
+          <div className="flex flex-wrap justify-end gap-2 sm:gap-3">
             <button
               onClick={handleExportOrdersCSV}
               disabled={isLoadingOrdersDetail}
-              className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50 dark:bg-green-700 dark:hover:bg-green-600"
+              className="inline-flex items-center gap-2 whitespace-nowrap rounded-lg bg-green-600 px-3 py-2 text-xs font-medium text-white hover:bg-green-700 disabled:opacity-50 dark:bg-green-700 dark:hover:bg-green-600 sm:px-4 sm:text-sm"
             >
-              <Download className="h-4 w-4" />
-              Export (.CSV)
+              <Download className="h-4 w-4 flex-shrink-0" />
+              <span className="hidden sm:inline">Export (.CSV)</span>
+              <span className="sm:hidden">Export</span>
             </button>
           </div>
 
           {/* Orders Summary */}
-          <div className="grid grid-cols-1 gap-4 rounded-lg border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-800 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-800 sm:grid-cols-3 sm:gap-4 sm:p-4 md:p-6">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                 Total Pesanan
               </p>
-              <p className="mt-2 text-2xl font-bold text-slate-900 dark:text-white">
+              <p className="mt-2 text-lg font-bold text-slate-900 dark:text-white sm:text-xl lg:text-2xl">
                 {ordersDetail.summary.total_orders}
               </p>
             </div>
@@ -150,7 +151,7 @@ export const BasicTab = ({
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                 Total Revenue
               </p>
-              <p className="mt-2 text-2xl font-bold text-slate-900 dark:text-white">
+              <p className="mt-2 break-words text-lg font-bold text-slate-900 dark:text-white sm:text-xl lg:text-2xl">
                 {formatCurrency(ordersDetail.summary.total_revenue)}
               </p>
             </div>
@@ -158,7 +159,7 @@ export const BasicTab = ({
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                 Rata-rata Per Pesanan
               </p>
-              <p className="mt-2 text-2xl font-bold text-slate-900 dark:text-white">
+              <p className="mt-2 break-words text-lg font-bold text-slate-900 dark:text-white sm:text-xl lg:text-2xl">
                 {formatCurrency(
                   ordersDetail.summary.average_order_value
                 )}
@@ -173,46 +174,53 @@ export const BasicTab = ({
               className="overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800"
             >
               {/* Day Header */}
-              <div className="border-b border-slate-200 bg-slate-100 p-4 dark:border-slate-700 dark:bg-slate-700">
-                <div className="grid grid-cols-4 gap-4 text-sm font-bold text-slate-900 dark:text-white">
-                  <div>{dayData.date}</div>
-                  <div>Pesanan: {dayData.total_orders}</div>
-                  <div>
+              <div className="border-b border-slate-200 bg-slate-100 p-2 dark:border-slate-700 dark:bg-slate-700 sm:p-4">
+                <div className="grid grid-cols-2 gap-2 text-xs font-bold text-slate-900 dark:text-white sm:grid-cols-4 sm:gap-4 sm:text-sm">
+                  <div className="truncate">
+                    <span className="sm:hidden">Tgl: </span>
+                    {dayData.date}
+                  </div>
+                  <div className="truncate">
+                    <span className="sm:hidden">Psn: </span>
+                    {dayData.total_orders}
+                  </div>
+                  <div className="hidden truncate sm:block">
                     Total: {formatCurrency(dayData.daily_total)}
                   </div>
-                  <div className="text-green-600 dark:text-green-400">
-                    Akum: {formatCurrency(dayData.cumulative_total)}
+                  <div className="truncate text-green-600 dark:text-green-400">
+                    <span className="sm:hidden">Akm: </span>
+                    {formatCurrency(dayData.cumulative_total)}
                   </div>
                 </div>
               </div>
 
-              {/* Orders Table - FIXED */}
+              {/* Orders Table - Responsive Scroll */}
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="w-full text-xs sm:text-sm">
                   <thead className="border-b border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900">
                     <tr>
-                      <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">
+                      <th className="whitespace-nowrap px-2 py-2 text-left font-semibold text-slate-700 dark:text-slate-300 sm:px-4 sm:py-3">
                         No. Pesanan
                       </th>
-                      <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">
+                      <th className="whitespace-nowrap px-2 py-2 text-left font-semibold text-slate-700 dark:text-slate-300 sm:px-4 sm:py-3">
                         Pelanggan
                       </th>
-                      <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">
+                      <th className="whitespace-nowrap px-2 py-2 text-left font-semibold text-slate-700 dark:text-slate-300 sm:px-4 sm:py-3">
                         Produk
                       </th>
-                      <th className="px-4 py-3 text-center font-semibold text-slate-700 dark:text-slate-300">
+                      <th className="whitespace-nowrap px-2 py-2 text-center font-semibold text-slate-700 dark:text-slate-300 sm:px-4 sm:py-3">
                         Qty
                       </th>
-                      <th className="px-4 py-3 text-right font-semibold text-slate-700 dark:text-slate-300">
+                      <th className="whitespace-nowrap px-2 py-2 text-right font-semibold text-slate-700 dark:text-slate-300 sm:px-4 sm:py-3">
                         Harga
                       </th>
-                      <th className="px-4 py-3 text-right font-semibold text-slate-700 dark:text-slate-300">
+                      <th className="whitespace-nowrap px-2 py-2 text-right font-semibold text-slate-700 dark:text-slate-300 sm:px-4 sm:py-3">
                         Subtotal
                       </th>
-                      <th className="px-4 py-3 text-right font-semibold text-slate-700 dark:text-slate-300">
+                      <th className="whitespace-nowrap px-2 py-2 text-right font-semibold text-slate-700 dark:text-slate-300 sm:px-4 sm:py-3">
                         Total Order
                       </th>
-                      <th className="px-4 py-3 text-center font-semibold text-slate-700 dark:text-slate-300">
+                      <th className="whitespace-nowrap px-2 py-2 text-center font-semibold text-slate-700 dark:text-slate-300 sm:px-4 sm:py-3">
                         Status
                       </th>
                     </tr>
@@ -224,45 +232,45 @@ export const BasicTab = ({
                         <tr key={`${dayIdx}-${orderIdx}`}>
                           <td
                             rowSpan={orderItemsCount}
-                            className="border-t border-slate-200 px-4 py-3 font-medium text-slate-900 dark:border-slate-700 dark:text-white"
+                            className="whitespace-nowrap border-t border-slate-200 px-2 py-2 font-medium text-slate-900 dark:border-slate-700 dark:text-white sm:px-4 sm:py-3"
                           >
                             {order.order_number}
                           </td>
                           <td
                             rowSpan={orderItemsCount}
-                            className="border-t border-slate-200 px-4 py-3 text-slate-700 dark:border-slate-700 dark:text-slate-300"
+                            className="max-w-[100px] truncate border-t border-slate-200 px-2 py-2 text-slate-700 dark:border-slate-700 dark:text-slate-300 sm:px-4 sm:py-3"
                           >
                             {order.customer}
                           </td>
                           {order.items.length > 0 ? (
                             <>
                               {/* First Item */}
-                              <td className="border-t border-slate-200 px-4 py-3 text-slate-700 dark:border-slate-700 dark:text-slate-300">
+                              <td className="max-w-[120px] truncate border-t border-slate-200 px-2 py-2 text-slate-700 dark:border-slate-700 dark:text-slate-300 sm:px-4 sm:py-3">
                                 {order.items[0].name}
                               </td>
-                              <td className="border-t border-slate-200 px-4 py-3 text-center text-slate-700 dark:border-slate-700 dark:text-slate-300">
+                              <td className="whitespace-nowrap border-t border-slate-200 px-2 py-2 text-center text-slate-700 dark:border-slate-700 dark:text-slate-300 sm:px-4 sm:py-3">
                                 {order.items[0].quantity}
                               </td>
-                              <td className="border-t border-slate-200 px-4 py-3 text-right text-slate-700 dark:border-slate-700 dark:text-slate-300">
+                              <td className="whitespace-nowrap border-t border-slate-200 px-2 py-2 text-right text-xs text-slate-700 dark:border-slate-700 dark:text-slate-300 sm:px-4 sm:py-3 sm:text-sm">
                                 {formatCurrency(order.items[0].price)}
                               </td>
-                              <td className="border-t border-slate-200 px-4 py-3 text-right font-semibold text-slate-900 dark:border-slate-700 dark:text-white">
+                              <td className="whitespace-nowrap border-t border-slate-200 px-2 py-2 text-right text-xs font-semibold text-slate-900 dark:border-slate-700 dark:text-white sm:px-4 sm:py-3 sm:text-sm">
                                 {formatCurrency(
                                   order.items[0].subtotal
                                 )}
                               </td>
                               <td
                                 rowSpan={orderItemsCount}
-                                className="border-t border-slate-200 px-4 py-3 text-right font-bold text-blue-600 dark:border-slate-700 dark:text-blue-400"
+                                className="whitespace-nowrap border-t border-slate-200 px-2 py-2 text-right text-xs font-bold text-blue-600 dark:border-slate-700 dark:text-blue-400 sm:px-4 sm:py-3 sm:text-sm"
                               >
                                 {formatCurrency(order.total)}
                               </td>
                               <td
                                 rowSpan={orderItemsCount}
-                                className="border-t border-slate-200 px-4 py-3 text-center dark:border-slate-700"
+                                className="border-t border-slate-200 px-2 py-2 text-center dark:border-slate-700 sm:px-4 sm:py-3"
                               >
                                 <span
-                                  className={`rounded-full px-2 py-1 text-xs font-semibold ${
+                                  className={`inline-block whitespace-nowrap rounded-full px-1.5 py-0.5 text-xs font-semibold sm:px-2 sm:py-1 ${
                                     order.status === 'completed'
                                       ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
                                       : order.status === 'processing'
@@ -276,7 +284,7 @@ export const BasicTab = ({
                             </>
                           ) : (
                             <>
-                              <td className="border-t border-slate-200 px-4 py-3 text-slate-500 dark:border-slate-700">
+                              <td className="border-t border-slate-200 px-2 py-2 text-slate-500 dark:border-slate-700 sm:px-4 sm:py-3">
                                 No items
                               </td>
                               <td className="border-t border-slate-200 dark:border-slate-700"></td>
@@ -284,16 +292,16 @@ export const BasicTab = ({
                               <td className="border-t border-slate-200 dark:border-slate-700"></td>
                               <td
                                 rowSpan={orderItemsCount}
-                                className="border-t border-slate-200 px-4 py-3 text-right font-bold text-blue-600 dark:border-slate-700 dark:text-blue-400"
+                                className="whitespace-nowrap border-t border-slate-200 px-2 py-2 text-right text-xs font-bold text-blue-600 dark:border-slate-700 dark:text-blue-400 sm:px-4 sm:py-3 sm:text-sm"
                               >
                                 {formatCurrency(order.total)}
                               </td>
                               <td
                                 rowSpan={orderItemsCount}
-                                className="border-t border-slate-200 px-4 py-3 text-center dark:border-slate-700"
+                                className="border-t border-slate-200 px-2 py-2 text-center dark:border-slate-700 sm:px-4 sm:py-3"
                               >
                                 <span
-                                  className={`rounded-full px-2 py-1 text-xs font-semibold ${
+                                  className={`inline-block whitespace-nowrap rounded-full px-1.5 py-0.5 text-xs font-semibold sm:px-2 sm:py-1 ${
                                     order.status === 'completed'
                                       ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
                                       : order.status === 'processing'
@@ -310,7 +318,7 @@ export const BasicTab = ({
                       );
                     })}
 
-                    {/* Additional Item Rows (if more than 1 item per order) */}
+                    {/* Additional Item Rows */}
                     {dayData.orders.map((order, orderIdx) =>
                       order.items.slice(1).map((item, itemIdx) => (
                         <tr
@@ -319,16 +327,16 @@ export const BasicTab = ({
                           }`}
                           className="border-t border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-700/50"
                         >
-                          <td className="px-4 py-3 text-slate-700 dark:text-slate-300">
+                          <td className="max-w-[120px] truncate px-2 py-2 text-slate-700 dark:text-slate-300 sm:px-4 sm:py-3">
                             {item.name}
                           </td>
-                          <td className="px-4 py-3 text-center text-slate-700 dark:text-slate-300">
+                          <td className="whitespace-nowrap px-2 py-2 text-center text-slate-700 dark:text-slate-300 sm:px-4 sm:py-3">
                             {item.quantity}
                           </td>
-                          <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300">
+                          <td className="whitespace-nowrap px-2 py-2 text-right text-xs text-slate-700 dark:text-slate-300 sm:px-4 sm:py-3 sm:text-sm">
                             {formatCurrency(item.price)}
                           </td>
-                          <td className="px-4 py-3 text-right font-semibold text-slate-900 dark:text-white">
+                          <td className="whitespace-nowrap px-2 py-2 text-right text-xs font-semibold text-slate-900 dark:text-white sm:px-4 sm:py-3 sm:text-sm">
                             {formatCurrency(item.subtotal)}
                           </td>
                         </tr>
@@ -345,19 +353,19 @@ export const BasicTab = ({
       {/* Orders by Status Table */}
       {data.orders_by_status.length > 0 && (
         <div className="overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
-          <div className="border-b border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-900">
-            <h3 className="font-bold text-slate-900 dark:text-white">
+          <div className="border-b border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900 sm:p-4">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white sm:text-base">
               Pesanan Berdasarkan Status
             </h3>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-xs sm:text-sm">
               <thead className="border-b border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900">
                 <tr>
-                  <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">
+                  <th className="px-3 py-2 text-left font-semibold text-slate-700 dark:text-slate-300 sm:px-4 sm:py-3">
                     Status
                   </th>
-                  <th className="px-4 py-3 text-right font-semibold text-slate-700 dark:text-slate-300">
+                  <th className="px-3 py-2 text-right font-semibold text-slate-700 dark:text-slate-300 sm:px-4 sm:py-3">
                     Jumlah
                   </th>
                 </tr>
@@ -368,10 +376,10 @@ export const BasicTab = ({
                     key={idx}
                     className="border-t border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-700/50"
                   >
-                    <td className="px-4 py-3 capitalize text-slate-700 dark:text-slate-300">
+                    <td className="px-3 py-2 capitalize text-slate-700 dark:text-slate-300 sm:px-4 sm:py-3">
                       {item.status}
                     </td>
-                    <td className="px-4 py-3 text-right font-semibold text-slate-900 dark:text-white">
+                    <td className="px-3 py-2 text-right font-semibold text-slate-900 dark:text-white sm:px-4 sm:py-3">
                       {item.total}
                     </td>
                   </tr>
@@ -385,23 +393,23 @@ export const BasicTab = ({
       {/* Payment Summary */}
       {data.payment_summary.length > 0 && (
         <div className="overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
-          <div className="border-b border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-900">
-            <h3 className="font-bold text-slate-900 dark:text-white">
+          <div className="border-b border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900 sm:p-4">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white sm:text-base">
               Ringkasan Pembayaran
             </h3>
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-xs sm:text-sm">
               <thead className="border-b border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900">
                 <tr>
-                  <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">
+                  <th className="px-3 py-2 text-left font-semibold text-slate-700 dark:text-slate-300 sm:px-4 sm:py-3">
                     Status
                   </th>
-                  <th className="px-4 py-3 text-right font-semibold text-slate-700 dark:text-slate-300">
+                  <th className="whitespace-nowrap px-3 py-2 text-right font-semibold text-slate-700 dark:text-slate-300 sm:px-4 sm:py-3">
                     Transaksi
                   </th>
-                  <th className="px-4 py-3 text-right font-semibold text-slate-700 dark:text-slate-300">
+                  <th className="px-3 py-2 text-right font-semibold text-slate-700 dark:text-slate-300 sm:px-4 sm:py-3">
                     Jumlah
                   </th>
                 </tr>
@@ -413,13 +421,13 @@ export const BasicTab = ({
                     key={idx}
                     className="border-t border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-700/50"
                   >
-                    <td className="px-4 py-3 capitalize text-slate-700 dark:text-slate-300">
+                    <td className="px-3 py-2 capitalize text-slate-700 dark:text-slate-300 sm:px-4 sm:py-3">
                       {item.status}
                     </td>
-                    <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300">
+                    <td className="whitespace-nowrap px-3 py-2 text-right text-slate-700 dark:text-slate-300 sm:px-4 sm:py-3">
                       {item.total}
                     </td>
-                    <td className="px-4 py-3 text-right font-semibold text-slate-900 dark:text-white">
+                    <td className="px-3 py-2 text-right font-semibold text-slate-900 dark:text-white sm:px-4 sm:py-3">
                       {formatCurrency(item.total_amount)}
                     </td>
                   </tr>
@@ -433,22 +441,22 @@ export const BasicTab = ({
       {/* Top Users */}
       {data.top_users.length > 0 && (
         <div className="overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
-          <div className="border-b border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-900">
-            <h3 className="font-bold text-slate-900 dark:text-white">
+          <div className="border-b border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900 sm:p-4">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white sm:text-base">
               Top 10 Pengguna
             </h3>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-xs sm:text-sm">
               <thead className="border-b border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900">
                 <tr>
-                  <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">
+                  <th className="px-3 py-2 text-left font-semibold text-slate-700 dark:text-slate-300 sm:px-4 sm:py-3">
                     Nama
                   </th>
-                  <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300">
+                  <th className="px-3 py-2 text-left font-semibold text-slate-700 dark:text-slate-300 sm:px-4 sm:py-3">
                     Email
                   </th>
-                  <th className="px-4 py-3 text-right font-semibold text-slate-700 dark:text-slate-300">
+                  <th className="px-3 py-2 text-right font-semibold text-slate-700 dark:text-slate-300 sm:px-4 sm:py-3">
                     Pesanan
                   </th>
                 </tr>
@@ -459,13 +467,13 @@ export const BasicTab = ({
                     key={user.id}
                     className="border-t border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-700/50"
                   >
-                    <td className="px-4 py-3 font-medium text-slate-900 dark:text-white">
+                    <td className="max-w-[120px] truncate px-3 py-2 font-medium text-slate-900 dark:text-white sm:px-4 sm:py-3">
                       {user.name}
                     </td>
-                    <td className="px-4 py-3 text-slate-600 dark:text-slate-400">
+                    <td className="max-w-[150px] truncate px-3 py-2 text-xs text-slate-600 dark:text-slate-400 sm:px-4 sm:py-3 sm:text-sm">
                       {user.email}
                     </td>
-                    <td className="px-4 py-3 text-right font-semibold text-slate-900 dark:text-white">
+                    <td className="px-3 py-2 text-right font-semibold text-slate-900 dark:text-white sm:px-4 sm:py-3">
                       {user.orders_count}
                     </td>
                   </tr>

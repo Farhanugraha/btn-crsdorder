@@ -6,24 +6,26 @@ interface TabsProps {
 }
 
 const TABS: { id: ReportTab; label: string; icon: string }[] = [
-  { id: 'dashboard', label: 'Dashboard', icon: '📊' }
+  { id: 'dashboard', label: 'Dashboard', icon: '📊' },
+  { id: 'statistics', label: 'Statistik', icon: '📈' }
 ];
 
 export const Tabs = ({ activeTab, onTabChange }: TabsProps) => {
   return (
-    <div className="border-b border-slate-200 dark:border-slate-700">
-      <div className="flex gap-1 rounded-t-lg bg-white dark:bg-slate-800">
+    <div className="overflow-x-auto border-b border-slate-200 dark:border-slate-700">
+      <div className="flex min-w-min gap-1 bg-white dark:bg-slate-800 sm:min-w-0">
         {TABS.map((tab) => (
           <button
             key={tab.id}
             onClick={() => onTabChange(tab.id)}
-            className={`flex-1 border-b-2 px-4 py-3 text-center text-sm font-semibold transition-colors ${
+            className={`flex-none whitespace-nowrap border-b-2 px-3 py-2.5 text-xs font-semibold transition-colors sm:flex-1 sm:px-4 sm:py-3 sm:text-sm ${
               activeTab === tab.id
                 ? 'border-blue-600 text-blue-600 dark:text-blue-400'
                 : 'border-transparent text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
             }`}
           >
-            {tab.icon} {tab.label}
+            <span className="hidden sm:inline">{tab.icon} </span>
+            {tab.label}
           </button>
         ))}
       </div>

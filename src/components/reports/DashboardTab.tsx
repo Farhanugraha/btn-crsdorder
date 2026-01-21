@@ -38,13 +38,13 @@ export const DashboardTab = ({
   formatCurrency
 }: DashboardTabProps) => {
   return (
-    <div className="space-y-6">
+    <div className="w-full space-y-4 sm:space-y-5 md:space-y-6">
       {/* Orders Section */}
-      <div>
-        <h2 className="mb-4 text-lg font-bold text-slate-900 dark:text-white">
+      <div className="w-full">
+        <h2 className="mb-3 text-sm font-bold text-slate-900 dark:text-white sm:mb-4 sm:text-base md:text-lg">
           Ringkasan Pesanan
         </h2>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="grid w-full grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-3 md:grid-cols-3 md:gap-4 lg:grid-cols-5">
           <StatBox
             title="Total"
             value={data.orders.total}
@@ -79,11 +79,11 @@ export const DashboardTab = ({
       </div>
 
       {/* Payments Section */}
-      <div>
-        <h2 className="mb-4 text-lg font-bold text-slate-900 dark:text-white">
+      <div className="w-full">
+        <h2 className="mb-3 text-sm font-bold text-slate-900 dark:text-white sm:mb-4 sm:text-base md:text-lg">
           Ringkasan Pembayaran
         </h2>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="grid w-full grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-3 md:gap-4">
           <StatBox
             title="Total Revenue"
             value={formatCurrency(data.payments.total_revenue)}
@@ -100,11 +100,11 @@ export const DashboardTab = ({
       </div>
 
       {/* Users Section */}
-      <div>
-        <h2 className="mb-4 text-lg font-bold text-slate-900 dark:text-white">
+      <div className="w-full">
+        <h2 className="mb-3 text-sm font-bold text-slate-900 dark:text-white sm:mb-4 sm:text-base md:text-lg">
           Ringkasan Pengguna
         </h2>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="grid w-full grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-3 md:gap-4">
           <StatBox
             title="Total Pengguna"
             value={data.users.total_users}
