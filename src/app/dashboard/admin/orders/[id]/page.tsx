@@ -14,7 +14,8 @@ import {
   Package,
   CheckCircle2,
   Circle,
-  PrinterIcon
+  PrinterIcon,
+  X
 } from 'lucide-react';
 
 interface OrderItem {
@@ -82,6 +83,9 @@ export default function OrderDetailPage({
   const [isTogglingCheck, setIsTogglingCheck] = useState<
     number | null
   >(null);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+  const [isCancelling, setIsCancelling] = useState(false);
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
@@ -262,6 +266,56 @@ export default function OrderDetailPage({
     }
   };
 
+  const handleCancelOrder = async () => {
+    if (!cancelReason.trim()) {
+      setSubmitError('Mohon masukkan alasan pembatalan');
+      return;
+    }
+
+    setIsCancelling(true);
+    setSubmitError(null);
+
+    try {
+      const token =
+        typeof window !== 'undefined'
+          ? localStorage?.getItem('auth_token')
+          : null;
+      if (!token) return;
+
+      const response = await fetch(
+        `${apiUrl}/api/admin/orders/${order?.id}/cancel`,
+        {
+          method: 'PUT',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            cancel_reason: cancelReason
+          })
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      if (data.success) {
+        setShowCancelModal(false);
+        setCancelReason('');
+        await fetchOrder();
+      } else {
+        setSubmitError(data.message || 'Gagal membatalkan pesanan');
+      }
+    } catch (error) {
+      console.error('Error cancelling order:', error);
+      setSubmitError('Gagal membatalkan pesanan. Silakan coba lagi.');
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-white dark:bg-gray-900">
@@ -348,7 +402,6 @@ export default function OrderDetailPage({
     });
   };
 
-  // Group items by restaurant
   const groupedByRestaurant =
     order.items?.reduce(
       (acc, item) => {
@@ -370,6 +423,10 @@ export default function OrderDetailPage({
         }
       >
     ) || {};
+
+  const canCancelOrder =
+    order.order_status !== 'completed' &&
+    order.order_status !== 'canceled';
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -435,7 +492,6 @@ export default function OrderDetailPage({
       <main className="mx-auto max-w-7xl px-3 py-4 sm:px-4 sm:py-6 md:px-6 lg:px-8">
         {/* Status Overview */}
         <div className="mb-6 grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2">
-          {/* Payment Status */}
           <div
             className={`rounded-lg border-2 p-4 sm:rounded-xl sm:p-6 ${paymentBadge.bg}`}
           >
@@ -457,7 +513,6 @@ export default function OrderDetailPage({
             </p>
           </div>
 
-          {/* Order Status */}
           <div
             className={`rounded-lg border-2 p-4 sm:rounded-xl sm:p-6 ${orderBadge.bg}`}
           >
@@ -480,9 +535,7 @@ export default function OrderDetailPage({
         </div>
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          {/* Left Column - Main Content */}
           <div className="space-y-6 lg:col-span-2">
-            {/* Order Items dengan Checklist - Grouped by Restaurant */}
             <div className="space-y-6">
               {Object.entries(groupedByRestaurant).map(
                 ([restaurantId, { restaurant, items }]) => (
@@ -490,7 +543,6 @@ export default function OrderDetailPage({
                     key={restaurantId}
                     className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:rounded-xl sm:p-6"
                   >
-                    {/* Restaurant Header */}
                     <div className="mb-6 rounded-lg bg-gradient-to-r from-blue-50 to-blue-100 p-4 dark:from-blue-900/20 dark:to-blue-800/20">
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1">
@@ -507,7 +559,6 @@ export default function OrderDetailPage({
                       </div>
                     </div>
 
-                    {/* Items List */}
                     <div className="space-y-2 sm:space-y-3">
                       {items.map((item) => {
                         const isChecked = item.is_checked || false;
@@ -517,7 +568,6 @@ export default function OrderDetailPage({
                             key={item.id}
                             className="overflow-hidden rounded-lg border border-gray-200 transition-shadow hover:shadow-md dark:border-gray-700 dark:bg-gray-700/50"
                           >
-                            {/* Item Header dengan Checkbox */}
                             <div
                               className={`flex cursor-pointer items-center justify-between gap-2 p-3 sm:p-4 ${
                                 isChecked
@@ -573,7 +623,6 @@ export default function OrderDetailPage({
                               </div>
                             </div>
 
-                            {/* Item Notes */}
                             {item.notes && (
                               <div className="border-t border-gray-200 bg-blue-50 px-3 py-3 dark:border-gray-700 dark:bg-blue-900/20 sm:px-4 sm:py-3">
                                 <p className="mb-1 text-xs font-semibold uppercase text-blue-900 dark:text-blue-300">
@@ -593,7 +642,6 @@ export default function OrderDetailPage({
               )}
             </div>
 
-            {/* Total */}
             <div className="flex flex-col gap-2 rounded-lg border-t-2 border-gray-200 bg-gradient-to-r from-blue-50 to-blue-50 p-4 dark:border-gray-700 dark:from-blue-900/20 dark:to-blue-900/20 sm:flex-row sm:items-center sm:justify-between sm:p-6">
               <span className="text-base font-bold text-gray-900 dark:text-white sm:text-lg">
                 Total Pesanan:
@@ -603,7 +651,6 @@ export default function OrderDetailPage({
               </span>
             </div>
 
-            {/* Complete Order Button */}
             {order.order_status === 'processing' &&
               order.status === 'paid' && (
                 <div className="space-y-3">
@@ -648,7 +695,18 @@ export default function OrderDetailPage({
                 </div>
               )}
 
-            {/* Special Notes */}
+            {/* {canCancelOrder && (
+              <button
+                onClick={() => setShowCancelModal(true)}
+                className="w-full rounded-lg bg-red-600 px-4 py-3 font-semibold text-white transition-all hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-600 sm:rounded-xl"
+              >
+                <span className="flex items-center justify-center gap-2">
+                  <X className="h-4 w-4" />
+                  Batalkan Pesanan
+                </span>
+              </button>
+            )} */}
+
             {order.notes && (
               <div className="rounded-lg border-2 border-purple-200 bg-purple-50 p-4 dark:border-purple-800 dark:bg-purple-900/20 sm:rounded-xl sm:p-6">
                 <p className="mb-3 flex items-center gap-2 text-xs font-bold text-purple-900 dark:text-purple-300 sm:text-sm">
@@ -660,7 +718,6 @@ export default function OrderDetailPage({
               </div>
             )}
 
-            {/* Customer Info */}
             <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:rounded-xl sm:p-6">
               <h2 className="mb-4 flex items-center gap-2 text-base font-bold text-gray-900 dark:text-white sm:text-lg">
                 <MapPin className="h-4 w-4 flex-shrink-0 text-green-600 sm:h-5 sm:w-5" />
@@ -717,10 +774,8 @@ export default function OrderDetailPage({
             </div>
           </div>
 
-          {/* Right Column - Summary Sidebar */}
           <div className="lg:col-span-1">
             <div className="sticky top-20 space-y-4">
-              {/* Order Summary */}
               <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:rounded-xl sm:p-6">
                 <h3 className="mb-4 flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-gray-700 dark:text-gray-300 sm:text-sm">
                   Ringkasan
@@ -763,7 +818,6 @@ export default function OrderDetailPage({
                 </div>
               </div>
 
-              {/* Timeline */}
               <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:rounded-xl sm:p-6">
                 <h3 className="mb-4 flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-gray-700 dark:text-gray-300 sm:text-sm">
                   <Clock className="h-3 w-3 flex-shrink-0 sm:h-4 sm:w-4" />

@@ -39,7 +39,11 @@ import {
   ShoppingCart,
   CreditCard,
   Users,
-  FileText
+  FileText,
+  MapPin,
+  UtensilsCrossed,
+  UserPlus,
+  Settings
 } from 'lucide-react';
 import logo from '../../public/logobtn.png';
 import { cn } from '@/lib/utils';
@@ -79,55 +83,35 @@ const Navbar = () => {
     user && (user.role === 'admin' || user.role === 'superadmin');
   const isSuperAdmin = user && user.role === 'superadmin';
 
-  // Admin menu items structure
-  const adminMenuItems = [
-    {
-      label: 'Dashboard',
-      href: '/dashboard/admin',
-      icon: '📊',
-      roles: ['admin', 'superadmin']
-    },
-    {
-      label: 'Pesanan',
-      href: '/dashboard/admin/orders',
-      icon: '📦',
-      roles: ['admin', 'superadmin']
-    },
-    {
-      label: 'Pembayaran',
-      href: '/dashboard/admin/payments',
-      icon: '💳',
-      roles: ['admin', 'superadmin']
-    },
-    {
-      label: 'Statistik',
-      href: '/dashboard/admin/statistics',
-      icon: '📈',
-      roles: ['admin', 'superadmin']
-    },
-    {
-      label: 'Laporan',
-      href: '/dashboard/admin/reports',
-      icon: '📄',
-      roles: ['superadmin']
-    },
-    {
-      label: 'Manajemen User',
-      href: '/dashboard/admin/users',
-      icon: '👥',
-      roles: ['superadmin']
-    }
-  ];
-
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
-  // Filter menu berdasarkan role
-  const getAvailableMenuItems = () => {
-    if (!user) return [];
-    return adminMenuItems.filter((item) =>
-      item.roles.includes(user.role)
-    );
+  // Helper untuk get dashboard link
+  const getDashboardLink = () => {
+    if (isSuperAdmin) return '/dashboard/superadmin';
+    if (user?.role === 'admin') return '/dashboard/admin';
+    return '/';
   };
+
+  // Helper untuk get admin/superadmin routes
+  const getAdminOrdersLink = () =>
+    isSuperAdmin
+      ? '/dashboard/admin/orders'
+      : '/dashboard/admin/orders';
+
+  const getAdminPaymentsLink = () =>
+    isSuperAdmin
+      ? '/dashboard/admin/payments'
+      : '/dashboard/admin/payments';
+
+  const getAdminStatisticsLink = () =>
+    isSuperAdmin
+      ? '/dashboard/admin/statistics'
+      : '/dashboard/admin/statistics';
+
+  const getAdminReportsLink = () =>
+    isSuperAdmin
+      ? '/dashboard/admin/reports'
+      : '/dashboard/admin/reports';
 
   useEffect(() => {
     const checkAuth = () => {
@@ -353,7 +337,7 @@ const Navbar = () => {
         {/* Desktop Navigation */}
         <div className="hidden flex-row items-center gap-8 md:flex">
           <Link
-            href={isAdmin ? '/dashboard/admin' : '/'}
+            href={getDashboardLink()}
             className="transition-opacity hover:opacity-80"
           >
             <Image
@@ -367,20 +351,24 @@ const Navbar = () => {
           </Link>
           <div className="flex flex-row items-center gap-1">
             <Link
-              href={isAdmin ? '/dashboard/admin' : '/'}
+              href={getDashboardLink()}
               className={cn(
                 buttonVariants({ variant: 'ghost' }),
                 'text-sm'
               )}
             >
-              {isAdmin ? 'Dashboard' : 'Home'}
+              {isAdmin
+                ? isSuperAdmin
+                  ? 'Dashboard'
+                  : 'Dashboard'
+                : 'Home'}
             </Link>
 
             {/* Admin Navigation Menu */}
             {isAdmin && (
               <>
                 <Link
-                  href="/dashboard/admin/orders"
+                  href={getAdminOrdersLink()}
                   className={cn(
                     buttonVariants({ variant: 'ghost' }),
                     'text-sm'
@@ -389,7 +377,7 @@ const Navbar = () => {
                   Pesanan
                 </Link>
                 <Link
-                  href="/dashboard/admin/payments"
+                  href={getAdminPaymentsLink()}
                   className={cn(
                     buttonVariants({ variant: 'ghost' }),
                     'text-sm'
@@ -398,7 +386,7 @@ const Navbar = () => {
                   Pembayaran
                 </Link>
                 <Link
-                  href="/dashboard/admin/statistics"
+                  href={getAdminStatisticsLink()}
                   className={cn(
                     buttonVariants({ variant: 'ghost' }),
                     'text-sm'
@@ -408,7 +396,7 @@ const Navbar = () => {
                 </Link>
 
                 <Link
-                  href="/dashboard/admin/reports"
+                  href={getAdminReportsLink()}
                   className={cn(
                     buttonVariants({ variant: 'ghost' }),
                     'text-sm'
@@ -417,26 +405,35 @@ const Navbar = () => {
                   Laporan
                 </Link>
 
-                {/* Laporan & User Management - Hanya Superadmin */}
+                {/* Superadmin Exclusive Menu */}
                 {isSuperAdmin && (
                   <>
                     <Link
-                      href="/dashboard/admin/reports"
+                      href="/dashboard/superadmin/create-admin"
                       className={cn(
                         buttonVariants({ variant: 'ghost' }),
                         'text-sm'
                       )}
                     >
-                      Laporan
+                      Manajemen User
                     </Link>
                     <Link
-                      href="/dashboard/admin/users"
+                      href="/dashboard/superadmin/areas"
                       className={cn(
                         buttonVariants({ variant: 'ghost' }),
                         'text-sm'
                       )}
                     >
-                      User
+                      Area
+                    </Link>
+                    <Link
+                      href="/dashboard/superadmin/restaurants"
+                      className={cn(
+                        buttonVariants({ variant: 'ghost' }),
+                        'text-sm'
+                      )}
+                    >
+                      Restaurant
                     </Link>
                   </>
                 )}
@@ -490,7 +487,7 @@ const Navbar = () => {
         {/* Mobile Navigation */}
         <div className="flex items-center gap-4 md:hidden">
           <Link
-            href={isAdmin ? '/dashboard/admin' : '/'}
+            href={getDashboardLink()}
             className="transition-opacity hover:opacity-80"
           >
             <Image
@@ -509,8 +506,12 @@ const Navbar = () => {
               </MenubarTrigger>
               <MenubarContent align="start">
                 <MenubarItem asChild>
-                  <Link href={isAdmin ? '/dashboard/admin' : '/'}>
-                    {isAdmin ? 'Dashboard' : 'Home'}
+                  <Link href={getDashboardLink()}>
+                    {isAdmin
+                      ? isSuperAdmin
+                        ? 'Superadmin'
+                        : 'Dashboard'
+                      : 'Home'}
                   </Link>
                 </MenubarItem>
 
@@ -519,37 +520,41 @@ const Navbar = () => {
                   <>
                     <MenubarSeparator />
                     <MenubarItem asChild>
-                      <Link href="/dashboard/admin/orders">
-                        Pesanan
-                      </Link>
+                      <Link href={getAdminOrdersLink()}>Pesanan</Link>
                     </MenubarItem>
                     <MenubarItem asChild>
-                      <Link href="/dashboard/admin/payments">
+                      <Link href={getAdminPaymentsLink()}>
                         Pembayaran
                       </Link>
                     </MenubarItem>
                     <MenubarItem asChild>
-                      <Link href="/dashboard/admin/statistics">
+                      <Link href={getAdminStatisticsLink()}>
                         Statistik
                       </Link>
                     </MenubarItem>
                     <MenubarItem asChild>
-                      <Link href="/dashboard/admin/reports">
+                      <Link href={getAdminReportsLink()}>
                         Laporan
                       </Link>
                     </MenubarItem>
 
-                    {/* Laporan & User Management - Hanya Superadmin */}
+                    {/* Superadmin Exclusive Menu */}
                     {isSuperAdmin && (
                       <>
+                        <MenubarSeparator />
                         <MenubarItem asChild>
-                          <Link href="/dashboard/admin/reports">
-                            Laporan
+                          <Link href="/dashboard/superadmin/create-admin">
+                            Buat Admin
                           </Link>
                         </MenubarItem>
                         <MenubarItem asChild>
-                          <Link href="/dashboard/admin/users">
-                            Manajemen User
+                          <Link href="/dashboard/superadmin/areas">
+                            Area
+                          </Link>
+                        </MenubarItem>
+                        <MenubarItem asChild>
+                          <Link href="/dashboard/superadmin/restaurants">
+                            Restaurant
                           </Link>
                         </MenubarItem>
                       </>
@@ -605,7 +610,7 @@ const Navbar = () => {
                     </p>
                     <p className="mt-1 text-xs font-medium text-muted-foreground">
                       Role:{' '}
-                      <span className="capitalize">{user.role}</span>
+                      <span className="uppercase">{user.role}</span>
                     </p>
                   </div>
                   <DropdownMenuSeparator />
@@ -624,25 +629,45 @@ const Navbar = () => {
                   {isAdmin && (
                     <>
                       <DropdownMenuSeparator />
-                      {/* Superadmin Only */}
+                      <DropdownMenuItem asChild>
+                        <Link
+                          href={getAdminReportsLink()}
+                          className="cursor-pointer"
+                        >
+                          <FileText className="mr-2 h-4 w-4" />
+                          Laporan
+                        </Link>
+                      </DropdownMenuItem>
+
+                      {/* Superadmin Exclusive */}
                       {isSuperAdmin && (
                         <>
+                          <DropdownMenuSeparator />
                           <DropdownMenuItem asChild>
                             <Link
-                              href="/dashboard/admin/reports"
+                              href="/dashboard/superadmin/create-admin"
                               className="cursor-pointer"
                             >
-                              <FileText className="mr-2 h-4 w-4" />
-                              Laporan
+                              <UserPlus className="mr-2 h-4 w-4" />
+                              Manajemen User
                             </Link>
                           </DropdownMenuItem>
                           <DropdownMenuItem asChild>
                             <Link
-                              href="/dashboard/admin/users"
+                              href="/dashboard/superadmin/areas"
                               className="cursor-pointer"
                             >
-                              <Users className="mr-2 h-4 w-4" />
-                              Manajemen User
+                              <MapPin className="mr-2 h-4 w-4" />
+                              Area
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                            <Link
+                              href="/dashboard/superadmin/restaurants"
+                              className="cursor-pointer"
+                            >
+                              <UtensilsCrossed className="mr-2 h-4 w-4" />
+                              Restaurant
                             </Link>
                           </DropdownMenuItem>
                         </>

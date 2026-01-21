@@ -8,7 +8,7 @@ import { z } from 'zod';
 import { toast } from 'sonner';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Loader2, Eye, EyeOff } from 'lucide-react';
+import { Loader2, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import {
   Form,
@@ -160,7 +160,6 @@ const Login = () => {
       setSubmitting(false);
     }
   };
-
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
