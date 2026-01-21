@@ -31,7 +31,9 @@ interface UserData {
   name: string;
   email: string;
   role: string;
-  is_active: boolean;
+  phone?: string;
+  divisi?: string;
+  unit_kerja?: string;
   created_at: string;
 }
 
@@ -506,17 +508,28 @@ function UserRow({ userData }: { userData: UserData }) {
           >
             {getRoleLabel(userData.role)}
           </span>
-          {!userData.is_active && (
-            <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-700 dark:bg-gray-900/30 dark:text-gray-400">
-              Nonaktif
-            </span>
-          )}
         </div>
 
-        {/* Middle Row - Email */}
+        {/* Email */}
         <p className="text-xs font-medium text-slate-600 dark:text-slate-300 sm:text-sm">
           {userData.email}
         </p>
+
+        {/* Additional Info */}
+        {(userData.divisi || userData.unit_kerja) && (
+          <div className="flex flex-wrap gap-2 text-xs text-slate-500 dark:text-slate-400">
+            {userData.divisi && (
+              <span className="rounded bg-slate-100 px-2 py-0.5 dark:bg-slate-700">
+                {userData.divisi}
+              </span>
+            )}
+            {userData.unit_kerja && (
+              <span className="rounded bg-slate-100 px-2 py-0.5 dark:bg-slate-700">
+                {userData.unit_kerja}
+              </span>
+            )}
+          </div>
+        )}
 
         {/* Bottom Row - Date & Button */}
         <div className="mt-2 flex items-center justify-between gap-2">
