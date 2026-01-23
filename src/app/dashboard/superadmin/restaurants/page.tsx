@@ -1,7 +1,7 @@
-// app/dashboard/superadmin/restaurants/page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import {
   Loader2,
   Plus,
@@ -14,10 +14,11 @@ import {
   X,
   Grid3X3,
   List,
-  ChefHat,
   MapPin,
   Eye,
-  EyeOff
+  EyeOff,
+  ChefHat,
+  Circle
 } from 'lucide-react';
 
 interface Area {
@@ -32,7 +33,7 @@ interface Restaurant {
   name: string;
   description: string;
   address: string;
-  is_open: boolean;
+  is_open: number | boolean;
   menus_count: number;
   created_at: string;
   area: Area;
@@ -46,6 +47,7 @@ interface FormData {
 }
 
 export default function RestaurantsPage() {
+  const [isDark, setIsDark] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
@@ -55,6 +57,12 @@ export default function RestaurantsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [filterStatus, setFilterStatus] = useState<
+    'all' | 'open' | 'closed'
+  >('all');
+  const [filterArea, setFilterArea] = useState<string | number>(
+    'all'
+  );
   const [editingId, setEditingId] = useState<number | null>(null);
   const [message, setMessage] = useState<{
     type: 'success' | 'error';
@@ -63,6 +71,7 @@ export default function RestaurantsPage() {
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(
     null
   );
+  const [togglingId, setTogglingId] = useState<number | null>(null);
 
   const [formData, setFormData] = useState<FormData>({
     area_id: '',
@@ -73,6 +82,26 @@ export default function RestaurantsPage() {
 
   const apiUrl =
     process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+  const getIsOpen = (value: number | boolean): boolean =>
+    Boolean(value);
+
+  useEffect(() => {
+    const checkDarkMode = () => {
+      const hasDark =
+        document.documentElement.classList.contains('dark');
+      setIsDark(hasDark);
+    };
+
+    checkDarkMode();
+    const observer = new MutationObserver(checkDarkMode);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class']
+    });
+
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     checkAuth();
@@ -98,7 +127,7 @@ export default function RestaurantsPage() {
       setIsLoading(false);
       await Promise.all([fetchAreas(), fetchRestaurants()]);
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Auth Error:', error);
       window.location.href = '/auth/login';
     }
   };
@@ -124,12 +153,20 @@ export default function RestaurantsPage() {
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = await response.json();
-      if (data.success && data.data?.data) {
+
+      if (
+        data.success &&
+        data.data?.data &&
+        Array.isArray(data.data.data)
+      ) {
         setRestaurants(data.data.data);
+      } else {
+        setRestaurants([]);
       }
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error fetching restaurants:', error);
       showMessage('error', 'Gagal memuat restoran');
+      setRestaurants([]);
     } finally {
       setIsLoadingRestaurants(false);
     }
@@ -227,6 +264,7 @@ export default function RestaurantsPage() {
   };
 
   const handleToggleStatus = async (id: number) => {
+    setTogglingId(id);
     try {
       const token = localStorage?.getItem('auth_token');
       const response = await fetch(
@@ -237,12 +275,21 @@ export default function RestaurantsPage() {
         }
       );
       const result = await response.json();
+
       if (result.success) {
         showMessage('success', 'Status berhasil diubah');
         await fetchRestaurants();
+      } else {
+        showMessage(
+          'error',
+          result.message || 'Gagal mengubah status'
+        );
       }
     } catch (error) {
+      console.error('Error:', error);
       showMessage('error', 'Gagal mengubah status');
+    } finally {
+      setTogglingId(null);
     }
   };
 
@@ -262,12 +309,44 @@ export default function RestaurantsPage() {
     setTimeout(() => setMessage(null), 4000);
   };
 
+  const openCount = restaurants.filter((r) =>
+    getIsOpen(r.is_open)
+  ).length;
+  const closedCount = restaurants.filter(
+    (r) => !getIsOpen(r.is_open)
+  ).length;
+
+  const filteredRestaurants = restaurants.filter((r) => {
+    // Filter status
+    const statusMatch =
+      filterStatus === 'all' ||
+      (filterStatus === 'open'
+        ? getIsOpen(r.is_open)
+        : !getIsOpen(r.is_open));
+
+    // Filter area
+    const areaMatch =
+      filterArea === 'all' || r.area_id === Number(filterArea);
+
+    return statusMatch && areaMatch;
+  });
+
   if (isLoading) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-slate-50">
+      <div
+        className={`fixed inset-0 z-50 flex items-center justify-center ${
+          isDark
+            ? 'bg-slate-950'
+            : 'bg-gradient-to-br from-slate-50 via-white to-slate-50'
+        }`}
+      >
         <div className="text-center">
           <Loader2 className="mx-auto mb-4 h-12 w-12 animate-spin text-blue-600" />
-          <p className="text-sm font-medium text-slate-600">
+          <p
+            className={`text-sm font-medium ${
+              isDark ? 'text-slate-400' : 'text-slate-600'
+            }`}
+          >
             Memuat restoran...
           </p>
         </div>
@@ -276,20 +355,20 @@ export default function RestaurantsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 transition-colors duration-300 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       {/* Header */}
-      <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/80 backdrop-blur-md">
+      <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/80 backdrop-blur-md transition-colors dark:border-slate-700 dark:bg-slate-900/80">
         <div className="px-4 py-3 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between gap-4">
             <div className="flex min-w-0 flex-1 items-center gap-3">
               <a
                 href="/dashboard/superadmin"
-                className="inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-600 transition-colors hover:bg-slate-100"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
               >
                 <ArrowLeft className="h-4 w-4" />
               </a>
               <div className="min-w-0">
-                <p className="text-xs font-medium text-slate-500">
+                <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
                   {new Date().toLocaleDateString('id-ID', {
                     weekday: 'long',
                     year: 'numeric',
@@ -297,20 +376,20 @@ export default function RestaurantsPage() {
                     day: 'numeric'
                   })}
                 </p>
-                <h1 className="truncate text-lg font-bold text-slate-900">
+                <h1 className="text-lg font-bold text-slate-900 dark:text-white">
                   Manajemen Restoran
                 </h1>
               </div>
             </div>
             <div className="flex flex-shrink-0 items-center gap-2">
               {!showForm && restaurants.length > 0 && (
-                <div className="hidden items-center gap-1 rounded-lg bg-slate-100 p-1 sm:flex">
+                <div className="hidden items-center gap-1 rounded-lg bg-slate-100 p-1 dark:bg-slate-800 sm:flex">
                   <button
                     onClick={() => setViewMode('grid')}
                     className={`rounded p-2 transition-colors ${
                       viewMode === 'grid'
-                        ? 'bg-white text-blue-600 shadow-sm'
-                        : 'text-slate-600 hover:text-slate-900'
+                        ? 'bg-white text-blue-600 dark:bg-slate-700 dark:text-blue-400'
+                        : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
                     }`}
                   >
                     <Grid3X3 className="h-4 w-4" />
@@ -319,8 +398,8 @@ export default function RestaurantsPage() {
                     onClick={() => setViewMode('list')}
                     className={`rounded p-2 transition-colors ${
                       viewMode === 'list'
-                        ? 'bg-white text-blue-600 shadow-sm'
-                        : 'text-slate-600 hover:text-slate-900'
+                        ? 'bg-white text-blue-600 dark:bg-slate-700 dark:text-blue-400'
+                        : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
                     }`}
                   >
                     <List className="h-4 w-4" />
@@ -330,7 +409,7 @@ export default function RestaurantsPage() {
               {!showForm && (
                 <button
                   onClick={() => setShowForm(true)}
-                  className="inline-flex flex-shrink-0 items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 sm:px-4"
+                  className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 sm:px-4"
                 >
                   <Plus className="h-4 w-4" />
                   <span className="hidden sm:inline">
@@ -345,31 +424,31 @@ export default function RestaurantsPage() {
 
       {/* Alert Messages */}
       {message && (
-        <div className="border-b border-slate-200 bg-white px-4 py-3 sm:px-6 lg:px-8">
+        <div className="border-b border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900 sm:px-6 lg:px-8">
           <div
             className={`flex items-center gap-3 rounded-lg border p-3 ${
               message.type === 'success'
-                ? 'border-emerald-200 bg-emerald-50'
-                : 'border-red-200 bg-red-50'
+                ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-900/30'
+                : 'border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-900/30'
             }`}
           >
             {message.type === 'success' ? (
-              <CheckCircle2 className="h-5 w-5 flex-shrink-0 text-emerald-600" />
+              <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
             ) : (
-              <AlertCircle className="h-5 w-5 flex-shrink-0 text-red-600" />
+              <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
             )}
             <p
               className={`flex-1 text-sm font-medium ${
                 message.type === 'success'
-                  ? 'text-emerald-800'
-                  : 'text-red-800'
+                  ? 'text-emerald-800 dark:text-emerald-200'
+                  : 'text-red-800 dark:text-red-200'
               }`}
             >
               {message.text}
             </p>
             <button
               onClick={() => setMessage(null)}
-              className="flex-shrink-0 text-slate-400 hover:text-slate-600"
+              className="text-slate-400 transition-colors hover:text-slate-600 dark:hover:text-slate-300"
             >
               <X className="h-4 w-4" />
             </button>
@@ -387,46 +466,104 @@ export default function RestaurantsPage() {
           {/* Form Section */}
           {showForm && (
             <div className="order-first lg:order-none lg:col-span-1">
-              <div className="sticky top-24 max-h-[calc(100vh-120px)] overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg">
-                {/* Form Header */}
-                <div className="sticky top-0 flex items-center justify-between rounded-t-xl border-b border-slate-200 bg-gradient-to-r from-blue-50 to-blue-100 px-4 py-4 sm:px-6">
-                  <h2 className="text-base font-bold text-slate-900">
+              <div className="sticky top-24 max-h-[calc(100vh-120px)] overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900">
+                <div className="sticky top-0 flex items-center justify-between rounded-t-xl border-b border-slate-200 bg-blue-50 px-4 py-4 dark:border-slate-700 dark:bg-blue-900/30 sm:px-6">
+                  <h2 className="text-base font-bold text-slate-900 dark:text-white">
                     {editingId ? 'Edit Restoran' : 'Tambah Restoran'}
                   </h2>
                   <button
                     onClick={resetForm}
-                    className="text-slate-400 transition-colors hover:text-slate-600"
+                    className="text-slate-400 transition-colors hover:text-slate-600 dark:hover:text-slate-300"
                   >
                     <X className="h-5 w-5" />
                   </button>
                 </div>
-
-                {/* Form Content */}
                 <div className="space-y-5 p-4 sm:p-6">
                   <div className="space-y-2">
-                    <label className="block text-sm font-semibold text-slate-900">
-                      Area <span className="text-red-500">*</span>
+                    <label className="text-sm font-semibold text-slate-900 dark:text-white">
+                      Pilih Area{' '}
+                      <span className="text-red-500">*</span>
                     </label>
-                    <select
-                      value={formData.area_id}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          area_id: e.target.value
-                        })
-                      }
-                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm transition-all focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">Pilih Area...</option>
-                      {areas.map((area) => (
-                        <option key={area.id} value={area.id}>
-                          {area.icon} {area.name}
+                    <div className="relative">
+                      <select
+                        value={formData.area_id}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            area_id: e.target.value
+                          })
+                        }
+                        className="w-full appearance-none rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-900 transition-all focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                      >
+                        <option value="">
+                          -- Pilih Area Restoran --
                         </option>
-                      ))}
-                    </select>
+                        {areas && areas.length > 0 ? (
+                          areas.map((area) => (
+                            <option
+                              key={area.id}
+                              value={area.id}
+                              className="py-2"
+                            >
+                              {area.icon} {area.name}
+                            </option>
+                          ))
+                        ) : (
+                          <option disabled>
+                            Tidak ada area tersedia
+                          </option>
+                        )}
+                      </select>
+                      <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2">
+                        <svg
+                          className="h-5 w-5 text-slate-400 transition-colors dark:text-slate-500"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 14l-7 7m0 0l-7-7m7 7V3"
+                          />
+                        </svg>
+                      </div>
+                    </div>
+                    {!formData.area_id && (
+                      <div className="flex items-start gap-2 rounded-lg bg-amber-50 p-2.5 dark:bg-amber-900/20">
+                        <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600 dark:text-amber-400" />
+                        <p className="text-xs font-medium text-amber-700 dark:text-amber-300">
+                          Area harus dipilih sebelum menambah restoran
+                        </p>
+                      </div>
+                    )}
+                    {formData.area_id && (
+                      <div className="flex items-center gap-2 rounded-lg bg-blue-50 p-2.5 dark:bg-blue-900/20">
+                        <CheckCircle2 className="h-4 w-4 flex-shrink-0 text-blue-600 dark:text-blue-400" />
+                        <p className="text-xs font-medium text-blue-700 dark:text-blue-300">
+                          Area dipilih:{' '}
+                          <span className="font-semibold">
+                            {
+                              areas.find(
+                                (a) =>
+                                  a.id === Number(formData.area_id)
+                              )?.icon
+                            }{' '}
+                            {
+                              areas.find(
+                                (a) =>
+                                  a.id === Number(formData.area_id)
+                              )?.name
+                            }
+                          </span>
+                        </p>
+                      </div>
+                    )}
                   </div>
+
                   <div className="space-y-2">
-                    <label className="block text-sm font-semibold text-slate-900">
+                    <label className="text-sm font-semibold text-slate-900 dark:text-white">
                       Nama Restoran{' '}
                       <span className="text-red-500">*</span>
                     </label>
@@ -440,11 +577,11 @@ export default function RestaurantsPage() {
                         })
                       }
                       placeholder="Contoh: Warung Makan Santai"
-                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm transition-all focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-500"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="block text-sm font-semibold text-slate-900">
+                    <label className="text-sm font-semibold text-slate-900 dark:text-white">
                       Deskripsi{' '}
                       <span className="text-red-500">*</span>
                     </label>
@@ -458,11 +595,11 @@ export default function RestaurantsPage() {
                       }
                       placeholder="Jelaskan restoran ini..."
                       rows={3}
-                      className="w-full resize-none rounded-lg border border-slate-300 px-3 py-2 text-sm transition-all focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full resize-none rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-500"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="block text-sm font-semibold text-slate-900">
+                    <label className="text-sm font-semibold text-slate-900 dark:text-white">
                       Alamat <span className="text-red-500">*</span>
                     </label>
                     <input
@@ -475,27 +612,25 @@ export default function RestaurantsPage() {
                         })
                       }
                       placeholder="Jl. Contoh No. 123"
-                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm transition-all focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-500"
                     />
                   </div>
                 </div>
-
-                {/* Form Actions */}
-                <div className="sticky bottom-0 flex gap-2 rounded-b-xl border-t border-slate-200 bg-slate-50 px-4 py-3 sm:px-6">
+                <div className="sticky bottom-0 flex gap-2 rounded-b-xl border-t border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800 sm:px-6">
                   <button
                     onClick={resetForm}
-                    className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100"
+                    className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
                   >
                     Batal
                   </button>
                   <button
                     onClick={handleSubmit}
                     disabled={isSubmitting || !formData.area_id}
-                    className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
                   >
                     {isSubmitting ? (
                       <>
-                        <Loader2 className="h-4 w-4 animate-spin" />{' '}
+                        <Loader2 className="h-4 w-4 animate-spin" />
                         <span className="hidden sm:inline">
                           Simpan...
                         </span>
@@ -515,20 +650,78 @@ export default function RestaurantsPage() {
           <div
             className={showForm ? 'lg:col-span-3' : 'lg:col-span-1'}
           >
-            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
+            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900">
               {/* Header */}
-              <div className="border-b border-slate-200 bg-gradient-to-r from-blue-50 to-blue-100 px-4 py-4 sm:px-6">
-                <div className="flex items-center gap-3">
-                  <div className="rounded-lg bg-blue-200 p-2">
-                    <Building2 className="h-5 w-5 text-blue-600" />
+              <div className="border-b border-slate-200 bg-blue-50 px-4 py-4 dark:border-slate-700 dark:bg-blue-900/30 sm:px-6">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="rounded-lg bg-blue-200 p-2 dark:bg-blue-900/50">
+                        <Building2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <div>
+                        <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                          Daftar Restoran
+                        </h2>
+                        <p className="text-xs text-slate-600 dark:text-slate-400">
+                          Total: {restaurants.length} restoran
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <h2 className="text-base font-bold text-slate-900">
-                      Daftar Restoran
-                    </h2>
-                    <p className="text-xs text-slate-600">
-                      Total: {restaurants.length} restoran
-                    </p>
+                  {/* Filter Buttons */}
+                  <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:gap-2">
+                    <button
+                      onClick={() => setFilterStatus('all')}
+                      className={`rounded-lg px-3 py-2 text-xs font-medium transition-all ${
+                        filterStatus === 'all'
+                          ? 'scale-105 bg-blue-600 text-white'
+                          : 'bg-white text-slate-600 dark:bg-slate-800 dark:text-slate-300'
+                      }`}
+                    >
+                      <div>Semua</div>
+                      <div className="text-xs opacity-75">
+                        ({restaurants.length})
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => setFilterStatus('open')}
+                      className={`rounded-lg px-3 py-2 text-xs font-medium transition-all ${
+                        filterStatus === 'open'
+                          ? 'scale-105 bg-emerald-600 text-white'
+                          : 'bg-white text-slate-600 dark:bg-slate-800 dark:text-slate-300'
+                      }`}
+                    >
+                      <div>Buka</div>
+                      <div className="text-xs opacity-75">
+                        ({openCount})
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => setFilterStatus('closed')}
+                      className={`rounded-lg px-3 py-2 text-xs font-medium transition-all ${
+                        filterStatus === 'closed'
+                          ? 'scale-105 bg-red-600 text-white'
+                          : 'bg-white text-slate-600 dark:bg-slate-800 dark:text-slate-300'
+                      }`}
+                    >
+                      <div>Tutup</div>
+                      <div className="text-xs opacity-75">
+                        ({closedCount})
+                      </div>
+                    </button>
+                    <select
+                      value={filterArea}
+                      onChange={(e) => setFilterArea(e.target.value)}
+                      className="sm:col-span-auto col-span-3 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-900 transition-all focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                    >
+                      <option value="all">Semua Area</option>
+                      {areas.map((area) => (
+                        <option key={area.id} value={area.id}>
+                          {area.icon} {area.name}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
               </div>
@@ -538,62 +731,95 @@ export default function RestaurantsPage() {
                 <div className="p-4 sm:p-6">
                   {isLoadingRestaurants ? (
                     <div className="flex items-center justify-center py-12">
-                      <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+                      <Loader2 className="h-6 w-6 animate-spin text-blue-600 dark:text-blue-400" />
                     </div>
-                  ) : restaurants.length > 0 ? (
+                  ) : filteredRestaurants.length > 0 ? (
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                      {restaurants.map((restaurant) => (
-                        <div
-                          key={restaurant.id}
-                          className="flex flex-col rounded-xl border border-slate-200 p-4 transition-all hover:border-blue-300 hover:bg-blue-50/50 hover:shadow-md"
-                        >
-                          <div className="mb-3 text-5xl leading-none">
-                            {restaurant.area?.icon || '🍽️'}
-                          </div>
-                          <h3 className="mb-1 line-clamp-2 text-sm font-bold text-slate-900">
-                            {restaurant.name}
-                          </h3>
-                          <p className="mb-2 line-clamp-1 text-xs text-slate-600">
-                            {restaurant.area?.name}
-                          </p>
-                          <p className="mb-3 line-clamp-2 flex-1 text-xs text-slate-600">
-                            {restaurant.description}
-                          </p>
-                          <p className="mb-3 flex items-center gap-1 text-xs text-slate-500">
-                            <MapPin className="h-3 w-3" />{' '}
-                            {restaurant.address}
-                          </p>
-                          <div className="space-y-2">
-                            <div className="flex flex-wrap gap-1 text-xs">
-                              <span className="rounded bg-slate-100 px-2 py-1 font-medium text-slate-700">
-                                Menu: {restaurant.menus_count}
-                              </span>
-                              <span
-                                className={`rounded px-2 py-1 font-medium ${
-                                  restaurant.is_open
-                                    ? 'bg-emerald-100 text-emerald-700'
-                                    : 'bg-slate-100 text-slate-700'
-                                }`}
-                              >
-                                {restaurant.is_open
-                                  ? 'Buka'
-                                  : 'Tutup'}
-                              </span>
+                      {filteredRestaurants.map((restaurant) => {
+                        const isOpen = getIsOpen(restaurant.is_open);
+                        const isToggling =
+                          togglingId === restaurant.id;
+                        return (
+                          <div
+                            key={restaurant.id}
+                            className="overflow-hidden rounded-xl border border-slate-200 transition-all hover:border-blue-300 hover:shadow-md dark:border-slate-700 dark:hover:border-blue-600 dark:hover:shadow-lg dark:hover:shadow-blue-500/20"
+                          >
+                            <div className="p-4 dark:bg-slate-800">
+                              <div className="mb-3 flex items-start justify-between">
+                                <div className="text-4xl">
+                                  {restaurant.area?.icon || '🍽️'}
+                                </div>
+                                <Circle
+                                  className={`h-3 w-3 ${
+                                    isOpen
+                                      ? 'fill-emerald-500 text-emerald-500'
+                                      : 'fill-slate-300 text-slate-300 dark:fill-slate-600 dark:text-slate-600'
+                                  }`}
+                                />
+                              </div>
+                              <h3 className="mb-1 line-clamp-2 text-sm font-bold text-slate-900 dark:text-white">
+                                {restaurant.name}
+                              </h3>
+                              <p className="mb-2 line-clamp-1 text-xs text-slate-600 dark:text-slate-400">
+                                {restaurant.area?.name}
+                              </p>
+                              <p className="mb-3 line-clamp-2 text-xs text-slate-600 dark:text-slate-400">
+                                {restaurant.description}
+                              </p>
+                              <p className="mb-3 flex items-center gap-1 text-xs text-slate-500 dark:text-slate-500">
+                                <MapPin className="h-3 w-3" />
+                                <span className="line-clamp-1">
+                                  {restaurant.address}
+                                </span>
+                              </p>
+                              <div className="flex flex-wrap gap-2">
+                                <Link
+                                  href={`/dashboard/superadmin/restaurants/${restaurant.id}`}
+                                  className="inline-flex items-center gap-1 rounded bg-blue-100 px-2 py-1 text-xs font-medium text-blue-700 transition-colors hover:bg-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:hover:bg-blue-900/60"
+                                >
+                                  <ChefHat className="h-3 w-3" />
+                                  Menu: {restaurant.menus_count}
+                                </Link>
+                                <div className="flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold">
+                                  {isOpen ? (
+                                    <>
+                                      <div className="flex h-2 w-2 items-center justify-center">
+                                        <div className="h-2 w-2 animate-pulse rounded-full bg-emerald-500"></div>
+                                      </div>
+                                      <span className="text-emerald-700 dark:text-emerald-400">
+                                        Buka
+                                      </span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <div className="flex h-2 w-2 items-center justify-center">
+                                        <div className="h-2 w-2 rounded-full bg-red-500"></div>
+                                      </div>
+                                      <span className="text-red-700 dark:text-red-400">
+                                        Tutup
+                                      </span>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
                             </div>
-                            <div className="flex gap-2">
+                            <div className="flex gap-2 border-t border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-700/50">
                               <button
                                 onClick={() => handleEdit(restaurant)}
-                                className="flex-1 rounded-lg p-2 text-sm font-medium text-blue-600 transition-colors hover:bg-blue-100"
+                                className="flex-1 rounded-lg p-2.5 text-blue-600 transition-colors hover:bg-blue-100 dark:text-blue-400 dark:hover:bg-blue-900/40"
                               >
-                                Edit
+                                <Edit2 className="mx-auto h-4 w-4" />
                               </button>
                               <button
                                 onClick={() =>
                                   handleToggleStatus(restaurant.id)
                                 }
-                                className="flex-1 rounded-lg p-2 text-sm font-medium text-blue-600 transition-colors hover:bg-blue-100"
+                                disabled={isToggling}
+                                className="flex-1 rounded-lg p-2.5 text-amber-600 transition-colors hover:bg-amber-100 disabled:opacity-50 dark:text-amber-400 dark:hover:bg-amber-900/40"
                               >
-                                {restaurant.is_open ? (
+                                {isToggling ? (
+                                  <Loader2 className="mx-auto h-4 w-4 animate-spin" />
+                                ) : isOpen ? (
                                   <EyeOff className="mx-auto h-4 w-4" />
                                 ) : (
                                   <Eye className="mx-auto h-4 w-4" />
@@ -603,25 +829,27 @@ export default function RestaurantsPage() {
                                 onClick={() =>
                                   setDeleteConfirm(restaurant.id)
                                 }
-                                className="flex-1 rounded-lg p-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-100"
+                                className="flex-1 rounded-lg p-2.5 text-red-600 transition-colors hover:bg-red-100 dark:text-red-400 dark:hover:bg-red-900/40"
                               >
-                                Hapus
+                                <Trash2 className="mx-auto h-4 w-4" />
                               </button>
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   ) : (
                     <div className="py-12 text-center">
-                      <div className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100">
-                        <CheckCircle2 className="h-6 w-6 text-emerald-600" />
-                      </div>
-                      <h3 className="text-sm font-semibold text-slate-900">
+                      <CheckCircle2 className="mx-auto mb-3 h-12 w-12 text-slate-300 dark:text-slate-600" />
+                      <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
                         Tidak ada restoran
                       </h3>
-                      <p className="mt-1 text-xs text-slate-500">
-                        Tambahkan restoran pertama Anda sekarang
+                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                        {filterStatus === 'closed'
+                          ? 'Semua restoran sedang buka'
+                          : filterStatus === 'open'
+                            ? 'Tidak ada restoran yang buka'
+                            : 'Tambahkan restoran pertama Anda'}
                       </p>
                     </div>
                   )}
@@ -630,136 +858,218 @@ export default function RestaurantsPage() {
 
               {/* List View */}
               {viewMode === 'list' && (
-                <div className="divide-y divide-slate-200">
+                <div className="divide-y divide-slate-200 dark:divide-slate-700">
                   {isLoadingRestaurants ? (
                     <div className="flex items-center justify-center py-12">
-                      <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+                      <Loader2 className="h-6 w-6 animate-spin text-blue-600 dark:text-blue-400" />
                     </div>
-                  ) : restaurants.length > 0 ? (
-                    restaurants.map((restaurant) => (
-                      <div
-                        key={restaurant.id}
-                        className="flex items-start gap-4 p-4 transition-colors hover:bg-slate-50 sm:p-6"
-                      >
-                        <div className="flex-shrink-0 text-4xl">
-                          {restaurant.area?.icon || '🍽️'}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <h3 className="truncate text-base font-bold text-slate-900">
-                            {restaurant.name}
-                          </h3>
-                          <p className="mb-2 truncate text-sm text-slate-500">
-                            {restaurant.area?.name}
-                          </p>
-                          <p className="mb-3 line-clamp-2 text-sm text-slate-600">
-                            {restaurant.description}
-                          </p>
-                          <p className="mb-3 flex items-center gap-1 text-sm text-slate-500">
-                            <MapPin className="h-4 w-4" />{' '}
-                            {restaurant.address}
-                          </p>
-                          <div className="flex flex-wrap gap-2">
-                            <span className="inline-block rounded bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
-                              Menu: {restaurant.menus_count}
-                            </span>
-                            <span
-                              className={`inline-block rounded px-3 py-1 text-xs font-medium ${
-                                restaurant.is_open
-                                  ? 'bg-emerald-100 text-emerald-700'
-                                  : 'bg-slate-100 text-slate-700'
-                              }`}
-                            >
-                              {restaurant.is_open ? 'Buka' : 'Tutup'}
-                            </span>
+                  ) : filteredRestaurants.length > 0 ? (
+                    filteredRestaurants.map((restaurant) => {
+                      const isOpen = getIsOpen(restaurant.is_open);
+                      const isToggling = togglingId === restaurant.id;
+                      return (
+                        <div
+                          key={restaurant.id}
+                          // PERBAIKAN: flex-col untuk mobile, flex-row untuk sm up
+                          className="flex flex-col items-start gap-4 p-4 transition-all duration-200 hover:bg-blue-50 dark:hover:bg-slate-700/50 sm:flex-row sm:p-6"
+                        >
+                          {/* Wrapper untuk Icon dan Judul agar di mobile tetap sejajar saat tumpuk */}
+                          <div className="flex w-full gap-4 sm:w-auto">
+                            <div className="flex-shrink-0 text-4xl drop-shadow-sm sm:text-5xl">
+                              {restaurant.area?.icon || '🍽️'}
+                            </div>
+
+                            {/* Judul & Status hanya muncul di samping icon saat mobile */}
+                            <div className="min-w-0 flex-1 sm:hidden">
+                              <h3 className="truncate text-lg font-bold text-slate-900 dark:text-white">
+                                {restaurant.name}
+                              </h3>
+                              <div
+                                className={`mt-1 inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 ${
+                                  isOpen
+                                    ? 'bg-emerald-100 dark:bg-emerald-900/40'
+                                    : 'bg-red-100 dark:bg-red-900/40'
+                                }`}
+                              >
+                                <div
+                                  className={`h-1.5 w-1.5 rounded-full ${
+                                    isOpen
+                                      ? 'animate-pulse bg-emerald-500'
+                                      : 'bg-red-500'
+                                  }`}
+                                />
+                                <span
+                                  className={`text-[10px] font-bold uppercase ${
+                                    isOpen
+                                      ? 'text-emerald-700 dark:text-emerald-400'
+                                      : 'text-red-700 dark:text-red-400'
+                                  }`}
+                                >
+                                  {isOpen ? 'Buka' : 'Tutup'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="w-full min-w-0 flex-1">
+                            {/* Judul Desktop (Hidden di mobile karena sudah ada di atas) */}
+                            <div className="mb-2 hidden items-center gap-3 sm:flex">
+                              <h3 className="truncate text-lg font-bold text-slate-900 dark:text-white">
+                                {restaurant.name}
+                              </h3>
+                              <div
+                                className={`flex flex-shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 ${
+                                  isOpen
+                                    ? 'bg-emerald-100 dark:bg-emerald-900/40'
+                                    : 'bg-red-100 dark:bg-red-900/40'
+                                }`}
+                              >
+                                <div
+                                  className={`h-2 w-2 rounded-full ${
+                                    isOpen
+                                      ? 'animate-pulse bg-emerald-500'
+                                      : 'bg-red-500'
+                                  }`}
+                                />
+                                <span
+                                  className={`text-xs font-bold ${
+                                    isOpen
+                                      ? 'text-emerald-700 dark:text-emerald-400'
+                                      : 'text-red-700 dark:text-red-400'
+                                  }`}
+                                >
+                                  {isOpen ? 'Buka' : 'Tutup'}
+                                </span>
+                              </div>
+                            </div>
+
+                            <p className="mb-1 truncate text-sm font-semibold text-blue-600 dark:text-blue-400 sm:text-slate-500 sm:dark:text-slate-400">
+                              {restaurant.area?.name}
+                            </p>
+                            <p className="mb-3 line-clamp-2 text-sm text-slate-600 dark:text-slate-300">
+                              {restaurant.description}
+                            </p>
+                            <p className="mb-4 flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+                              <MapPin className="h-4 w-4 flex-shrink-0" />
+                              <span className="truncate">
+                                {restaurant.address}
+                              </span>
+                            </p>
+
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                              <Link
+                                href={`/dashboard/superadmin/restaurants/${restaurant.id}`}
+                                className="inline-flex items-center gap-2 rounded-lg bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 transition-all duration-200 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300"
+                              >
+                                <ChefHat className="h-4 w-4" />
+                                Menu: {restaurant.menus_count}
+                              </Link>
+
+                              {/* Action Buttons: Pindah ke bawah/samping secara rapi */}
+                              <div className="flex items-center gap-1 rounded-lg bg-slate-100 p-1 dark:bg-slate-800 sm:bg-transparent sm:dark:bg-transparent">
+                                <button
+                                  onClick={() =>
+                                    handleEdit(restaurant)
+                                  }
+                                  className="rounded-lg p-2 text-blue-600 hover:bg-blue-100 dark:text-blue-400"
+                                  title="Edit"
+                                >
+                                  <Edit2 className="h-4 w-4" />
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    handleToggleStatus(restaurant.id)
+                                  }
+                                  disabled={isToggling}
+                                  className="rounded-lg p-2 transition-all hover:bg-amber-100 disabled:opacity-50"
+                                  style={{
+                                    color: isOpen
+                                      ? 'rgb(180, 83, 9)'
+                                      : 'rgb(5, 150, 105)'
+                                  }}
+                                >
+                                  {isToggling ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : isOpen ? (
+                                    <EyeOff className="h-4 w-4" />
+                                  ) : (
+                                    <Eye className="h-4 w-4" />
+                                  )}
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    setDeleteConfirm(restaurant.id)
+                                  }
+                                  className="rounded-lg p-2 text-red-600 hover:bg-red-100 dark:text-red-400"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </div>
+                            </div>
                           </div>
                         </div>
-                        <div className="flex flex-shrink-0 gap-2">
-                          <button
-                            onClick={() => handleEdit(restaurant)}
-                            className="rounded-lg p-2 text-blue-600 transition-colors hover:bg-blue-100"
-                          >
-                            <Edit2 className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() =>
-                              handleToggleStatus(restaurant.id)
-                            }
-                            className="rounded-lg p-2 text-blue-600 transition-colors hover:bg-blue-100"
-                          >
-                            {restaurant.is_open ? (
-                              <EyeOff className="h-4 w-4" />
-                            ) : (
-                              <Eye className="h-4 w-4" />
-                            )}
-                          </button>
-                          <button
-                            onClick={() =>
-                              setDeleteConfirm(restaurant.id)
-                            }
-                            className="rounded-lg p-2 text-red-600 transition-colors hover:bg-red-100"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </div>
-                    ))
+                      );
+                    })
                   ) : (
                     <div className="py-12 text-center">
-                      <div className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100">
-                        <CheckCircle2 className="h-6 w-6 text-emerald-600" />
-                      </div>
-                      <h3 className="text-sm font-semibold text-slate-900">
+                      <CheckCircle2 className="mx-auto mb-3 h-12 w-12 text-slate-300 dark:text-slate-600" />
+                      <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
                         Tidak ada restoran
                       </h3>
-                      <p className="mt-1 text-xs text-slate-500">
-                        Tambahkan restoran pertama Anda sekarang
+                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                        {filterStatus === 'closed'
+                          ? 'Semua restoran sedang buka'
+                          : filterStatus === 'open'
+                            ? 'Tidak ada restoran yang buka'
+                            : 'Tambahkan restoran pertama Anda'}
                       </p>
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* Delete Confirmation Modal */}
+              {deleteConfirm && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                  <div className="w-full max-w-sm rounded-xl bg-white shadow-xl dark:bg-slate-800">
+                    <div className="space-y-4 p-6">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/40">
+                          <AlertCircle className="h-6 w-6 text-red-600 dark:text-red-400" />
+                        </div>
+                        <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                          Hapus Restoran?
+                        </h3>
+                      </div>
+                      <p className="text-sm text-slate-600 dark:text-slate-300">
+                        Apakah Anda yakin menghapus restoran ini?
+                        Tindakan ini tidak dapat dibatalkan.
+                      </p>
+                      <div className="flex gap-3 pt-2">
+                        <button
+                          onClick={() => setDeleteConfirm(null)}
+                          className="flex-1 rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700/50"
+                        >
+                          Batal
+                        </button>
+                        <button
+                          onClick={() =>
+                            deleteConfirm &&
+                            handleDelete(deleteConfirm)
+                          }
+                          className="flex-1 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 dark:hover:bg-red-700"
+                        >
+                          Hapus
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
           </div>
         </div>
       </main>
-
-      {/* Delete Confirmation Modal */}
-      {deleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-sm rounded-xl bg-white shadow-xl">
-            <div className="space-y-4 p-6">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-red-100">
-                  <AlertCircle className="h-6 w-6 text-red-600" />
-                </div>
-                <h3 className="text-base font-bold text-slate-900">
-                  Hapus Restoran?
-                </h3>
-              </div>
-              <p className="text-sm text-slate-600">
-                Apakah Anda yakin menghapus restoran ini? Tindakan ini
-                tidak dapat dibatalkan.
-              </p>
-              <div className="flex gap-3 pt-2">
-                <button
-                  onClick={() => setDeleteConfirm(null)}
-                  className="flex-1 rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
-                >
-                  Batal
-                </button>
-                <button
-                  onClick={() =>
-                    deleteConfirm && handleDelete(deleteConfirm)
-                  }
-                  className="flex-1 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700"
-                >
-                  Hapus
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
