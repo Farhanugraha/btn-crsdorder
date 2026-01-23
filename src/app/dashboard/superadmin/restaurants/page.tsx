@@ -18,7 +18,8 @@ import {
   Eye,
   EyeOff,
   ChefHat,
-  Circle
+  Circle,
+  ChevronDown
 } from 'lucide-react';
 
 interface Area {
@@ -650,78 +651,118 @@ export default function RestaurantsPage() {
           <div
             className={showForm ? 'lg:col-span-3' : 'lg:col-span-1'}
           >
-            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900">
-              {/* Header */}
-              <div className="border-b border-slate-200 bg-blue-50 px-4 py-4 dark:border-slate-700 dark:bg-blue-900/30 sm:px-6">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <div className="rounded-lg bg-blue-200 p-2 dark:bg-blue-900/50">
-                        <Building2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-200/50 dark:border-slate-700 dark:bg-slate-900 dark:shadow-none">
+              {/* Header & Filter Section */}
+              <div className="relative border-b border-slate-100 bg-gradient-to-b from-slate-50 to-white px-4 py-5 dark:border-slate-700 dark:from-slate-800/50 dark:to-slate-900 sm:px-6">
+                <div className="space-y-5">
+                  {/* Title & Icon */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="relative">
+                        <div className="absolute -inset-1 rounded-xl bg-blue-500/20 blur-sm dark:bg-blue-500/10"></div>
+                        <div className="relative rounded-xl bg-blue-600 p-2.5 shadow-lg shadow-blue-200 dark:bg-blue-600 dark:shadow-none">
+                          <Building2 className="h-5 w-5 text-white" />
+                        </div>
                       </div>
                       <div>
-                        <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                        <h2 className="text-base font-bold tracking-tight text-slate-900 dark:text-white">
                           Daftar Restoran
                         </h2>
-                        <p className="text-xs text-slate-600 dark:text-slate-400">
-                          Total: {restaurants.length} restoran
-                        </p>
+                        <div className="mt-0.5 flex items-center gap-1.5">
+                          <span className="flex h-1.5 w-1.5 rounded-full bg-blue-500"></span>
+                          <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                            Total: {restaurants.length} restoran
+                          </p>
+                        </div>
                       </div>
                     </div>
                   </div>
-                  {/* Filter Buttons */}
-                  <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:gap-2">
-                    <button
-                      onClick={() => setFilterStatus('all')}
-                      className={`rounded-lg px-3 py-2 text-xs font-medium transition-all ${
-                        filterStatus === 'all'
-                          ? 'scale-105 bg-blue-600 text-white'
-                          : 'bg-white text-slate-600 dark:bg-slate-800 dark:text-slate-300'
-                      }`}
-                    >
-                      <div>Semua</div>
-                      <div className="text-xs opacity-75">
-                        ({restaurants.length})
+
+                  {/* Filter Toolbar */}
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    {/* Status Segmented Control */}
+                    <div className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-100/50 p-1.5 dark:border-slate-700 dark:bg-slate-800/50">
+                      <button
+                        onClick={() => setFilterStatus('all')}
+                        className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-xs font-medium transition-all sm:flex-none ${
+                          filterStatus === 'all'
+                            ? 'bg-white text-blue-600 shadow-sm ring-1 ring-slate-200 dark:bg-slate-700 dark:text-white dark:ring-slate-600'
+                            : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
+                        }`}
+                      >
+                        <span>Semua</span>
+                        <span
+                          className={`rounded-md px-1.5 py-0.5 text-[10px] ${
+                            filterStatus === 'all'
+                              ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/40 dark:text-blue-300'
+                              : 'bg-slate-200 dark:bg-slate-700'
+                          }`}
+                        >
+                          {restaurants.length}
+                        </span>
+                      </button>
+
+                      <button
+                        onClick={() => setFilterStatus('open')}
+                        className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-xs font-medium transition-all sm:flex-none ${
+                          filterStatus === 'open'
+                            ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-200 dark:shadow-none'
+                            : 'text-slate-500 hover:text-emerald-600 dark:text-slate-400'
+                        }`}
+                      >
+                        <span>Buka</span>
+                        <span
+                          className={`rounded-md px-1.5 py-0.5 text-[10px] ${
+                            filterStatus === 'open'
+                              ? 'bg-white/20 text-white'
+                              : 'bg-slate-200 dark:bg-slate-700'
+                          }`}
+                        >
+                          {openCount}
+                        </span>
+                      </button>
+
+                      <button
+                        onClick={() => setFilterStatus('closed')}
+                        className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-xs font-medium transition-all sm:flex-none ${
+                          filterStatus === 'closed'
+                            ? 'bg-red-500 text-white shadow-lg shadow-red-200 dark:shadow-none'
+                            : 'text-slate-500 hover:text-red-600 dark:text-slate-400'
+                        }`}
+                      >
+                        <span>Tutup</span>
+                        <span
+                          className={`rounded-md px-1.5 py-0.5 text-[10px] ${
+                            filterStatus === 'closed'
+                              ? 'bg-white/20 text-white'
+                              : 'bg-slate-200 dark:bg-slate-700'
+                          }`}
+                        >
+                          {closedCount}
+                        </span>
+                      </button>
+                    </div>
+
+                    {/* Area Selector */}
+                    <div className="relative">
+                      <select
+                        value={filterArea}
+                        onChange={(e) =>
+                          setFilterArea(e.target.value)
+                        }
+                        className="w-full appearance-none rounded-xl border border-slate-200 bg-white py-2.5 pl-4 pr-10 text-xs font-bold text-slate-700 shadow-sm transition-all focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-white sm:w-48"
+                      >
+                        <option value="all">Semua Area</option>
+                        {areas.map((area) => (
+                          <option key={area.id} value={area.id}>
+                            {area.icon} {area.name}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
+                        <ChevronDown className="h-4 w-4" />
                       </div>
-                    </button>
-                    <button
-                      onClick={() => setFilterStatus('open')}
-                      className={`rounded-lg px-3 py-2 text-xs font-medium transition-all ${
-                        filterStatus === 'open'
-                          ? 'scale-105 bg-emerald-600 text-white'
-                          : 'bg-white text-slate-600 dark:bg-slate-800 dark:text-slate-300'
-                      }`}
-                    >
-                      <div>Buka</div>
-                      <div className="text-xs opacity-75">
-                        ({openCount})
-                      </div>
-                    </button>
-                    <button
-                      onClick={() => setFilterStatus('closed')}
-                      className={`rounded-lg px-3 py-2 text-xs font-medium transition-all ${
-                        filterStatus === 'closed'
-                          ? 'scale-105 bg-red-600 text-white'
-                          : 'bg-white text-slate-600 dark:bg-slate-800 dark:text-slate-300'
-                      }`}
-                    >
-                      <div>Tutup</div>
-                      <div className="text-xs opacity-75">
-                        ({closedCount})
-                      </div>
-                    </button>
-                    <select
-                      value={filterArea}
-                      onChange={(e) => setFilterArea(e.target.value)}
-                      className="sm:col-span-auto col-span-3 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-900 transition-all focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
-                    >
-                      <option value="all">Semua Area</option>
-                      {areas.map((area) => (
-                        <option key={area.id} value={area.id}>
-                          {area.icon} {area.name}
-                        </option>
-                      ))}
-                    </select>
+                    </div>
                   </div>
                 </div>
               </div>
