@@ -11,6 +11,7 @@ import {
   AlertCircle,
   CheckCircle2,
   Building2,
+  Search,
   X,
   Grid3X3,
   List,
@@ -73,6 +74,7 @@ export default function RestaurantsPage() {
     null
   );
   const [togglingId, setTogglingId] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState<string>('');
 
   const [formData, setFormData] = useState<FormData>({
     area_id: '',
@@ -329,7 +331,13 @@ export default function RestaurantsPage() {
     const areaMatch =
       filterArea === 'all' || r.area_id === Number(filterArea);
 
-    return statusMatch && areaMatch;
+    const searchMatch = searchQuery === '' || 
+      r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      r.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      r.address.toLowerCase().includes(searchQuery.toLowerCase())
+
+
+    return statusMatch && areaMatch && searchMatch;
   });
 
   if (isLoading) {
@@ -453,6 +461,37 @@ export default function RestaurantsPage() {
             >
               <X className="h-4 w-4" />
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Search Bar Section */}
+      {!showForm && restaurants.length > 0 && (
+        <div className="border-b border-slate-200 bg-white px-4 py-4 dark:border-slate-700 dark:bg-slate-900 sm:px-6 lg:px-8">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="relative flex-1">
+              <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                <Search className="h-4 w-4 text-slate-400" />
+              </div>
+              <input
+                type="text"
+                placeholder="Cari restoran, deskripsi, atau alamat..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full rounded-lg border border-slate-300 bg-white pl-10 pr-4 py-2 text-sm placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-500 sm:max-w-md"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute inset-y-0 right-3 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+            <div className="text-xs font-medium text-slate-500 dark:text-slate-400">
+              Ditemukan: <span className="font-bold text-slate-900 dark:text-white">{filteredRestaurants.length}</span> restoran
+            </div>
           </div>
         </div>
       )}

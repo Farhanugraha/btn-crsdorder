@@ -16,7 +16,10 @@ import {
   Plus,
   ShoppingCart,
   ArrowLeft,
-  MapPin
+  MapPin,
+  Clock,
+  ChefHat,
+  AlertCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -57,24 +60,17 @@ const RestaurantMenuPage = () => {
   const restaurantId = params.restaurantId as string;
 
   const [isLoading, setIsLoading] = useState(true);
-  const [restaurant, setRestaurant] = useState<Restaurant | null>(
-    null
-  );
+  const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [menuList, setMenuList] = useState<Menu[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [dialogOpen, setDialogOpen] = useState<{
-    [key: string]: boolean;
-  }>({});
-  const [selectedQuantity, setSelectedQuantity] = useState<{
-    [key: string]: number;
-  }>({});
+  const [dialogOpen, setDialogOpen] = useState<{ [key: string]: boolean }>({});
+  const [selectedQuantity, setSelectedQuantity] = useState<{ [key: string]: number }>({});
   const [notes, setNotes] = useState<{ [key: string]: string }>({});
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const [areaId, setAreaId] = useState<number | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
-  // Check login status
   useEffect(() => {
     const token = localStorage.getItem('auth_token');
     setIsLoggedIn(!!token);
@@ -192,7 +188,6 @@ const RestaurantMenuPage = () => {
     return (numPrice * quantity).toLocaleString('id-ID');
   };
 
-  // Skeleton loading component
   const SkeletonCard = () => (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
       <div className="aspect-square w-full animate-pulse bg-slate-200 dark:bg-slate-700" />
@@ -206,9 +201,8 @@ const RestaurantMenuPage = () => {
 
   if (isLoading) {
     return (
-      <div className="relative min-h-screen bg-slate-50 dark:bg-slate-900">
-        {/* Header Skeleton */}
-        <header className="shadow-sm/50 sticky top-0 z-30 border-b border-slate-200/50 bg-white/80 backdrop-blur-md dark:border-slate-700/50 dark:bg-slate-800/80">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-950">
+        <header className="sticky top-0 z-30 border-b border-slate-200/50 bg-white/80 backdrop-blur-md dark:border-slate-700/50 dark:bg-slate-800/80">
           <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
             <div className="mb-4 h-10 w-32 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
             <div className="space-y-3">
@@ -216,19 +210,12 @@ const RestaurantMenuPage = () => {
               <div className="h-4 w-3/4 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
               <div className="flex gap-3">
                 <div className="h-8 w-40 animate-pulse rounded-full bg-slate-200 dark:bg-slate-700" />
-                <div className="h-8 w-32 animate-pulse rounded-full bg-slate-200 dark:bg-slate-700" />
               </div>
             </div>
           </div>
         </header>
 
-        {/* Content Skeleton */}
         <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
-          <div className="mb-8">
-            <div className="mb-2 h-8 w-40 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
-            <div className="h-4 w-32 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
-          </div>
-
           <div className="grid grid-cols-2 gap-4 sm:gap-6 md:grid-cols-3 lg:grid-cols-4">
             {Array.from({ length: 8 }).map((_, i) => (
               <SkeletonCard key={i} />
@@ -241,10 +228,17 @@ const RestaurantMenuPage = () => {
 
   if (error || !restaurant) {
     return (
-      <div className="relative flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-900">
-        <div className="px-4 text-center">
-          <div className="mb-4 text-5xl">⚠️</div>
-          <p className="mb-6 text-lg font-medium text-slate-600 dark:text-slate-300">
+      <div className="relative flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-950">
+        <div className="rounded-2xl bg-white p-8 text-center shadow-lg dark:bg-slate-800 sm:p-12">
+          <div className="mb-4 flex justify-center">
+            <div className="rounded-full bg-red-100 p-4 dark:bg-red-900/30">
+              <AlertCircle className="h-8 w-8 text-red-600 dark:text-red-400" />
+            </div>
+          </div>
+          <h2 className="mb-2 text-xl font-bold text-slate-900 dark:text-white">
+            Oops! Terjadi Kesalahan
+          </h2>
+          <p className="mb-6 text-slate-600 dark:text-slate-400">
             {error || 'Restoran tidak ditemukan'}
           </p>
           <Link href="/areas">
@@ -262,88 +256,67 @@ const RestaurantMenuPage = () => {
   }
 
   return (
-    <div className="relative min-h-screen bg-slate-50 dark:bg-slate-900">
-      {/* Header */}
-      <header className="shadow-sm/50 sticky top-0 z-30 border-b border-slate-200/50 bg-white/80 backdrop-blur-md dark:border-slate-700/50 dark:bg-slate-800/80">
-        <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
-          {areaId ? (
-            <Link
-              href={`/areas/${areaId}`}
-              className="mb-4 inline-block"
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-950">
+      {/* Hero Header */}
+      <header className="sticky top-0 z-30 border-b border-slate-200/60 bg-white/70 backdrop-blur-xl dark:border-slate-800/60 dark:bg-slate-900/70">
+        <div className="mx-auto max-w-7xl px-4 py-4 sm:py-6 lg:px-8">
+          {/* Back Button */}
+          <Link href={areaId ? `/areas/${areaId}` : "/areas"}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="group -ml-2 mb-4 gap-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
             >
-              <Button
-                variant="ghost"
-                size="sm"
-                className="gap-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-white"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Kembali ke {restaurant?.area?.name || 'Area'}
-              </Button>
-            </Link>
-          ) : (
-            <Link href="/areas" className="mb-4 inline-block">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="gap-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-white"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Kembali ke Areas
-              </Button>
-            </Link>
-          )}
+              <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
+              Kembali
+            </Button>
+          </Link>
 
-          <div className="space-y-3">
-            {/* Restaurant Name with Area */}
-            <div>
-              <div className="mb-2 flex items-center gap-3">
-                {restaurant.area && (
-                  <span className="text-3xl">
-                    {restaurant.area.icon || '📍'}
+          {/* Restaurant Info */}
+          <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+            <div className="flex-1">
+              {restaurant.area && (
+                <div className="mb-3 flex items-center gap-2">
+                  <span className="text-2xl">{restaurant.area.icon || '📍'}</span>
+                  <span className="text-xs font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
+                    {restaurant.area.name}
                   </span>
-                )}
-                <div>
-                  {restaurant.area && (
-                    <p className="text-xs font-medium uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
-                      {restaurant.area.name}
-                    </p>
-                  )}
-                  <h1 className="text-3xl font-bold text-slate-900 dark:text-white sm:text-4xl">
-                    {restaurant.name}
-                  </h1>
                 </div>
-              </div>
+              )}
+              <h1 className="text-3xl font-bold text-slate-900 dark:text-white sm:text-4xl">
+                {restaurant.name}
+              </h1>
               <p className="mt-2 max-w-2xl text-sm text-slate-600 dark:text-slate-400 sm:text-base">
                 {restaurant.description}
               </p>
+
+              {/* Info Badges */}
+              <div className="mt-4 flex flex-wrap gap-2">
+                <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-400">
+                  <MapPin className="h-4 w-4 text-emerald-500" />
+                  <span className="line-clamp-1 font-medium">{restaurant.address}</span>
+                </div>
+                <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-300">
+                  <ChefHat className="h-4 w-4 text-emerald-500" />
+                  {restaurant.menus_count} Menu
+                </div>
+              </div>
             </div>
 
-            {/* Restaurant Info */}
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-              <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-                <MapPin className="h-4 w-4 shrink-0" />
-                <span className="line-clamp-1">
-                  {restaurant.address}
-                </span>
-              </div>
-
-              <div>
-                {restaurant.is_open ? (
-                  <div className="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-3 py-1.5 text-sm font-medium text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
-                    <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-600 dark:bg-emerald-400" />
-                    Buka
-                  </div>
-                ) : (
-                  <div className="inline-flex items-center gap-2 rounded-full bg-red-100 px-3 py-1.5 text-sm font-medium text-red-700 dark:bg-red-900/40 dark:text-red-300">
-                    <span className="h-2 w-2 rounded-full bg-red-600 dark:bg-red-400" />
-                    Tutup
-                  </div>
-                )}
-              </div>
-
-              {restaurant.menus_count > 0 && (
-                <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-700 dark:bg-slate-700 dark:text-slate-300">
-                  🍽️ {restaurant.menus_count} Menu
+            {/* Status Badge */}
+            <div className="shrink-0">
+              {restaurant.is_open ? (
+                <div className="inline-flex items-center gap-2.5 rounded-full bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/20 dark:bg-emerald-500/10 dark:text-emerald-400 dark:ring-emerald-500/20">
+                  <span className="relative flex h-2 w-2">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                  </span>
+                  Buka Sekarang
+                </div>
+              ) : (
+                <div className="inline-flex items-center gap-2.5 rounded-full bg-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-600 ring-1 ring-inset ring-slate-200 dark:bg-slate-800/50 dark:text-slate-400 dark:ring-slate-700">
+                  <Clock className="h-4 w-4" />
+                  Tutup Sementara
                 </div>
               )}
             </div>
@@ -352,27 +325,32 @@ const RestaurantMenuPage = () => {
       </header>
 
       {/* Menu Content */}
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
+      <main className="mx-auto max-w-7xl px-4 py-8 sm:py-12 lg:px-8">
         {menuList.length === 0 ? (
-          <div className="py-16 sm:py-24">
-            <div className="mx-auto max-w-md text-center">
-              <div className="mb-4 text-6xl sm:text-7xl">🍽️</div>
-              <p className="text-lg font-medium text-slate-500 dark:text-slate-400 sm:text-xl">
-                Belum ada menu yang tersedia
-              </p>
+          <div className="flex flex-col items-center justify-center rounded-2xl bg-white py-24 dark:bg-slate-800/50">
+            <div className="mb-6 rounded-full bg-slate-100 p-8 dark:bg-slate-800">
+              <span className="text-6xl">🍽️</span>
             </div>
+            <h3 className="text-xl font-bold text-slate-900 dark:text-white">
+              Belum ada menu tersedia
+            </h3>
+            <p className="mt-2 text-slate-500 dark:text-slate-400">
+              Restoran ini belum memperbarui daftar menu mereka.
+            </p>
           </div>
         ) : (
           <div>
+            {/* Menu Section Header */}
             <div className="mb-8">
               <h2 className="text-2xl font-bold text-slate-900 dark:text-white sm:text-3xl">
-                Menu Makanan
+                📋 Daftar Menu
               </h2>
-              <p className="mt-2 text-slate-600 dark:text-slate-400">
-                {menuList.length} item tersedia
+              <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+                {menuList.length} pilihan menu spesial untuk Anda
               </p>
             </div>
 
+            {/* Menu Grid */}
             <div className="grid grid-cols-2 gap-4 sm:gap-6 md:grid-cols-3 lg:grid-cols-4">
               {menuList.map((menu) => (
                 <Dialog
@@ -380,175 +358,183 @@ const RestaurantMenuPage = () => {
                   open={dialogOpen[String(menu.id)] || false}
                   onOpenChange={() => toggleDialog(menu.id)}
                 >
-                  <DialogTrigger asChild>
-                    <div className="group cursor-pointer">
-                      <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:border-slate-300 hover:shadow-lg active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-slate-600">
-                        <div className="relative aspect-square w-full overflow-hidden bg-slate-100 dark:bg-slate-700">
-                          <img
-                            src={menu.image || '/foodimages.png'}
-                            alt={menu.name}
-                            className="h-full w-full object-cover"
-                            onError={(e) => {
-                              e.currentTarget.src = '/foodimages.png';
-                            }}
-                          />
-                          {!menu.is_available && (
-                            <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-                              <span className="rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-semibold text-white dark:bg-slate-950">
-                                Tidak Tersedia
-                              </span>
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="flex flex-grow flex-col justify-between p-4 sm:p-5">
-                          <div className="mb-3">
-                            <h3 className="line-clamp-2 text-sm font-semibold leading-snug text-slate-900 dark:text-white sm:text-base">
-                              {menu.name}
-                            </h3>
+                    <div
+                      className={`group relative flex h-full flex-col overflow-hidden rounded-2xl border transition-all duration-300 ${
+                        menu.is_available
+                          ? 'border-slate-200 bg-white hover:-translate-y-1 hover:border-emerald-500/40 hover:shadow-lg hover:shadow-emerald-500/10 dark:border-slate-800 dark:bg-slate-900'
+                          : 'border-slate-300 bg-slate-50 opacity-60 dark:border-slate-700 dark:bg-slate-800/50'
+                      }`}
+                    >
+                      {/* Image */}
+                      <div className="relative aspect-square overflow-hidden bg-slate-100 dark:bg-slate-800">
+                        <img
+                          src={menu.image || '/foodimages.png'}
+                          alt={menu.name}
+                          className={`h-full w-full object-cover transition-transform duration-500 ${
+                            menu.is_available ? 'group-hover:scale-110' : 'opacity-60'
+                          }`}
+                          onError={(e) => {
+                            e.currentTarget.src = '/foodimages.png';
+                          }}
+                        />
+                        {!menu.is_available && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-slate-950/50 backdrop-blur-sm">
+                            <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-900">
+                              Tidak Tersedia
+                            </span>
                           </div>
+                        )}
+                      </div>
 
-                          <div className="space-y-3">
-                            <p className="text-base font-bold text-emerald-600 dark:text-emerald-400 sm:text-lg">
-                              Rp{' '}
-                              {parseFloat(menu.price).toLocaleString(
-                                'id-ID'
-                              )}
-                            </p>
-                            <Button
-                              size="sm"
-                              disabled={
-                                !menu.is_available || !isLoggedIn
+                      {/* Content */}
+                      <div className="flex flex-1 flex-col p-4">
+                        <h3 className="mb-2 line-clamp-2 text-sm font-bold leading-snug text-slate-900 group-hover:text-emerald-600 dark:text-white dark:group-hover:text-emerald-400">
+                          {menu.name}
+                        </h3>
+
+                        <div className="mt-auto space-y-3">
+                          <p className="text-base font-bold text-emerald-600 dark:text-emerald-400">
+                            {new Intl.NumberFormat('id-ID', {
+                              style: 'currency',
+                              currency: 'IDR',
+                              minimumFractionDigits: 0
+                            }).format(parseFloat(menu.price))}
+                          </p>
+                          <button
+                            disabled={!menu.is_available || !isLoggedIn}
+                            className={`h-9 w-full rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 ${
+                              !menu.is_available || !isLoggedIn
+                                ? 'bg-slate-300 text-slate-500 cursor-not-allowed dark:bg-slate-700 dark:text-slate-400'
+                                : 'bg-emerald-600 text-white hover:bg-emerald-700 cursor-pointer dark:bg-emerald-500 dark:hover:bg-emerald-600'
+                            }`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (!isLoggedIn) {
+                                toast.error('Silakan login terlebih dahulu');
+                                router.push('/auth/login');
+                                return;
                               }
-                              className="h-9 w-full bg-emerald-600 text-xs font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-emerald-600 dark:hover:bg-emerald-700"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (!isLoggedIn) {
-                                  toast.error(
-                                    'Silakan login terlebih dahulu'
-                                  );
-                                  router.push('/auth/login');
-                                  return;
-                                }
-                                toggleDialog(menu.id);
-                              }}
-                            >
-                              <ShoppingCart className="mr-2 h-4 w-4" />
-                              Pesan
-                            </Button>
-                          </div>
+                              if (!menu.is_available) {
+                                toast.error('Menu tidak tersedia');
+                                return;
+                              }
+                              toggleDialog(menu.id);
+                            }}
+                          >
+                            <Plus className="h-3 w-3" />
+                            {menu.is_available ? 'Tambah' : 'Tidak Tersedia'}
+                          </button>
                         </div>
                       </div>
                     </div>
-                  </DialogTrigger>
 
+                  {/* Modal Dialog */}
                   {isLoggedIn && (
-                    <DialogContent className="max-h-[90vh] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-3xl border-slate-200 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white sm:w-full">
-                      <DialogHeader>
-                        <DialogTitle className="text-2xl text-slate-900 dark:text-white sm:text-3xl">
-                          {menu.name}
-                        </DialogTitle>
-                      </DialogHeader>
+                    <DialogContent className="max-w-sm gap-0 overflow-hidden rounded-3xl border-none bg-white p-0 dark:bg-slate-900 sm:max-w-md">
+                      {/* Image */}
+                      <div className="relative h-56 bg-slate-100 dark:bg-slate-800">
+                        <img
+                          src={menu.image || '/foodimages.png'}
+                          alt={menu.name}
+                          className="h-full w-full object-cover"
+                          onError={(e) => {
+                            e.currentTarget.src = '/foodimages.png';
+                          }}
+                        />
+                      </div>
 
-                      <div className="space-y-5 py-4 sm:py-6">
-                        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 dark:border-emerald-800 dark:bg-emerald-900/20">
-                          <p className="text-xs font-medium uppercase tracking-wide text-slate-600 dark:text-slate-400">
-                            Harga
-                          </p>
-                          <p className="mt-2 text-3xl font-bold text-emerald-600 dark:text-emerald-400">
-                            Rp{' '}
-                            {parseFloat(menu.price).toLocaleString(
-                              'id-ID'
-                            )}
-                          </p>
-                        </div>
+                      {/* Content */}
+                      <div className="space-y-6 p-6">
+                        <DialogHeader>
+                          <DialogTitle className="text-2xl font-bold text-slate-900 dark:text-white">
+                            {menu.name}
+                          </DialogTitle>
+                        </DialogHeader>
 
-                        <div className="space-y-3">
-                          <label className="text-sm font-semibold text-slate-900 dark:text-white">
-                            Catatan (Opsional)
-                          </label>
-                          <textarea
-                            value={notes[String(menu.id)] || ''}
-                            onChange={(e) => {
-                              const key = String(menu.id);
-                              setNotes((prev) => ({
-                                ...prev,
-                                [key]: e.target.value
-                              }));
-                            }}
-                            placeholder="Tambahkan catatan khusus untuk pesanan Anda..."
-                            className="w-full resize-none rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-500 focus:border-transparent focus:ring-2 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-700 dark:text-white dark:placeholder:text-slate-400"
-                            rows={3}
-                          />
-                        </div>
-
-                        <div className="space-y-3">
-                          <label className="text-sm font-semibold text-slate-900 dark:text-white">
-                            Jumlah
-                          </label>
-                          <div className="flex items-center justify-between rounded-2xl bg-slate-100 p-4 dark:bg-slate-700">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              disabled={
-                                (selectedQuantity[String(menu.id)] ||
-                                  1) === 1
-                              }
-                              onClick={() => {
+                        <div className="space-y-5">
+                          {/* Notes */}
+                          <div className="space-y-2">
+                            <label className="text-xs font-bold uppercase tracking-wide text-slate-600 dark:text-slate-400">
+                              Catatan Khusus
+                            </label>
+                            <textarea
+                              value={notes[String(menu.id)] || ''}
+                              onChange={(e) => {
                                 const key = String(menu.id);
-                                setSelectedQuantity((prev) => ({
+                                setNotes((prev) => ({
                                   ...prev,
-                                  [key]: Math.max(
-                                    1,
-                                    (prev[key] || 1) - 1
-                                  )
+                                  [key]: e.target.value
                                 }));
                               }}
-                              className="h-10 w-10 rounded-lg border-slate-300 text-slate-900 hover:bg-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:hover:bg-slate-600"
-                            >
-                              <Minus className="h-4 w-4" />
-                            </Button>
-                            <span className="text-2xl font-bold text-slate-900 dark:text-white">
-                              {selectedQuantity[String(menu.id)] || 1}
-                            </span>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                const key = String(menu.id);
-                                setSelectedQuantity((prev) => ({
-                                  ...prev,
-                                  [key]: (prev[key] || 1) + 1
-                                }));
-                              }}
-                              className="h-10 w-10 rounded-lg border-slate-300 text-slate-900 hover:bg-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:hover:bg-slate-600"
-                            >
-                              <Plus className="h-4 w-4" />
-                            </Button>
+                              placeholder="Contoh: Tidak pakai pedas..."
+                              className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800/50 dark:placeholder:text-slate-500"
+                              rows={2}
+                            />
                           </div>
-                        </div>
 
-                        <div className="rounded-2xl border border-slate-200 bg-slate-100 p-5 dark:border-slate-600 dark:bg-slate-700">
-                          <p className="text-xs font-medium uppercase tracking-wide text-slate-600 dark:text-slate-400">
-                            Total
-                          </p>
-                          <p className="mt-2 text-3xl font-bold text-slate-900 dark:text-white">
-                            Rp {getTotalPrice(menu.id, menu.price)}
-                          </p>
-                        </div>
+                          {/* Quantity */}
+                          <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/30">
+                            <span className="text-sm font-bold text-slate-900 dark:text-white">
+                              Jumlah
+                            </span>
+                            <div className="flex items-center gap-3">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={(selectedQuantity[String(menu.id)] || 1) === 1}
+                                onClick={() => {
+                                  const key = String(menu.id);
+                                  setSelectedQuantity((prev) => ({
+                                    ...prev,
+                                    [key]: Math.max(1, (prev[key] || 1) - 1)
+                                  }));
+                                }}
+                                className="h-8 w-8 rounded-full p-0"
+                              >
+                                <Minus className="h-3 w-3" />
+                              </Button>
+                              <span className="w-6 text-center font-bold">
+                                {selectedQuantity[String(menu.id)] || 1}
+                              </span>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  const key = String(menu.id);
+                                  setSelectedQuantity((prev) => ({
+                                    ...prev,
+                                    [key]: (prev[key] || 1) + 1
+                                  }));
+                                }}
+                                className="h-8 w-8 rounded-full p-0"
+                              >
+                                <Plus className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </div>
 
-                        <Button
-                          className="h-12 w-full rounded-xl bg-emerald-600 text-base font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-emerald-600 dark:hover:bg-emerald-700"
-                          onClick={() => handleAddToCart(menu)}
-                          disabled={
-                            !menu.is_available || isAddingToCart
-                          }
-                        >
-                          <ShoppingCart className="mr-2 h-5 w-5" />
-                          {isAddingToCart
-                            ? 'Menambahkan...'
-                            : 'Tambah ke Keranjang'}
-                        </Button>
+                          {/* Price Summary */}
+                          <div className="rounded-xl bg-emerald-50 p-4 dark:bg-emerald-500/10">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold uppercase tracking-wide text-slate-600 dark:text-slate-400">
+                                Total Harga
+                              </span>
+                              <span className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                                Rp {getTotalPrice(menu.id, menu.price)}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Add to Cart Button */}
+                          <Button
+                            className="h-12 w-full rounded-xl bg-emerald-600 text-sm font-bold text-white hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600"
+                            onClick={() => handleAddToCart(menu)}
+                            disabled={!menu.is_available || isAddingToCart}
+                          >
+                            <ShoppingCart className="mr-2 h-4 w-4" />
+                            {isAddingToCart ? 'Menambahkan...' : 'Tambah ke Keranjang'}
+                          </Button>
+                        </div>
                       </div>
                     </DialogContent>
                   )}
