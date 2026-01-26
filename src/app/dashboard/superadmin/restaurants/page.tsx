@@ -35,6 +35,7 @@ interface Restaurant {
   name: string;
   description: string;
   address: string;
+  photo?: string;
   is_open: number | boolean;
   menus_count: number;
   created_at: string;
@@ -46,6 +47,9 @@ interface FormData {
   name: string;
   description: string;
   address: string;
+  photoFile?: File | null;           
+  photoPreview?: string | null;      
+  currentPhoto?: string | null;      
 }
 
 export default function RestaurantsPage() {
@@ -54,25 +58,18 @@ export default function RestaurantsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [areas, setAreas] = useState<Area[]>([]);
-  const [isLoadingRestaurants, setIsLoadingRestaurants] =
-    useState(false);
+  const [isLoadingRestaurants, setIsLoadingRestaurants] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [filterStatus, setFilterStatus] = useState<
-    'all' | 'open' | 'closed'
-  >('all');
-  const [filterArea, setFilterArea] = useState<string | number>(
-    'all'
-  );
+  const [filterStatus, setFilterStatus] = useState<'all' | 'open' | 'closed'>('all');
+  const [filterArea, setFilterArea] = useState<string | number>('all');
   const [editingId, setEditingId] = useState<number | null>(null);
   const [message, setMessage] = useState<{
     type: 'success' | 'error';
     text: string;
   } | null>(null);
-  const [deleteConfirm, setDeleteConfirm] = useState<number | null>(
-    null
-  );
+  const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
   const [togglingId, setTogglingId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
 
@@ -83,16 +80,13 @@ export default function RestaurantsPage() {
     address: ''
   });
 
-  const apiUrl =
-    process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-  const getIsOpen = (value: number | boolean): boolean =>
-    Boolean(value);
+  const getIsOpen = (value: number | boolean): boolean => Boolean(value);
 
   useEffect(() => {
     const checkDarkMode = () => {
-      const hasDark =
-        document.documentElement.classList.contains('dark');
+      const hasDark = document.documentElement.classList.contains('dark');
       setIsDark(hasDark);
     };
 
@@ -157,11 +151,7 @@ export default function RestaurantsPage() {
       });
       const data = await response.json();
 
-      if (
-        data.success &&
-        data.data?.data &&
-        Array.isArray(data.data.data)
-      ) {
+      if (data.success && data.data?.data && Array.isArray(data.data.data)) {
         setRestaurants(data.data.data);
       } else {
         setRestaurants([]);
@@ -194,18 +184,27 @@ export default function RestaurantsPage() {
         ? `${apiUrl}/api/restaurants/${editingId}`
         : `${apiUrl}/api/restaurants`;
 
+      // Gunakan FormData untuk upload file
+      const submitData = new FormData();
+      submitData.append('area_id', String(formData.area_id));
+      submitData.append('name', formData.name);
+      submitData.append('description', formData.description);
+      submitData.append('address', formData.address);
+          
+      if (editingId) {
+      submitData.append('_method', 'PUT'); 
+     }
+
+      if (formData.photoFile) {
+        submitData.append('photo', formData.photoFile);
+      }
+
       const response = await fetch(url, {
-        method,
+        method: 'POST',
         headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({
-          area_id: Number(formData.area_id),
-          name: formData.name,
-          description: formData.description,
-          address: formData.address
-        })
+        body: submitData
       });
 
       const result = await response.json();
@@ -234,7 +233,8 @@ export default function RestaurantsPage() {
       area_id: restaurant.area_id,
       name: restaurant.name,
       description: restaurant.description,
-      address: restaurant.address
+      address: restaurant.address,
+      currentPhoto: restaurant.photo || null
     });
     setEditingId(restaurant.id);
     setShowForm(true);
@@ -244,19 +244,16 @@ export default function RestaurantsPage() {
   const handleDelete = async (id: number) => {
     try {
       const token = localStorage?.getItem('auth_token');
-      const response = await fetch(
-        `${apiUrl}/api/restaurants/${id}`,
-        {
-          method: 'DELETE',
-          headers: { Authorization: `Bearer ${token}` }
-        }
-      );
+      const response = await fetch(`${apiUrl}/api/restaurants/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
       const result = await response.json();
       if (result.success) {
         showMessage('success', 'Restoran berhasil dihapus');
         await fetchRestaurants();
       } else {
-        showMessage('error', 'Gagal menghapus');
+        showMessage('error', result.message || 'Gagal menghapus');
       }
     } catch (error) {
       console.error('Error:', error);
@@ -270,23 +267,17 @@ export default function RestaurantsPage() {
     setTogglingId(id);
     try {
       const token = localStorage?.getItem('auth_token');
-      const response = await fetch(
-        `${apiUrl}/api/restaurants/${id}/toggle-status`,
-        {
-          method: 'PATCH',
-          headers: { Authorization: `Bearer ${token}` }
-        }
-      );
+      const response = await fetch(`${apiUrl}/api/restaurants/${id}/toggle-status`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` }
+      });
       const result = await response.json();
 
       if (result.success) {
         showMessage('success', 'Status berhasil diubah');
         await fetchRestaurants();
       } else {
-        showMessage(
-          'error',
-          result.message || 'Gagal mengubah status'
-        );
+        showMessage('error', result.message || 'Gagal mengubah status');
       }
     } catch (error) {
       console.error('Error:', error);
@@ -301,7 +292,10 @@ export default function RestaurantsPage() {
       area_id: '',
       name: '',
       description: '',
-      address: ''
+      address: '',
+      photoFile: null,
+      photoPreview: null,
+      currentPhoto: null
     });
     setEditingId(null);
     setShowForm(false);
@@ -312,34 +306,24 @@ export default function RestaurantsPage() {
     setTimeout(() => setMessage(null), 4000);
   };
 
-  const openCount = restaurants.filter((r) =>
-    getIsOpen(r.is_open)
-  ).length;
-  const closedCount = restaurants.filter(
-    (r) => !getIsOpen(r.is_open)
-  ).length;
+  const openCount = restaurants.filter((r) => getIsOpen(r.is_open)).length;
+  const closedCount = restaurants.filter((r) => !getIsOpen(r.is_open)).length;
 
   const filteredRestaurants = restaurants.filter((r) => {
-    // Filter status
     const statusMatch =
       filterStatus === 'all' ||
-      (filterStatus === 'open'
-        ? getIsOpen(r.is_open)
-        : !getIsOpen(r.is_open));
+      (filterStatus === 'open' ? getIsOpen(r.is_open) : !getIsOpen(r.is_open));
 
-    // Filter area
-    const areaMatch =
-      filterArea === 'all' || r.area_id === Number(filterArea);
+    const areaMatch = filterArea === 'all' || r.area_id === Number(filterArea);
 
-    const searchMatch = searchQuery === '' || 
+    const searchMatch =
+      searchQuery === '' ||
       r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       r.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      r.address.toLowerCase().includes(searchQuery.toLowerCase())
-
+      r.address.toLowerCase().includes(searchQuery.toLowerCase());
 
     return statusMatch && areaMatch && searchMatch;
   });
-
   if (isLoading) {
     return (
       <div
@@ -503,22 +487,139 @@ export default function RestaurantsPage() {
             showForm ? 'lg:grid-cols-4' : 'lg:grid-cols-1'
           }`}
         >
-          {/* Form Section */}
-          {showForm && (
-            <div className="order-first lg:order-none lg:col-span-1">
-              <div className="sticky top-24 max-h-[calc(100vh-120px)] overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900">
-                <div className="sticky top-0 flex items-center justify-between rounded-t-xl border-b border-slate-200 bg-blue-50 px-4 py-4 dark:border-slate-700 dark:bg-blue-900/30 sm:px-6">
-                  <h2 className="text-base font-bold text-slate-900 dark:text-white">
-                    {editingId ? 'Edit Restoran' : 'Tambah Restoran'}
-                  </h2>
-                  <button
-                    onClick={resetForm}
-                    className="text-slate-400 transition-colors hover:text-slate-600 dark:hover:text-slate-300"
-                  >
-                    <X className="h-5 w-5" />
-                  </button>
-                </div>
-                <div className="space-y-5 p-4 sm:p-6">
+        {/* Form Section */}
+            {showForm && (
+              <div className="order-first lg:order-none lg:col-span-1">
+                <div className="sticky top-24 max-h-[calc(100vh-120px)] overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900">
+                  {/* Header - dengan z-index tinggi */}
+                  <div className="sticky top-0 z-10 flex items-center justify-between rounded-t-xl border-b border-slate-200 bg-blue-50 px-4 py-4 dark:border-slate-700 dark:bg-blue-900/30 sm:px-6">
+                    <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                      {editingId ? 'Edit Restoran' : 'Tambah Restoran'}
+                    </h2>
+                    <button
+                      onClick={resetForm}
+                      className="text-slate-400 transition-colors hover:text-slate-600 dark:hover:text-slate-300"
+                    >
+                      <X className="h-5 w-5" />
+                    </button>
+                  </div>
+                  
+                  <div className="space-y-5 p-4 sm:p-6">
+                    {/* Photo Upload Section */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-semibold text-slate-900 dark:text-white">
+                        Foto Restoran{' '}
+                        <span className="text-slate-500 font-normal">(Opsional)</span>
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="file"
+                          id="photoInput"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              setFormData({
+                                ...formData,
+                                photoFile: file
+                              });
+                              // Tampilkan preview
+                              const reader = new FileReader();
+                              reader.onloadend = () => {
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  photoPreview: reader.result as string
+                                }));
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          }}
+                          className="hidden"
+                        />
+                        <label
+                          htmlFor="photoInput"
+                          className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 p-6 cursor-pointer transition-colors hover:border-blue-500 hover:bg-blue-50 dark:border-slate-600 dark:bg-slate-800/50 dark:hover:border-blue-500 dark:hover:bg-blue-900/20"
+                        >
+                          <div className="text-center">
+                            <svg
+                              className="mx-auto mb-2 h-8 w-8 text-slate-400"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                              />
+                            </svg>
+                            <p className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                              Klik untuk upload foto
+                            </p>
+                            <p className="text-xs text-slate-500 dark:text-slate-500">
+                              JPG, PNG, GIF (Max 2MB)
+                            </p>
+                          </div>
+                        </label>
+                      </div>
+
+                   {/* Photo Preview - BARU UPLOAD */}
+                    {formData.photoPreview && (
+                      <div className="relative rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700">
+                        <img
+                          src={formData.photoPreview}
+                          alt="Preview"
+                          className="w-full h-40 object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFormData({
+                              ...formData,
+                              photoFile: null,
+                              photoPreview: null
+                            });
+                            const input = document.getElementById('photoInput') as HTMLInputElement;
+                            if (input) input.value = '';
+                          }}
+                          className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 transition-colors"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    )}
+                  {/* Photo Preview - EXISTING PHOTO (saat edit) */}
+                    {editingId && !formData.photoPreview && formData.currentPhoto && (
+                      <div className="relative rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700">
+                        <img
+                          src={`${apiUrl}/storage/${formData.currentPhoto}`}
+                          alt="Current"
+                          className="w-full h-40 object-cover"
+                          onError={(e) => {
+                            e.currentTarget.src = '/restaurant.png';
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFormData({
+                              ...formData,
+                              currentPhoto: null,
+                              photoFile: null,
+                              photoPreview: null
+                            });
+                            const input = document.getElementById('photoInput') as HTMLInputElement;
+                            if (input) input.value = '';
+                          }}
+                          className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 transition-colors"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
                   <div className="space-y-2">
                     <label className="text-sm font-semibold text-slate-900 dark:text-white">
                       Pilih Area{' '}
@@ -684,334 +785,343 @@ export default function RestaurantsPage() {
                 </div>
               </div>
             </div>
-          )}
+)}
 
-          {/* Restaurants List */}
-          <div
-            className={showForm ? 'lg:col-span-3' : 'lg:col-span-1'}
-          >
-            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-200/50 dark:border-slate-700 dark:bg-slate-900 dark:shadow-none">
-              {/* Header & Filter Section */}
-              <div className="relative border-b border-slate-100 bg-gradient-to-b from-slate-50 to-white px-4 py-5 dark:border-slate-700 dark:from-slate-800/50 dark:to-slate-900 sm:px-6">
-                <div className="space-y-5">
-                  {/* Title & Icon */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="relative">
-                        <div className="absolute -inset-1 rounded-xl bg-blue-500/20 blur-sm dark:bg-blue-500/10"></div>
-                        <div className="relative rounded-xl bg-blue-600 p-2.5 shadow-lg shadow-blue-200 dark:bg-blue-600 dark:shadow-none">
-                          <Building2 className="h-5 w-5 text-white" />
-                        </div>
+        {/* Restaurants List */}
+        <div className={showForm ? 'lg:col-span-3' : 'lg:col-span-1'}>
+          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-200/50 dark:border-slate-700 dark:bg-slate-900 dark:shadow-none">
+            {/* Header & Filter Section */}
+            <div className="relative border-b border-slate-100 bg-gradient-to-b from-slate-50 to-white px-4 py-5 dark:border-slate-700 dark:from-slate-800/50 dark:to-slate-900 sm:px-6">
+              <div className="space-y-5">
+                {/* Title & Icon */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="relative">
+                      <div className="absolute -inset-1 rounded-xl bg-blue-500/20 blur-sm dark:bg-blue-500/10"></div>
+                      <div className="relative rounded-xl bg-blue-600 p-2.5 shadow-lg shadow-blue-200 dark:bg-blue-600 dark:shadow-none">
+                        <Building2 className="h-5 w-5 text-white" />
                       </div>
-                      <div>
-                        <h2 className="text-base font-bold tracking-tight text-slate-900 dark:text-white">
-                          Daftar Restoran
-                        </h2>
-                        <div className="mt-0.5 flex items-center gap-1.5">
-                          <span className="flex h-1.5 w-1.5 rounded-full bg-blue-500"></span>
-                          <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                            Total: {restaurants.length} restoran
-                          </p>
-                        </div>
+                    </div>
+                    <div>
+                      <h2 className="text-base font-bold tracking-tight text-slate-900 dark:text-white">
+                        Daftar Restoran
+                      </h2>
+                      <div className="mt-0.5 flex items-center gap-1.5">
+                        <span className="flex h-1.5 w-1.5 rounded-full bg-blue-500"></span>
+                        <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                          Total: {filteredRestaurants.length} restoran
+                        </p>
                       </div>
                     </div>
                   </div>
+                </div>
 
-                  {/* Filter Toolbar */}
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    {/* Status Segmented Control */}
-                    <div className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-100/50 p-1.5 dark:border-slate-700 dark:bg-slate-800/50">
-                      <button
-                        onClick={() => setFilterStatus('all')}
-                        className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-xs font-medium transition-all sm:flex-none ${
+                {/* Filter Toolbar */}
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  {/* Status Segmented Control */}
+                  <div className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-100/50 p-1.5 dark:border-slate-700 dark:bg-slate-800/50">
+                    <button
+                      onClick={() => setFilterStatus('all')}
+                      className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-xs font-medium transition-all sm:flex-none ${
+                        filterStatus === 'all'
+                          ? 'bg-white text-blue-600 shadow-sm ring-1 ring-slate-200 dark:bg-slate-700 dark:text-white dark:ring-slate-600'
+                          : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
+                      }`}
+                    >
+                      <span>Semua</span>
+                      <span
+                        className={`rounded-md px-1.5 py-0.5 text-[10px] ${
                           filterStatus === 'all'
-                            ? 'bg-white text-blue-600 shadow-sm ring-1 ring-slate-200 dark:bg-slate-700 dark:text-white dark:ring-slate-600'
-                            : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
+                            ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/40 dark:text-blue-300'
+                            : 'bg-slate-200 dark:bg-slate-700'
                         }`}
                       >
-                        <span>Semua</span>
-                        <span
-                          className={`rounded-md px-1.5 py-0.5 text-[10px] ${
-                            filterStatus === 'all'
-                              ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/40 dark:text-blue-300'
-                              : 'bg-slate-200 dark:bg-slate-700'
-                          }`}
-                        >
-                          {restaurants.length}
-                        </span>
-                      </button>
+                        {restaurants.length}
+                      </span>
+                    </button>
 
-                      <button
-                        onClick={() => setFilterStatus('open')}
-                        className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-xs font-medium transition-all sm:flex-none ${
+                    <button
+                      onClick={() => setFilterStatus('open')}
+                      className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-xs font-medium transition-all sm:flex-none ${
+                        filterStatus === 'open'
+                          ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-200 dark:shadow-none'
+                          : 'text-slate-500 hover:text-emerald-600 dark:text-slate-400'
+                      }`}
+                    >
+                      <span>Buka</span>
+                      <span
+                        className={`rounded-md px-1.5 py-0.5 text-[10px] ${
                           filterStatus === 'open'
-                            ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-200 dark:shadow-none'
-                            : 'text-slate-500 hover:text-emerald-600 dark:text-slate-400'
+                            ? 'bg-white/20 text-white'
+                            : 'bg-slate-200 dark:bg-slate-700'
                         }`}
                       >
-                        <span>Buka</span>
-                        <span
-                          className={`rounded-md px-1.5 py-0.5 text-[10px] ${
-                            filterStatus === 'open'
-                              ? 'bg-white/20 text-white'
-                              : 'bg-slate-200 dark:bg-slate-700'
-                          }`}
-                        >
-                          {openCount}
-                        </span>
-                      </button>
+                        {openCount}
+                      </span>
+                    </button>
 
-                      <button
-                        onClick={() => setFilterStatus('closed')}
-                        className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-xs font-medium transition-all sm:flex-none ${
+                    <button
+                      onClick={() => setFilterStatus('closed')}
+                      className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-xs font-medium transition-all sm:flex-none ${
+                        filterStatus === 'closed'
+                          ? 'bg-red-500 text-white shadow-lg shadow-red-200 dark:shadow-none'
+                          : 'text-slate-500 hover:text-red-600 dark:text-slate-400'
+                      }`}
+                    >
+                      <span>Tutup</span>
+                      <span
+                        className={`rounded-md px-1.5 py-0.5 text-[10px] ${
                           filterStatus === 'closed'
-                            ? 'bg-red-500 text-white shadow-lg shadow-red-200 dark:shadow-none'
-                            : 'text-slate-500 hover:text-red-600 dark:text-slate-400'
+                            ? 'bg-white/20 text-white'
+                            : 'bg-slate-200 dark:bg-slate-700'
                         }`}
                       >
-                        <span>Tutup</span>
-                        <span
-                          className={`rounded-md px-1.5 py-0.5 text-[10px] ${
-                            filterStatus === 'closed'
-                              ? 'bg-white/20 text-white'
-                              : 'bg-slate-200 dark:bg-slate-700'
-                          }`}
-                        >
-                          {closedCount}
-                        </span>
-                      </button>
-                    </div>
+                        {closedCount}
+                      </span>
+                    </button>
+                  </div>
 
-                    {/* Area Selector */}
-                    <div className="relative">
-                      <select
-                        value={filterArea}
-                        onChange={(e) =>
-                          setFilterArea(e.target.value)
-                        }
-                        className="w-full appearance-none rounded-xl border border-slate-200 bg-white py-2.5 pl-4 pr-10 text-xs font-bold text-slate-700 shadow-sm transition-all focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-white sm:w-48"
-                      >
-                        <option value="all">Semua Area</option>
-                        {areas.map((area) => (
-                          <option key={area.id} value={area.id}>
-                            {area.icon} {area.name}
-                          </option>
-                        ))}
-                      </select>
-                      <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
-                        <ChevronDown className="h-4 w-4" />
-                      </div>
+                  {/* Area Selector */}
+                  <div className="relative">
+                    <select
+                      value={filterArea}
+                      onChange={(e) => setFilterArea(e.target.value)}
+                      className="w-full appearance-none rounded-xl border border-slate-200 bg-white py-2.5 pl-4 pr-10 text-xs font-bold text-slate-700 shadow-sm transition-all focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-white sm:w-48"
+                    >
+                      <option value="all">Semua Area</option>
+                      {areas.map((area) => (
+                        <option key={area.id} value={area.id}>
+                          {area.icon} {area.name}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
+                      <ChevronDown className="h-4 w-4" />
                     </div>
                   </div>
                 </div>
               </div>
+            </div>
 
-              {/* Grid View */}
-              {viewMode === 'grid' && (
-                <div className="p-4 sm:p-6">
-                  {isLoadingRestaurants ? (
-                    <div className="flex items-center justify-center py-12">
-                      <Loader2 className="h-6 w-6 animate-spin text-blue-600 dark:text-blue-400" />
-                    </div>
-                  ) : filteredRestaurants.length > 0 ? (
-                    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                      {filteredRestaurants.map((restaurant) => {
-                        const isOpen = getIsOpen(restaurant.is_open);
-                        const isToggling =
-                          togglingId === restaurant.id;
-                        return (
-                          <div
-                            key={restaurant.id}
-                            className="group flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white transition-all hover:-translate-y-1 hover:border-blue-300 hover:shadow-xl dark:border-slate-700 dark:bg-slate-800 dark:hover:border-blue-500/50"
-                          >
-                            <div className="relative p-5">
-                              {/* Status Badge */}
-                              <div className="mb-4 flex justify-end">
-                                <div
-                                  className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${
-                                    isOpen
-                                      ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400'
-                                      : 'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400'
-                                  }`}
-                                >
-                                  <span
-                                    className={`h-1.5 w-1.5 rounded-full ${
-                                      isOpen
-                                        ? 'animate-pulse bg-emerald-500'
-                                        : 'bg-red-500'
-                                    }`}
-                                  />
-                                  {isOpen ? 'Buka' : 'Tutup'}
-                                </div>
-                              </div>
-
-                              <h3 className="mb-1 line-clamp-1 text-base font-bold text-slate-900 group-hover:text-blue-600 dark:text-white dark:group-hover:text-blue-400">
-                                {restaurant.name}
-                              </h3>
-                              <p className="mb-3 text-xs font-semibold uppercase text-blue-600 dark:text-blue-400">
-                                {restaurant.area?.name}
-                              </p>
-                              <p className="mb-4 line-clamp-2 min-h-[32px] text-xs text-slate-500 dark:text-slate-400">
-                                {restaurant.description}
-                              </p>
-
-                              <div className="mb-4 border-t border-slate-50 pt-3 dark:border-slate-700/50">
-                                <p className="truncate text-[11px] italic text-slate-400">
-                                  {restaurant.address}
-                                </p>
-                              </div>
-
-                              <Link
-                                href={`/dashboard/superadmin/restaurants/${restaurant.id}`}
-                                className="inline-flex w-full items-center justify-center rounded-lg bg-slate-50 py-2.5 text-xs font-bold text-slate-700 transition-colors hover:bg-blue-600 hover:text-white dark:bg-slate-700/50 dark:text-slate-300 dark:hover:bg-blue-600"
-                              >
-                                Lihat Menu ({restaurant.menus_count})
-                              </Link>
-                            </div>
-
-                            {/* Action Buttons Footer */}
-                            <div className="mt-auto flex border-t border-slate-100 bg-slate-50/50 p-1 dark:border-slate-700 dark:bg-slate-800/50">
-                              <button
-                                onClick={() => handleEdit(restaurant)}
-                                className="flex-1 rounded-lg py-2.5 text-[10px] font-bold text-slate-500 hover:text-blue-600 dark:text-slate-400"
-                              >
-                                Edit
-                              </button>
-                              <div className="my-2 w-[1px] bg-slate-200 dark:bg-slate-700" />
-                              <button
-                                onClick={() =>
-                                  handleToggleStatus(restaurant.id)
-                                }
-                                disabled={isToggling}
-                                className={`flex-1 rounded-lg py-2.5 text-[10px] font-bold transition-all disabled:opacity-50 ${
-                                  isOpen
-                                    ? 'text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20'
-                                    : 'text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20'
-                                }`}
-                              >
-                                {isToggling
-                                  ? '...'
-                                  : isOpen
-                                    ? 'Tutup Toko'
-                                    : 'Buka Toko'}
-                              </button>
-                              <div className="my-2 w-[1px] bg-slate-200 dark:bg-slate-700" />
-                              <button
-                                onClick={() =>
-                                  setDeleteConfirm(restaurant.id)
-                                }
-                                className="flex-1 rounded-lg py-2.5 text-[10px] font-bold text-slate-500 hover:text-red-600 dark:text-slate-400"
-                              >
-                                Hapus
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="py-20 text-center font-medium text-slate-500">
-                      Restoran tidak ditemukan
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* List View */}
-              {viewMode === 'list' && (
-                <div className="space-y-4 p-4 sm:p-6">
-                  {isLoadingRestaurants ? (
-                    <div className="flex items-center justify-center py-12">
-                      <Loader2 className="animate-spin" />
-                    </div>
-                  ) : filteredRestaurants.length > 0 ? (
-                    filteredRestaurants.map((restaurant) => {
+            {/* Grid View */}
+            {viewMode === 'grid' && (
+              <div className="p-4 sm:p-6">
+                {isLoadingRestaurants ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="h-6 w-6 animate-spin text-blue-600 dark:text-blue-400" />
+                  </div>
+                ) : filteredRestaurants.length > 0 ? (
+                  <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    {filteredRestaurants.map((restaurant) => {
                       const isOpen = getIsOpen(restaurant.is_open);
                       const isToggling = togglingId === restaurant.id;
                       return (
                         <div
                           key={restaurant.id}
-                          className="group relative flex flex-col gap-5 rounded-2xl border border-slate-200 bg-white p-5 transition-all hover:border-blue-300 dark:border-slate-700 dark:bg-slate-800 sm:flex-row sm:items-center"
+                          className="group flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white transition-all hover:-translate-y-1 hover:border-blue-300 hover:shadow-xl dark:border-slate-700 dark:bg-slate-800 dark:hover:border-blue-500/50"
                         >
-                          <div className="min-w-0 flex-1">
-                            <div className="mb-1 flex items-center gap-3">
-                              <h3 className="text-lg font-bold text-slate-900 dark:text-white">
-                                {restaurant.name}
-                              </h3>
-                              <span
-                                className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
+                          {/* Photo Section */}
+                          <div className="relative h-40 overflow-hidden bg-slate-100 dark:bg-slate-700">
+                            <img
+                              src={
+                                restaurant.photo
+                                  ? `${apiUrl}/storage/${restaurant.photo}`
+                                  : '/restaurant.png'
+                              }
+                              alt={restaurant.name}
+                              className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                              onError={(e) => {
+                                e.currentTarget.src = '/restaurant.png';
+                              }}
+                            />
+                            {/* Status Badge */}
+                            <div className="absolute right-3 top-3 flex justify-end">
+                              <div
+                                className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider backdrop-blur-sm ${
                                   isOpen
-                                    ? 'bg-emerald-50 text-emerald-600'
-                                    : 'bg-red-50 text-red-600'
+                                    ? 'bg-emerald-500/90 text-white'
+                                    : 'bg-red-500/90 text-white'
                                 }`}
                               >
+                                <span
+                                  className={`h-1.5 w-1.5 rounded-full ${
+                                    isOpen
+                                      ? 'animate-pulse bg-emerald-300'
+                                      : 'bg-red-300'
+                                  }`}
+                                />
                                 {isOpen ? 'Buka' : 'Tutup'}
-                              </span>
-                            </div>
-                            <p className="mb-2 text-sm font-semibold text-blue-600">
-                              {restaurant.area?.name}
-                            </p>
-                            <div className="flex flex-wrap items-center gap-4 text-xs text-slate-400">
-                              <span className="italic">
-                                {restaurant.address}
-                              </span>
-                              <span className="font-bold text-slate-600 dark:text-slate-300">
-                                • {restaurant.menus_count} Menu
-                              </span>
+                              </div>
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-2 border-t border-slate-100 pt-4 sm:border-0 sm:pt-0">
+                          {/* Content Section */}
+                          <div className="flex flex-1 flex-col p-4">
+                            <h3 className="mb-1 line-clamp-2 text-sm font-bold text-slate-900 group-hover:text-blue-600 dark:text-white dark:group-hover:text-blue-400">
+                              {restaurant.name}
+                            </h3>
+                            <p className="mb-2 text-xs font-semibold uppercase text-blue-600 dark:text-blue-400">
+                              {restaurant.area?.name}
+                            </p>
+                            <p className="mb-3 line-clamp-2 min-h-[32px] text-xs text-slate-500 dark:text-slate-400">
+                              {restaurant.description}
+                            </p>
+
+                            <div className="mb-4 border-t border-slate-100 pt-3 dark:border-slate-700/50">
+                              <p className="truncate text-[11px] italic text-slate-400">
+                                {restaurant.address}
+                              </p>
+                            </div>
+
                             <Link
                               href={`/dashboard/superadmin/restaurants/${restaurant.id}`}
-                              className="rounded-xl bg-blue-600 px-6 py-2.5 text-xs font-bold text-white hover:bg-blue-700"
+                              className="inline-flex w-full items-center justify-center rounded-lg bg-slate-50 py-2.5 text-xs font-bold text-slate-700 transition-colors hover:bg-blue-600 hover:text-white dark:bg-slate-700/50 dark:text-slate-300 dark:hover:bg-blue-600"
                             >
-                              Detail
+                              Lihat Menu ({restaurant.menus_count})
                             </Link>
-                            <div className="flex gap-1 rounded-xl bg-slate-50 p-1 dark:bg-slate-700/50">
-                              <button
-                                onClick={() => handleEdit(restaurant)}
-                                className="rounded-lg px-3 py-2 text-xs font-bold text-slate-500 hover:bg-white hover:text-blue-600"
-                              >
-                                Edit
-                              </button>
-                              <button
-                                onClick={() =>
-                                  handleToggleStatus(restaurant.id)
-                                }
-                                disabled={isToggling}
-                                className={`rounded-lg px-3 py-2 text-xs font-bold hover:bg-white ${
-                                  isOpen
-                                    ? 'text-amber-600'
-                                    : 'text-emerald-600'
-                                }`}
-                              >
-                                {isToggling
-                                  ? '...'
-                                  : isOpen
-                                    ? 'Tutup Toko'
-                                    : 'Buka Toko'}
-                              </button>
-                              <button
-                                onClick={() =>
-                                  setDeleteConfirm(restaurant.id)
-                                }
-                                className="rounded-lg px-3 py-2 text-xs font-bold text-slate-500 hover:bg-white hover:text-red-600"
-                              >
-                                Hapus
-                              </button>
-                            </div>
+                          </div>
+
+                          {/* Action Buttons Footer */}
+                          <div className="mt-auto flex border-t border-slate-100 bg-slate-50/50 p-1 dark:border-slate-700 dark:bg-slate-800/50">
+                            <button
+                              onClick={() => handleEdit(restaurant)}
+                              className="flex-1 rounded-lg py-2.5 text-[10px] font-bold text-slate-500 hover:text-blue-600 dark:text-slate-400"
+                            >
+                              Edit
+                            </button>
+                            <div className="my-2 w-[1px] bg-slate-200 dark:bg-slate-700" />
+                            <button
+                              onClick={() => handleToggleStatus(restaurant.id)}
+                              disabled={isToggling}
+                              className={`flex-1 rounded-lg py-2.5 text-[10px] font-bold transition-all disabled:opacity-50 ${
+                                isOpen
+                                  ? 'text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20'
+                                  : 'text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20'
+                              }`}
+                            >
+                              {isToggling ? '...' : isOpen ? 'Tutup Toko' : 'Buka Toko'}
+                            </button>
+                            <div className="my-2 w-[1px] bg-slate-200 dark:bg-slate-700" />
+                            <button
+                              onClick={() => setDeleteConfirm(restaurant.id)}
+                              className="flex-1 rounded-lg py-2.5 text-[10px] font-bold text-slate-500 hover:text-red-600 dark:text-slate-400"
+                            >
+                              Hapus
+                            </button>
                           </div>
                         </div>
                       );
-                    })
-                  ) : (
-                    <div className="py-20 text-center font-medium text-slate-500">
-                      Restoran tidak ditemukan
-                    </div>
-                  )}
-                </div>
-              )}
+                    })}
+                  </div>
+                ) : (
+                  <div className="py-20 text-center font-medium text-slate-500">
+                    Restoran tidak ditemukan
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* List View */}
+            {viewMode === 'list' && (
+              <div className="space-y-4 p-4 sm:p-6">
+                {isLoadingRestaurants ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="animate-spin" />
+                  </div>
+                ) : filteredRestaurants.length > 0 ? (
+                  filteredRestaurants.map((restaurant) => {
+                    const isOpen = getIsOpen(restaurant.is_open);
+                    const isToggling = togglingId === restaurant.id;
+                    return (
+                      <div
+                        key={restaurant.id}
+                        className="group relative flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-4 transition-all hover:border-blue-300 dark:border-slate-700 dark:bg-slate-800 sm:flex-row sm:items-center sm:gap-5 sm:p-5"
+                      >
+                        {/* Photo */}
+                        <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-xl bg-slate-100 dark:bg-slate-700">
+                          <img
+                            src={
+                              restaurant.photo
+                                ? `${apiUrl}/storage/${restaurant.photo}`
+                                : '/restaurant.png'
+                            }
+                            alt={restaurant.name}
+                            className="h-full w-full object-cover"
+                            onError={(e) => {
+                              e.currentTarget.src = '/restaurant.png';
+                            }}
+                          />
+                        </div>
+
+                        {/* Info */}
+                        <div className="min-w-0 flex-1">
+                          <div className="mb-1 flex items-center gap-3">
+                            <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                              {restaurant.name}
+                            </h3>
+                            <span
+                              className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
+                                isOpen
+                                  ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400'
+                                  : 'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400'
+                              }`}
+                            >
+                              {isOpen ? 'Buka' : 'Tutup'}
+                            </span>
+                          </div>
+                          <p className="mb-2 text-sm font-semibold text-blue-600 dark:text-blue-400">
+                            {restaurant.area?.name}
+                          </p>
+                          <div className="flex flex-wrap items-center gap-4 text-xs text-slate-400">
+                            <span className="italic">{restaurant.address}</span>
+                            <span className="font-bold text-slate-600 dark:text-slate-300">
+                              • {restaurant.menus_count} Menu
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex items-center gap-2 border-t border-slate-100 pt-4 dark:border-slate-700 sm:border-0 sm:pt-0">
+                          <Link
+                            href={`/dashboard/superadmin/restaurants/${restaurant.id}`}
+                            className="rounded-xl bg-blue-600 px-6 py-2.5 text-xs font-bold text-white hover:bg-blue-700"
+                          >
+                            Detail
+                          </Link>
+                          <div className="flex gap-1 rounded-xl bg-slate-50 p-1 dark:bg-slate-700/50">
+                            <button
+                              onClick={() => handleEdit(restaurant)}
+                              className="rounded-lg px-3 py-2 text-xs font-bold text-slate-500 hover:bg-white hover:text-blue-600 dark:text-slate-400 dark:hover:bg-slate-600"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleToggleStatus(restaurant.id)}
+                              disabled={isToggling}
+                              className={`rounded-lg px-3 py-2 text-xs font-bold hover:bg-white dark:hover:bg-slate-600 ${
+                                isOpen ? 'text-amber-600' : 'text-emerald-600'
+                              }`}
+                            >
+                              {isToggling ? '...' : isOpen ? 'Tutup Toko' : 'Buka Toko'}
+                            </button>
+                            <button
+                              onClick={() => setDeleteConfirm(restaurant.id)}
+                              className="rounded-lg px-3 py-2 text-xs font-bold text-slate-500 hover:bg-white hover:text-red-600 dark:text-slate-400 dark:hover:bg-slate-600"
+                            >
+                              Hapus
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="py-20 text-center font-medium text-slate-500">
+                    Restoran tidak ditemukan
+                  </div>
+                )}
+              </div>
+            )}
 
               {/* Delete Confirmation Modal */}
               {deleteConfirm && (
