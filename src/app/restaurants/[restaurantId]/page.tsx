@@ -7,8 +7,7 @@ import {
   Dialog,
   DialogContent,
   DialogHeader,
-  DialogTitle,
-  DialogTrigger
+  DialogTitle
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import {
@@ -17,8 +16,6 @@ import {
   ShoppingCart,
   ArrowLeft,
   MapPin,
-  Clock,
-  ChefHat,
   AlertCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -48,6 +45,7 @@ interface Restaurant {
   name: string;
   description: string;
   address: string;
+  photo?: string;
   is_open: boolean;
   menus_count: number;
   area?: Area;
@@ -70,6 +68,18 @@ const RestaurantMenuPage = () => {
   const [areaId, setAreaId] = useState<number | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+
+  const getImageUrl = (image: string | null | undefined): string => {
+    if (!image) return '/foodimages.png';
+    
+    // Jika sudah URL lengkap
+    if (image.startsWith('http://') || image.startsWith('https://')) {
+      return image;
+    }
+    
+    // Jika hanya filename, construct path lengkap
+    return `${apiUrl}/storage/uploads/${image}`;
+  };
 
   useEffect(() => {
     const token = localStorage.getItem('auth_token');
@@ -109,7 +119,7 @@ const RestaurantMenuPage = () => {
     };
 
     fetchData();
-  }, [restaurantId]);
+  }, [restaurantId, apiUrl]);
 
   const toggleDialog = (menuId: number) => {
     if (!isLoggedIn) {
@@ -189,12 +199,12 @@ const RestaurantMenuPage = () => {
   };
 
   const SkeletonCard = () => (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
+    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
       <div className="aspect-square w-full animate-pulse bg-slate-200 dark:bg-slate-700" />
-      <div className="space-y-4 p-4 sm:p-5">
+      <div className="space-y-3 p-3">
         <div className="h-4 w-3/4 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
-        <div className="h-6 w-1/2 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
-        <div className="h-10 w-full animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+        <div className="h-5 w-1/2 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+        <div className="h-9 w-full animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
       </div>
     </div>
   );
@@ -208,15 +218,12 @@ const RestaurantMenuPage = () => {
             <div className="space-y-3">
               <div className="h-10 w-1/2 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
               <div className="h-4 w-3/4 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
-              <div className="flex gap-3">
-                <div className="h-8 w-40 animate-pulse rounded-full bg-slate-200 dark:bg-slate-700" />
-              </div>
             </div>
           </div>
         </header>
 
         <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
-          <div className="grid grid-cols-2 gap-4 sm:gap-6 md:grid-cols-3 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-4 sm:gap-5 md:grid-cols-3 lg:grid-cols-4">
             {Array.from({ length: 8 }).map((_, i) => (
               <SkeletonCard key={i} />
             ))}
@@ -247,7 +254,7 @@ const RestaurantMenuPage = () => {
               className="gap-2 bg-emerald-600 hover:bg-emerald-700"
             >
               <ArrowLeft className="h-4 w-4" />
-              Kembali ke Areas
+              Kembali
             </Button>
           </Link>
         </div>
@@ -256,10 +263,10 @@ const RestaurantMenuPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-950">
-      {/* Hero Header */}
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-emerald-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+      {/* Header */}
       <header className="sticky top-0 z-30 border-b border-slate-200/60 bg-white/70 backdrop-blur-xl dark:border-slate-800/60 dark:bg-slate-900/70">
-        <div className="mx-auto max-w-7xl px-4 py-4 sm:py-6 lg:px-8">
+        <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
           {/* Back Button */}
           <Link href={areaId ? `/areas/${areaId}` : "/areas"}>
             <Button
@@ -273,31 +280,30 @@ const RestaurantMenuPage = () => {
           </Link>
 
           {/* Restaurant Info */}
-          <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div className="flex-1">
               {restaurant.area && (
-                <div className="mb-3 flex items-center gap-2">
+                <div className="mb-2 flex items-center gap-2">
                   <span className="text-2xl">{restaurant.area.icon || '📍'}</span>
                   <span className="text-xs font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
                     {restaurant.area.name}
                   </span>
                 </div>
               )}
-              <h1 className="text-3xl font-bold text-slate-900 dark:text-white sm:text-4xl">
+              <h1 className="text-2xl font-bold text-slate-900 dark:text-white sm:text-3xl">
                 {restaurant.name}
               </h1>
-              <p className="mt-2 max-w-2xl text-sm text-slate-600 dark:text-slate-400 sm:text-base">
+              <p className="mt-1 max-w-2xl text-sm text-slate-600 dark:text-slate-400">
                 {restaurant.description}
               </p>
 
               {/* Info Badges */}
-              <div className="mt-4 flex flex-wrap gap-2">
-                <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-400">
-                  <MapPin className="h-4 w-4 text-emerald-500" />
+              <div className="mt-3 flex flex-wrap gap-2">
+                <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-400">
+                  <MapPin className="h-3.5 w-3.5 text-emerald-500" />
                   <span className="line-clamp-1 font-medium">{restaurant.address}</span>
                 </div>
-                <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-300">
-                  <ChefHat className="h-4 w-4 text-emerald-500" />
+                <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-300">
                   {restaurant.menus_count} Menu
                 </div>
               </div>
@@ -306,17 +312,16 @@ const RestaurantMenuPage = () => {
             {/* Status Badge */}
             <div className="shrink-0">
               {restaurant.is_open ? (
-                <div className="inline-flex items-center gap-2.5 rounded-full bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/20 dark:bg-emerald-500/10 dark:text-emerald-400 dark:ring-emerald-500/20">
-                  <span className="relative flex h-2 w-2">
+                <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/20 dark:bg-emerald-500/10 dark:text-emerald-400 dark:ring-emerald-500/20">
+                  <span className="relative flex h-1.5 w-1.5">
                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                    <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
                   </span>
-                  Buka Sekarang
+                  Buka
                 </div>
               ) : (
-                <div className="inline-flex items-center gap-2.5 rounded-full bg-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-600 ring-1 ring-inset ring-slate-200 dark:bg-slate-800/50 dark:text-slate-400 dark:ring-slate-700">
-                  <Clock className="h-4 w-4" />
-                  Tutup Sementara
+                <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600 ring-1 ring-inset ring-slate-200 dark:bg-slate-800/50 dark:text-slate-400 dark:ring-slate-700">
+                  Tutup
                 </div>
               )}
             </div>
@@ -325,116 +330,117 @@ const RestaurantMenuPage = () => {
       </header>
 
       {/* Menu Content */}
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:py-12 lg:px-8">
+      <main className="mx-auto max-w-5xl px-4 py-8 sm:py-10 sm:px-6 lg:px-8">
         {menuList.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-2xl bg-white py-24 dark:bg-slate-800/50">
-            <div className="mb-6 rounded-full bg-slate-100 p-8 dark:bg-slate-800">
-              <span className="text-6xl">🍽️</span>
+          <div className="flex flex-col items-center justify-center rounded-2xl bg-white py-20 dark:bg-slate-800/50">
+            <div className="mb-4 rounded-full bg-slate-100 p-6 dark:bg-slate-800">
+              <span className="text-5xl">🍽️</span>
             </div>
-            <h3 className="text-xl font-bold text-slate-900 dark:text-white">
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white">
               Belum ada menu tersedia
             </h3>
-            <p className="mt-2 text-slate-500 dark:text-slate-400">
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
               Restoran ini belum memperbarui daftar menu mereka.
             </p>
           </div>
         ) : (
-          <div>
+          <div className="space-y-6">
             {/* Menu Section Header */}
-            <div className="mb-8">
-              <h2 className="text-2xl font-bold text-slate-900 dark:text-white sm:text-3xl">
-                📋 Daftar Menu
+            <div className="border-b border-slate-200 pb-4 dark:border-slate-800">
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white sm:text-2xl">
+                Daftar Menu
               </h2>
-              <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-                {menuList.length} pilihan menu spesial untuk Anda
+              <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">
+                {menuList.length} pilihan menu spesial
               </p>
             </div>
 
             {/* Menu Grid */}
-            <div className="grid grid-cols-2 gap-4 sm:gap-6 md:grid-cols-3 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-4 sm:gap-5 md:grid-cols-3 lg:grid-cols-4">
               {menuList.map((menu) => (
                 <Dialog
                   key={menu.id}
                   open={dialogOpen[String(menu.id)] || false}
                   onOpenChange={() => toggleDialog(menu.id)}
                 >
-                    <div
-                      className={`group relative flex h-full flex-col overflow-hidden rounded-2xl border transition-all duration-300 ${
-                        menu.is_available
-                          ? 'border-slate-200 bg-white hover:-translate-y-1 hover:border-emerald-500/40 hover:shadow-lg hover:shadow-emerald-500/10 dark:border-slate-800 dark:bg-slate-900'
-                          : 'border-slate-300 bg-slate-50 opacity-60 dark:border-slate-700 dark:bg-slate-800/50'
-                      }`}
-                    >
-                      {/* Image */}
-                      <div className="relative aspect-square overflow-hidden bg-slate-100 dark:bg-slate-800">
-                        <img
-                          src={menu.image || '/foodimages.png'}
-                          alt={menu.name}
-                          className={`h-full w-full object-cover transition-transform duration-500 ${
-                            menu.is_available ? 'group-hover:scale-110' : 'opacity-60'
-                          }`}
-                          onError={(e) => {
-                            e.currentTarget.src = '/foodimages.png';
-                          }}
-                        />
-                        {!menu.is_available && (
-                          <div className="absolute inset-0 flex items-center justify-center bg-slate-950/50 backdrop-blur-sm">
-                            <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-900">
-                              Tidak Tersedia
-                            </span>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Content */}
-                      <div className="flex flex-1 flex-col p-4">
-                        <h3 className="mb-2 line-clamp-2 text-sm font-bold leading-snug text-slate-900 group-hover:text-emerald-600 dark:text-white dark:group-hover:text-emerald-400">
-                          {menu.name}
-                        </h3>
-
-                        <div className="mt-auto space-y-3">
-                          <p className="text-base font-bold text-emerald-600 dark:text-emerald-400">
-                            {new Intl.NumberFormat('id-ID', {
-                              style: 'currency',
-                              currency: 'IDR',
-                              minimumFractionDigits: 0
-                            }).format(parseFloat(menu.price))}
-                          </p>
-                          <button
-                            disabled={!menu.is_available || !isLoggedIn}
-                            className={`h-9 w-full rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 ${
-                              !menu.is_available || !isLoggedIn
-                                ? 'bg-slate-300 text-slate-500 cursor-not-allowed dark:bg-slate-700 dark:text-slate-400'
-                                : 'bg-emerald-600 text-white hover:bg-emerald-700 cursor-pointer dark:bg-emerald-500 dark:hover:bg-emerald-600'
-                            }`}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (!isLoggedIn) {
-                                toast.error('Silakan login terlebih dahulu');
-                                router.push('/auth/login');
-                                return;
-                              }
-                              if (!menu.is_available) {
-                                toast.error('Menu tidak tersedia');
-                                return;
-                              }
-                              toggleDialog(menu.id);
-                            }}
-                          >
-                            <Plus className="h-3 w-3" />
-                            {menu.is_available ? 'Tambah' : 'Tidak Tersedia'}
-                          </button>
+                  <div
+                    onClick={() => menu.is_available && isLoggedIn && toggleDialog(menu.id)}
+                    className={`group h-full flex flex-col overflow-hidden rounded-xl border transition-all duration-300 ${
+                      menu.is_available && isLoggedIn
+                        ? 'cursor-pointer border-slate-200 bg-white hover:-translate-y-0.5 hover:border-emerald-500/40 hover:shadow-md dark:border-slate-800 dark:bg-slate-900'
+                        : 'cursor-default border-slate-300 bg-slate-50 opacity-60 dark:border-slate-700 dark:bg-slate-800/50'
+                    }`}
+                  >
+                    {/* Image */}
+                    <div className="relative aspect-square overflow-hidden bg-slate-100 dark:bg-slate-800">
+                      <img
+                        src={getImageUrl(menu.image)}
+                        alt={menu.name}
+                        className={`h-full w-full object-cover transition-transform duration-500 ${
+                          menu.is_available && isLoggedIn ? 'group-hover:scale-105' : ''
+                        }`}
+                        onError={(e) => {
+                          e.currentTarget.src = '/foodimages.png';
+                        }}
+                      />
+                      {!menu.is_available && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-slate-950/50 backdrop-blur-sm">
+                          <span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-slate-900">
+                            Tidak Tersedia
+                          </span>
                         </div>
+                      )}
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex flex-1 flex-col p-3">
+                      <h3 className="mb-1.5 line-clamp-2 text-xs font-bold text-slate-900 group-hover:text-emerald-600 dark:text-white dark:group-hover:text-emerald-400 sm:text-sm">
+                        {menu.name}
+                      </h3>
+
+                      <div className="mt-auto space-y-2">
+                        <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
+                          {new Intl.NumberFormat('id-ID', {
+                            style: 'currency',
+                            currency: 'IDR',
+                            minimumFractionDigits: 0
+                          }).format(parseFloat(menu.price))}
+                        </p>
+                        <button
+                          disabled={!menu.is_available || !isLoggedIn}
+                          className={`h-8 w-full rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 ${
+                            !menu.is_available || !isLoggedIn
+                              ? 'bg-slate-300 text-slate-500 cursor-not-allowed dark:bg-slate-700 dark:text-slate-400'
+                              : 'bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600'
+                          }`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (!isLoggedIn) {
+                              toast.error('Silakan login terlebih dahulu');
+                              router.push('/auth/login');
+                              return;
+                            }
+                            if (!menu.is_available) {
+                              toast.error('Menu tidak tersedia');
+                              return;
+                            }
+                            toggleDialog(menu.id);
+                          }}
+                        >
+                          <Plus className="h-3 w-3" />
+                          Tambah
+                        </button>
                       </div>
                     </div>
+                  </div>
 
                   {/* Modal Dialog */}
                   {isLoggedIn && (
-                    <DialogContent className="max-w-sm gap-0 overflow-hidden rounded-3xl border-none bg-white p-0 dark:bg-slate-900 sm:max-w-md">
+                    <DialogContent className="max-w-sm gap-0 overflow-hidden rounded-3xl border-none bg-white p-0 dark:bg-slate-900">
                       {/* Image */}
                       <div className="relative h-56 bg-slate-100 dark:bg-slate-800">
                         <img
-                          src={menu.image || '/foodimages.png'}
+                          src={getImageUrl(menu.image)}
                           alt={menu.name}
                           className="h-full w-full object-cover"
                           onError={(e) => {
@@ -444,14 +450,14 @@ const RestaurantMenuPage = () => {
                       </div>
 
                       {/* Content */}
-                      <div className="space-y-6 p-6">
+                      <div className="space-y-5 p-6">
                         <DialogHeader>
-                          <DialogTitle className="text-2xl font-bold text-slate-900 dark:text-white">
+                          <DialogTitle className="text-xl font-bold text-slate-900 dark:text-white">
                             {menu.name}
                           </DialogTitle>
                         </DialogHeader>
 
-                        <div className="space-y-5">
+                        <div className="space-y-4">
                           {/* Notes */}
                           <div className="space-y-2">
                             <label className="text-xs font-bold uppercase tracking-wide text-slate-600 dark:text-slate-400">
@@ -467,17 +473,17 @@ const RestaurantMenuPage = () => {
                                 }));
                               }}
                               placeholder="Contoh: Tidak pakai pedas..."
-                              className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800/50 dark:placeholder:text-slate-500"
+                              className="w-full resize-none rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800/50 dark:placeholder:text-slate-500"
                               rows={2}
                             />
                           </div>
 
                           {/* Quantity */}
-                          <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/30">
-                            <span className="text-sm font-bold text-slate-900 dark:text-white">
+                          <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/30">
+                            <span className="text-xs font-bold text-slate-900 dark:text-white">
                               Jumlah
                             </span>
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2.5">
                               <Button
                                 variant="outline"
                                 size="sm"
@@ -489,11 +495,11 @@ const RestaurantMenuPage = () => {
                                     [key]: Math.max(1, (prev[key] || 1) - 1)
                                   }));
                                 }}
-                                className="h-8 w-8 rounded-full p-0"
+                                className="h-7 w-7 rounded-full p-0"
                               >
                                 <Minus className="h-3 w-3" />
                               </Button>
-                              <span className="w-6 text-center font-bold">
+                              <span className="w-4 text-center text-sm font-bold">
                                 {selectedQuantity[String(menu.id)] || 1}
                               </span>
                               <Button
@@ -506,7 +512,7 @@ const RestaurantMenuPage = () => {
                                     [key]: (prev[key] || 1) + 1
                                   }));
                                 }}
-                                className="h-8 w-8 rounded-full p-0"
+                                className="h-7 w-7 rounded-full p-0"
                               >
                                 <Plus className="h-3 w-3" />
                               </Button>
@@ -514,12 +520,12 @@ const RestaurantMenuPage = () => {
                           </div>
 
                           {/* Price Summary */}
-                          <div className="rounded-xl bg-emerald-50 p-4 dark:bg-emerald-500/10">
+                          <div className="rounded-lg bg-emerald-50 p-3 dark:bg-emerald-500/10">
                             <div className="flex items-center justify-between">
                               <span className="text-xs font-bold uppercase tracking-wide text-slate-600 dark:text-slate-400">
-                                Total Harga
+                                Total
                               </span>
-                              <span className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                              <span className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
                                 Rp {getTotalPrice(menu.id, menu.price)}
                               </span>
                             </div>
@@ -527,11 +533,11 @@ const RestaurantMenuPage = () => {
 
                           {/* Add to Cart Button */}
                           <Button
-                            className="h-12 w-full rounded-xl bg-emerald-600 text-sm font-bold text-white hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600"
+                            className="h-10 w-full rounded-lg bg-emerald-600 text-xs font-bold text-white hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600"
                             onClick={() => handleAddToCart(menu)}
                             disabled={!menu.is_available || isAddingToCart}
                           >
-                            <ShoppingCart className="mr-2 h-4 w-4" />
+                            <ShoppingCart className="mr-2 h-3.5 w-3.5" />
                             {isAddingToCart ? 'Menambahkan...' : 'Tambah ke Keranjang'}
                           </Button>
                         </div>

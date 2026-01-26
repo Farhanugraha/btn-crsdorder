@@ -334,8 +334,6 @@ export default function RestaurantDetailPage() {
       showMessage('error', 'Harga harus diisi dengan angka valid');
       return;
     }
-
-    // ✅ UPDATED: Gambar tidak wajib, gunakan null jika tidak ada
     setIsSubmitting(true);
     try {
       let finalImageName: string | null = formData.image || null;
@@ -365,7 +363,7 @@ export default function RestaurantDetailPage() {
           restaurant_id: Number(restaurantId),
           name: formData.name.trim(),
           price: Number(formData.price),
-          image: finalImageName, // ✅ Bisa null
+          image: finalImageName, 
           is_available: formData.is_available
         })
       });
@@ -517,8 +515,6 @@ export default function RestaurantDetailPage() {
       minimumFractionDigits: 0
     }).format(price);
   };
-
-  // ✅ UPDATED: Handle null/empty image dengan default foodimages.png
   const getImageSrc = (image: string | null): string => {
     if (!image) return '/foodimages.png';
     if (image.startsWith('http') || image.startsWith('data:'))
