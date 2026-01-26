@@ -250,7 +250,6 @@ export default function RestaurantDetailPage() {
       }
 
       if (data.success) {
-        // Extract filename dari berbagai struktur response
         const filename =
           data.data?.filename ||
           data.data?.file ||
@@ -336,14 +335,10 @@ export default function RestaurantDetailPage() {
       return;
     }
 
-    if (!formData.image && !imageFile) {
-      showMessage('error', 'Gambar menu harus diupload');
-      return;
-    }
-
+    // ✅ UPDATED: Gambar tidak wajib, gunakan null jika tidak ada
     setIsSubmitting(true);
     try {
-      let finalImageName = formData.image;
+      let finalImageName: string | null = formData.image || null;
 
       if (imageFile) {
         const uploadedFileName = await uploadImageToServer(imageFile);
@@ -370,7 +365,7 @@ export default function RestaurantDetailPage() {
           restaurant_id: Number(restaurantId),
           name: formData.name.trim(),
           price: Number(formData.price),
-          image: finalImageName,
+          image: finalImageName, // ✅ Bisa null
           is_available: formData.is_available
         })
       });
@@ -523,8 +518,9 @@ export default function RestaurantDetailPage() {
     }).format(price);
   };
 
-  const getImageSrc = (image: string): string => {
-    if (!image) return '/rice-chinese-food-svgrepo-com.svg';
+  // ✅ UPDATED: Handle null/empty image dengan default foodimages.png
+  const getImageSrc = (image: string | null): string => {
+    if (!image) return '/foodimages.png';
     if (image.startsWith('http') || image.startsWith('data:'))
       return image;
     return `${apiUrl}/storage/uploads/${image}`;
@@ -594,577 +590,552 @@ export default function RestaurantDetailPage() {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
-      {/* Header */}
-      <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur-md dark:border-slate-700 dark:bg-slate-900/90">
-        <div className="px-4 py-3 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex min-w-0 flex-1 items-center gap-3">
-              <a
-                href="/dashboard/superadmin/restaurants"
-                className="inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-600 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
-              >
-                <ArrowLeft className="h-4 w-4" />
-              </a>
-              <div className="min-w-0">
-                <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                  {restaurant.area?.icon} {restaurant.area?.name}
-                </p>
-                <h1 className="truncate text-lg font-bold text-slate-900 dark:text-white">
-                  {restaurant.name}
-                </h1>
-              </div>
-            </div>
-            {!showForm && (
-              <button
-                onClick={() => setShowForm(true)}
-                className="inline-flex flex-shrink-0 items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 dark:hover:bg-blue-800 sm:px-4"
-              >
-                <Plus className="h-4 w-4" />
-                <span className="hidden sm:inline">Tambah Menu</span>
-              </button>
-            )}
-          </div>
-        </div>
-      </header>
+  // ============================================
+// SIMPLIFIED RENDER SECTION (RETURN)
+// ============================================
 
-      {/* Alert Messages */}
-      {message && (
-        <div className="border-b border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900 sm:px-6 lg:px-8">
-          <div
-            className={`flex items-center gap-3 rounded-lg border p-3 text-sm ${
-              message.type === 'success'
-                ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-900/40 dark:bg-emerald-900/20'
-                : 'border-red-200 bg-red-50 dark:border-red-900/40 dark:bg-red-900/20'
-            }`}
-          >
-            {message.type === 'success' ? (
-              <CheckCircle2 className="h-5 w-5 flex-shrink-0 text-emerald-600 dark:text-emerald-400" />
-            ) : (
-              <AlertCircle className="h-5 w-5 flex-shrink-0 text-red-600 dark:text-red-400" />
-            )}
-            <p
-              className={`flex-1 font-medium ${
-                message.type === 'success'
-                  ? 'text-emerald-800 dark:text-emerald-300'
-                  : 'text-red-800 dark:text-red-300'
-              }`}
+return (
+  <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+    {/* Header */}
+    <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur-md dark:border-slate-700 dark:bg-slate-900/90">
+      <div className="px-4 py-3 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex min-w-0 flex-1 items-center gap-3">
+            <a
+              href="/dashboard/superadmin/restaurants"
+              className="inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-600 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
             >
-              {message.text}
-            </p>
+              <ArrowLeft className="h-4 w-4" />
+            </a>
+            <div className="min-w-0">
+              <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                {restaurant.area?.icon} {restaurant.area?.name}
+              </p>
+              <h1 className="truncate text-lg font-bold text-slate-900 dark:text-white">
+                {restaurant.name}
+              </h1>
+            </div>
+          </div>
+          {!showForm && (
             <button
-              onClick={() => setMessage(null)}
-              className="flex-shrink-0 text-slate-400 transition-colors hover:text-slate-600 dark:hover:text-slate-300"
+              onClick={() => setShowForm(true)}
+              className="inline-flex flex-shrink-0 items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 dark:hover:bg-blue-800 sm:px-4"
             >
-              <X className="h-4 w-4" />
+              <Plus className="h-4 w-4" />
+              <span className="hidden sm:inline">Tambah Menu</span>
             </button>
-          </div>
+          )}
         </div>
-      )}
+      </div>
+    </header>
 
-      {/* Restaurant Info Section */}
-      <section className="border-b border-slate-200 bg-gradient-to-r from-blue-50 to-white px-4 py-6 dark:border-slate-700 dark:from-blue-950/30 dark:to-slate-900 sm:px-6 lg:px-8">
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {/* Status Card */}
-          <div className="group rounded-xl bg-white p-4 shadow-sm transition-all hover:shadow-md dark:bg-slate-800 dark:hover:bg-slate-700/50">
-            <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                Status
-              </p>
-              {restaurant.is_open ? (
-                <div className="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-3 py-1.5 dark:bg-emerald-900/30">
-                  <div className="h-2 w-2 animate-pulse rounded-full bg-emerald-500 dark:bg-emerald-400" />
-                  <span className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">
-                    Buka Sekarang
-                  </span>
-                </div>
-              ) : (
-                <div className="inline-flex items-center gap-2 rounded-full bg-slate-200 px-3 py-1.5 dark:bg-slate-700">
-                  <div className="h-2 w-2 rounded-full bg-slate-500 dark:bg-slate-400" />
-                  <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                    Tutup
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Location Card */}
-          <div className="group rounded-xl bg-white p-4 shadow-sm transition-all hover:shadow-md dark:bg-slate-800 dark:hover:bg-slate-700/50">
-            <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                Lokasi
-              </p>
-              <div className="flex items-start gap-2.5">
-                <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-blue-600 dark:text-blue-400" />
-                <p className="line-clamp-2 text-sm font-semibold text-slate-700 dark:text-slate-300">
-                  {restaurant.address}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Total Menu Card */}
-          <div className="group rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 p-4 shadow-sm transition-all hover:shadow-md dark:from-blue-900/30 dark:to-blue-900/20 dark:hover:from-blue-900/40">
-            <div className="space-y-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                Total Menu
-              </p>
-              <div className="flex items-baseline gap-2">
-                <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
-                  {menus.length}
-                </p>
-                <p className="text-xs font-medium text-slate-600 dark:text-slate-400">
-                  {menus.length === 1 ? 'menu' : 'menus'}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Main Content */}
-      <main className="px-4 py-6 sm:px-6 lg:px-8">
+    {/* Alert Messages */}
+    {message && (
+      <div className="border-b border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900 sm:px-6 lg:px-8">
         <div
-          className={`grid gap-6 ${
-            showForm ? 'lg:grid-cols-4' : 'lg:grid-cols-1'
+          className={`flex items-center gap-3 rounded-lg border p-3 text-sm ${
+            message.type === 'success'
+              ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-900/40 dark:bg-emerald-900/20'
+              : 'border-red-200 bg-red-50 dark:border-red-900/40 dark:bg-red-900/20'
           }`}
         >
-          {/* Form Section */}
-          {showForm && (
-            <div className="lg:col-span-1">
-              <div className="sticky top-24 max-h-[calc(100vh-140px)] overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900">
-                <div className="sticky top-0 flex items-center justify-between border-b border-slate-200 bg-gradient-to-r from-blue-50 to-blue-100 px-4 py-4 dark:border-slate-700 dark:from-blue-900/40 dark:to-blue-900/20 sm:px-6">
-                  <h2 className="text-base font-bold text-slate-900 dark:text-white">
-                    {editingId ? 'Edit Menu' : 'Menu Baru'}
-                  </h2>
-                  <button
-                    onClick={resetForm}
-                    className="text-slate-400 transition-colors hover:text-slate-600 dark:hover:text-slate-300"
-                  >
-                    <X className="h-5 w-5" />
-                  </button>
-                </div>
-
-                <div className="space-y-4 p-4 sm:p-6">
-                  {/* Nama Menu */}
-                  <div className="space-y-2">
-                    <label className="block text-sm font-semibold text-slate-900 dark:text-white">
-                      Nama Menu{' '}
-                      <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Nasi Goreng"
-                      value={formData.name}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          name: e.target.value
-                        })
-                      }
-                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-500 transition-all focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder-slate-400"
-                    />
-                  </div>
-
-                  {/* Harga */}
-                  <div className="space-y-2">
-                    <label className="block text-sm font-semibold text-slate-900 dark:text-white">
-                      Harga <span className="text-red-500">*</span>
-                    </label>
-                    <div className="flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 dark:border-slate-600 dark:bg-slate-800">
-                      <span className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                        Rp
-                      </span>
-                      <input
-                        type="number"
-                        placeholder="25000"
-                        value={formData.price}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            price: e.target.value
-                          })
-                        }
-                        className="flex-1 border-0 bg-transparent text-sm text-slate-900 focus:outline-none dark:text-white"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Image Upload */}
-                  <div className="space-y-2">
-                    <label className="block text-sm font-semibold text-slate-900 dark:text-white">
-                      Gambar Menu{' '}
-                      <span className="text-red-500">*</span>
-                    </label>
-
-                    <div className="flex items-center gap-3">
-                      {/* Image Preview */}
-                      <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 dark:border-slate-600 dark:bg-slate-700">
-                        {imagePreview ? (
-                          <img
-                            src={imagePreview}
-                            alt="Preview"
-                            className="h-full w-full rounded-lg object-cover"
-                            onError={(e) => {
-                              e.currentTarget.src =
-                                '/rice-chinese-food-svgrepo-com.svg';
-                            }}
-                          />
-                        ) : (
-                          <img
-                            src="/rice-chinese-food-svgrepo-com.svg"
-                            alt="Default"
-                            className="h-10 w-10 opacity-50 dark:opacity-30"
-                          />
-                        )}
-                      </div>
-
-                      {/* Upload Input */}
-                      <div className="flex-1">
-                        <div className="relative">
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) {
-                                handleImageChange(file);
-                              }
-                            }}
-                            className="hidden"
-                            id="image-upload"
-                          />
-                          <label
-                            htmlFor="image-upload"
-                            className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition-all hover:border-slate-400 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
-                          >
-                            <svg
-                              className="h-4 w-4"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                              />
-                            </svg>
-                            Pilih Gambar
-                          </label>
-                        </div>
-                        <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
-                          {imageFile
-                            ? imageFile.name
-                            : 'Contoh: menu-nasi-goreng.jpg'}
-                        </p>
-                        {(imagePreview || imageFile) && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setImagePreview('');
-                              setImageFile(null);
-                              setFormData({ ...formData, image: '' });
-                            }}
-                            className="mt-1 text-xs font-medium text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
-                          >
-                            Hapus
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Ketersediaan */}
-                  <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700">
-                    <input
-                      type="checkbox"
-                      checked={formData.is_available}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          is_available: e.target.checked
-                        })
-                      }
-                      className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-2 focus:ring-blue-500 dark:border-slate-600"
-                    />
-                    <span className="text-sm font-semibold text-slate-900 dark:text-white">
-                      Menu Tersedia
-                    </span>
-                  </label>
-                </div>
-
-                <div className="sticky bottom-0 flex gap-2 border-t border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800 sm:px-6">
-                  <button
-                    onClick={resetForm}
-                    className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
-                  >
-                    Batal
-                  </button>
-                  <button
-                    onClick={handleSubmit}
-                    disabled={
-                      isSubmitting ||
-                      !formData.name.trim() ||
-                      !formData.price ||
-                      (!formData.image && !imageFile)
-                    }
-                    className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50 dark:hover:bg-blue-800"
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        <span className="hidden sm:inline">
-                          Simpan...
-                        </span>
-                      </>
-                    ) : editingId ? (
-                      'Update'
-                    ) : (
-                      'Tambah'
-                    )}
-                  </button>
-                </div>
-              </div>
-            </div>
+          {message.type === 'success' ? (
+            <CheckCircle2 className="h-5 w-5 flex-shrink-0 text-emerald-600 dark:text-emerald-400" />
+          ) : (
+            <AlertCircle className="h-5 w-5 flex-shrink-0 text-red-600 dark:text-red-400" />
           )}
-
-          {/* Menus List */}
-          <div
-            className={showForm ? 'lg:col-span-3' : 'lg:col-span-1'}
+          <p
+            className={`flex-1 font-medium ${
+              message.type === 'success'
+                ? 'text-emerald-800 dark:text-emerald-300'
+                : 'text-red-800 dark:text-red-300'
+            }`}
           >
-            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900">
-              <div className="border-b border-slate-200 bg-gradient-to-r from-blue-50 to-blue-100 px-4 py-4 dark:border-slate-700 dark:from-blue-900/40 dark:to-blue-900/20 sm:px-6">
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <div className="rounded-lg bg-blue-200 p-2 dark:bg-blue-900/50">
-                      <ChefHat className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                    </div>
-                    <div>
-                      <h2 className="text-base font-bold text-slate-900 dark:text-white">
-                        Daftar Menu
-                      </h2>
-                      <p className="text-xs text-slate-600 dark:text-slate-400">
-                        Total: {menus.length} menu
-                      </p>
-                    </div>
-                  </div>
+            {message.text}
+          </p>
+          <button
+            onClick={() => setMessage(null)}
+            className="flex-shrink-0 text-slate-400 transition-colors hover:text-slate-600 dark:hover:text-slate-300"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+    )}
 
-                  {/* Filter Buttons */}
-                  <div className="flex flex-wrap gap-2 sm:gap-3">
-                    <button
-                      onClick={() => setFilterStatus('all')}
-                      className={`whitespace-nowrap rounded-lg px-4 py-2 text-xs font-medium transition-all sm:text-sm ${
-                        filterStatus === 'all'
-                          ? 'bg-blue-600 text-white'
-                          : 'border border-slate-300 bg-white text-slate-600 hover:border-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-slate-600'
-                      }`}
-                    >
-                      <span className="block">Semua</span>
-                      <span className="text-xs opacity-75">
-                        ({menus.length})
-                      </span>
-                    </button>
-                    <button
-                      onClick={() => setFilterStatus('available')}
-                      className={`whitespace-nowrap rounded-lg px-4 py-2 text-xs font-medium transition-all sm:text-sm ${
-                        filterStatus === 'available'
-                          ? 'bg-emerald-600 text-white'
-                          : 'border border-slate-300 bg-white text-slate-600 hover:border-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-slate-600'
-                      }`}
-                    >
-                      <span className="block">Tersedia</span>
-                      <span className="text-xs opacity-75">
-                        ({availableCount})
-                      </span>
-                    </button>
-                    <button
-                      onClick={() => setFilterStatus('unavailable')}
-                      className={`whitespace-nowrap rounded-lg px-4 py-2 text-xs font-medium transition-all sm:text-sm ${
-                        filterStatus === 'unavailable'
-                          ? 'bg-red-600 text-white'
-                          : 'border border-slate-300 bg-white text-slate-600 hover:border-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-slate-600'
-                      }`}
-                    >
-                      <span className="block">Tidak</span>
-                      <span className="text-xs opacity-75">
-                        ({unavailableCount})
-                      </span>
-                    </button>
-                  </div>
-                </div>
+    {/* Restaurant Info */}
+    <section className="border-b border-slate-200 bg-gradient-to-r from-blue-50 to-white px-4 py-6 dark:border-slate-700 dark:from-blue-950/30 dark:to-slate-900 sm:px-6 lg:px-8">
+      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        {/* Status Card */}
+        <div className="rounded-xl bg-white p-4 shadow-sm dark:bg-slate-800">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+            Status
+          </p>
+          <div className="mt-2">
+            {restaurant.is_open ? (
+              <div className="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-3 py-1.5 dark:bg-emerald-900/30">
+                <div className="h-2 w-2 animate-pulse rounded-full bg-emerald-500 dark:bg-emerald-400" />
+                <span className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">
+                  Buka Sekarang
+                </span>
               </div>
-
-              {isLoadingMenus ? (
-                <div className="flex justify-center py-12">
-                  <Loader2 className="h-6 w-6 animate-spin text-blue-600 dark:text-blue-400" />
-                </div>
-              ) : filteredMenus.length > 0 ? (
-                <div className="divide-y divide-slate-200 dark:divide-slate-700">
-                  {filteredMenus.map((menu) => (
-                    <div
-                      key={menu.id}
-                      className={`group flex flex-col gap-3 p-4 transition-all hover:bg-slate-50 dark:hover:bg-slate-800 sm:flex-row sm:items-start sm:gap-4 sm:p-6 ${
-                        !menu.is_available ? 'opacity-65' : ''
-                      }`}
-                    >
-                      <div className="flex h-20 w-20 flex-shrink-0 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800">
-                        {menu.image ? (
-                          <img
-                            src={getImageSrc(menu.image)}
-                            alt={menu.name}
-                            className="h-full w-full rounded-lg object-cover"
-                            onError={(e) => {
-                              e.currentTarget.src =
-                                '/rice-chinese-food-svgrepo-com.svg';
-                            }}
-                          />
-                        ) : (
-                          <img
-                            src="/rice-chinese-food-svgrepo-com.svg"
-                            alt="Default"
-                            className="h-12 w-12 opacity-50 dark:opacity-30"
-                          />
-                        )}
-                      </div>
-
-                      <div className="min-w-0 flex-1">
-                        <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                          {menu.name}
-                        </h3>
-                        <p className="mt-1 text-base font-bold text-blue-600 dark:text-blue-400">
-                          {formatCurrency(menu.price)}
-                        </p>
-                        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                          📄 {menu.image}
-                        </p>
-                        <div className="mt-2">
-                          {menu.is_available ? (
-                            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
-                              <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
-                              Tersedia
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1.5 rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-700 dark:bg-red-900/30 dark:text-red-400">
-                              <div className="h-1.5 w-1.5 rounded-full bg-red-500" />
-                              Tidak Tersedia
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="flex flex-shrink-0 gap-1.5">
-                        <button
-                          onClick={() => handleEdit(menu)}
-                          className="rounded-lg p-2.5 text-blue-600 transition-colors hover:bg-blue-100 dark:text-blue-400 dark:hover:bg-blue-900/40"
-                          title="Edit"
-                        >
-                          <Edit2 className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() =>
-                            handleToggleAvailability(
-                              menu.id,
-                              menu.is_available
-                            )
-                          }
-                          disabled={togglingId === menu.id}
-                          className="rounded-lg p-2.5 text-amber-600 transition-colors hover:bg-amber-100 disabled:opacity-50 dark:text-amber-400 dark:hover:bg-amber-900/40"
-                          title={
-                            menu.is_available
-                              ? 'Tandai tidak tersedia'
-                              : 'Tandai tersedia'
-                          }
-                        >
-                          {togglingId === menu.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : menu.is_available ? (
-                            <EyeOff className="h-4 w-4" />
-                          ) : (
-                            <Eye className="h-4 w-4" />
-                          )}
-                        </button>
-                        <button
-                          onClick={() => setDeleteConfirm(menu.id)}
-                          className="rounded-lg p-2.5 text-red-600 transition-colors hover:bg-red-100 dark:text-red-400 dark:hover:bg-red-900/40"
-                          title="Hapus"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center px-4 py-12">
-                  <ChefHat className="mb-3 h-12 w-12 text-slate-300 dark:text-slate-600" />
-                  <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
-                    {filterStatus === 'available'
-                      ? 'Tidak ada menu tersedia'
-                      : filterStatus === 'unavailable'
-                        ? 'Tidak ada menu tidak tersedia'
-                        : 'Menu Kosong'}
-                  </h3>
-                  <p className="mt-1 text-center text-xs text-slate-600 dark:text-slate-400">
-                    {menus.length === 0
-                      ? 'Tambahkan menu pertama untuk memulai'
-                      : 'Ubah filter untuk melihat menu lain'}
-                  </p>
-                  {menus.length === 0 && (
-                    <button
-                      onClick={() => setShowForm(true)}
-                      className="mt-3 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 dark:hover:bg-blue-800"
-                    >
-                      <Plus className="h-4 w-4" />
-                      Tambah Menu Pertama
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
+            ) : (
+              <div className="inline-flex items-center gap-2 rounded-full bg-slate-200 px-3 py-1.5 dark:bg-slate-700">
+                <div className="h-2 w-2 rounded-full bg-slate-500 dark:bg-slate-400" />
+                <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                  Tutup
+                </span>
+              </div>
+            )}
           </div>
         </div>
-      </main>
 
-      {/* Delete Modal */}
-      {deleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-sm rounded-xl bg-white shadow-xl dark:bg-slate-800">
-            <div className="space-y-4 p-6">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/40">
-                  <AlertCircle className="h-6 w-6 text-red-600 dark:text-red-400" />
-                </div>
-                <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                  Hapus Menu?
-                </h3>
-              </div>
-              <p className="text-sm text-slate-600 dark:text-slate-300">
-                Data tidak dapat dipulihkan setelah dihapus.
-              </p>
-              <div className="flex gap-3 pt-2">
+        {/* Location Card */}
+        <div className="rounded-xl bg-white p-4 shadow-sm dark:bg-slate-800">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+            Lokasi
+          </p>
+          <div className="mt-2 flex items-start gap-2.5">
+            <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-blue-600 dark:text-blue-400" />
+            <p className="line-clamp-2 text-sm font-semibold text-slate-700 dark:text-slate-300">
+              {restaurant.address}
+            </p>
+          </div>
+        </div>
+
+        {/* Total Menu Card */}
+        <div className="rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 p-4 shadow-sm dark:from-blue-900/30 dark:to-blue-900/20">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+            Total Menu
+          </p>
+          <div className="mt-3 flex items-baseline gap-2">
+            <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
+              {menus.length}
+            </p>
+            <p className="text-xs font-medium text-slate-600 dark:text-slate-400">
+              {menus.length === 1 ? 'menu' : 'menus'}
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    {/* Main Content */}
+    <main className="px-4 py-6 sm:px-6 lg:px-8">
+      <div className={`grid gap-6 ${showForm ? 'lg:grid-cols-4' : 'lg:grid-cols-1'}`}>
+        {/* Form Section */}
+        {showForm && (
+          <div className="lg:col-span-1">
+            <div className="sticky top-24 max-h-[calc(100vh-140px)] overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900">
+              <div className="sticky top-0 flex items-center justify-between border-b border-slate-200 bg-gradient-to-r from-blue-50 to-blue-100 px-4 py-4 dark:border-slate-700 dark:from-blue-900/40 dark:to-blue-900/20 sm:px-6">
+                <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                  {editingId ? 'Edit Menu' : 'Menu Baru'}
+                </h2>
                 <button
-                  onClick={() => setDeleteConfirm(null)}
-                  className="flex-1 rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
+                  onClick={resetForm}
+                  className="text-slate-400 transition-colors hover:text-slate-600 dark:hover:text-slate-300"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4 p-4 sm:p-6">
+                {/* Nama Menu */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-semibold text-slate-900 dark:text-white">
+                    Nama Menu <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Nasi Goreng"
+                    value={formData.name}
+                    onChange={(e) =>
+                      setFormData({ ...formData, name: e.target.value })
+                    }
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-500 transition-all focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder-slate-400"
+                  />
+                </div>
+
+                {/* Harga */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-semibold text-slate-900 dark:text-white">
+                    Harga <span className="text-red-500">*</span>
+                  </label>
+                  <div className="flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 dark:border-slate-600 dark:bg-slate-800">
+                    <span className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                      Rp
+                    </span>
+                    <input
+                      type="number"
+                      placeholder="35000"
+                      value={formData.price}
+                      onChange={(e) =>
+                        setFormData({ ...formData, price: e.target.value })
+                      }
+                      className="flex-1 border-0 bg-transparent text-sm text-slate-900 focus:outline-none dark:text-white"
+                    />
+                  </div>
+                </div>
+
+                {/* Image Upload - IMPROVED */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-semibold text-slate-900 dark:text-white">
+                    Gambar Menu{' '}
+                    <span className="text-slate-500 font-normal">(Opsional)</span>
+                  </label>
+                  
+                  <div className="relative">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          handleImageChange(file);
+                        }
+                      }}
+                      className="hidden"
+                      id="menu-image-upload"
+                    />
+                    <label
+                      htmlFor="menu-image-upload"
+                      className="flex cursor-pointer items-center justify-center gap-3 rounded-lg border-2 border-dashed border-slate-300 bg-gradient-to-br from-blue-50 to-slate-50 px-4 py-6 transition-all hover:border-blue-400 hover:bg-blue-50 dark:border-slate-600 dark:from-slate-800 dark:to-slate-800 dark:hover:border-blue-500 dark:hover:bg-slate-700/50"
+                    >
+                      <div className="rounded-lg bg-blue-100 p-3 dark:bg-blue-900/40">
+                        <svg
+                          className="h-5 w-5 text-blue-600 dark:text-blue-400"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                          />
+                        </svg>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-xs font-semibold text-slate-900 dark:text-white">
+                          Klik untuk upload gambar
+                        </p>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                          JPG, PNG, JPEG • Maks. 5MB
+                        </p>
+                      </div>
+                    </label>
+                  </div>
+
+                  {/* File Info */}
+                  {imageFile && (
+                    <div className="rounded-lg bg-emerald-50 p-3 dark:bg-emerald-900/20">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/40">
+                          <svg
+                            className="h-4 w-4 text-emerald-600 dark:text-emerald-400"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M5 13l4 4L19 7"
+                            />
+                          </svg>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 truncate">
+                            {imageFile.name}
+                          </p>
+                          <p className="text-xs text-emerald-600 dark:text-emerald-500">
+                            {(imageFile.size / 1024 / 1024).toFixed(2)} MB
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setImageFile(null);
+                            setImagePreview('');
+                          }}
+                          className="flex-shrink-0 text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Checkbox */}
+                <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={formData.is_available}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        is_available: e.target.checked
+                      })
+                    }
+                    className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-2 focus:ring-blue-500 dark:border-slate-600"
+                  />
+                  <span className="text-sm font-semibold text-slate-900 dark:text-white">
+                    Menu Tersedia
+                  </span>
+                </label>
+              </div>
+
+              {/* Buttons */}
+              <div className="sticky bottom-0 flex gap-2 border-t border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800 sm:px-6">
+                <button
+                  onClick={resetForm}
+                  className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
                 >
                   Batal
                 </button>
                 <button
-                  onClick={() =>
-                    deleteConfirm && handleDelete(deleteConfirm)
+                  onClick={handleSubmit}
+                  disabled={
+                    isSubmitting ||
+                    !formData.name.trim() ||
+                    !formData.price
                   }
-                  className="flex-1 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 dark:hover:bg-red-800"
+                  className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50 dark:hover:bg-blue-800"
                 >
-                  Hapus
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span className="hidden sm:inline">Simpan...</span>
+                    </>
+                  ) : editingId ? (
+                    'Update'
+                  ) : (
+                    'Tambah'
+                  )}
                 </button>
               </div>
             </div>
           </div>
+        )}
+
+        {/* Menus List */}
+        <div className={showForm ? 'lg:col-span-3' : 'lg:col-span-1'}>
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900">
+            <div className="border-b border-slate-200 bg-gradient-to-r from-blue-50 to-blue-100 px-4 py-4 dark:border-slate-700 dark:from-blue-900/40 dark:to-blue-900/20 sm:px-6">
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-lg bg-blue-200 p-2 dark:bg-blue-900/50">
+                    <ChefHat className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                      Daftar Menu
+                    </h2>
+                    <p className="text-xs text-slate-600 dark:text-slate-400">
+                      Total: {menus.length} menu
+                    </p>
+                  </div>
+                </div>
+
+                {/* Filter Buttons */}
+                <div className="flex flex-wrap gap-2 sm:gap-3">
+                  <button
+                    onClick={() => setFilterStatus('all')}
+                    className={`whitespace-nowrap rounded-lg px-4 py-2 text-xs font-medium transition-all sm:text-sm ${
+                      filterStatus === 'all'
+                        ? 'bg-blue-600 text-white'
+                        : 'border border-slate-300 bg-white text-slate-600 hover:border-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-slate-600'
+                    }`}
+                  >
+                    Semua ({menus.length})
+                  </button>
+                  <button
+                    onClick={() => setFilterStatus('available')}
+                    className={`whitespace-nowrap rounded-lg px-4 py-2 text-xs font-medium transition-all sm:text-sm ${
+                      filterStatus === 'available'
+                        ? 'bg-emerald-600 text-white'
+                        : 'border border-slate-300 bg-white text-slate-600 hover:border-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-slate-600'
+                    }`}
+                  >
+                    Tersedia ({availableCount})
+                  </button>
+                  <button
+                    onClick={() => setFilterStatus('unavailable')}
+                    className={`whitespace-nowrap rounded-lg px-4 py-2 text-xs font-medium transition-all sm:text-sm ${
+                      filterStatus === 'unavailable'
+                        ? 'bg-red-600 text-white'
+                        : 'border border-slate-300 bg-white text-slate-600 hover:border-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-slate-600'
+                    }`}
+                  >
+                    Tidak ({unavailableCount})
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {isLoadingMenus ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="h-6 w-6 animate-spin text-blue-600 dark:text-blue-400" />
+              </div>
+            ) : filteredMenus.length > 0 ? (
+              <div className="divide-y divide-slate-200 dark:divide-slate-700">
+                {filteredMenus.map((menu) => (
+                  <div
+                    key={menu.id}
+                    className={`group flex flex-col gap-4 p-4 transition-all hover:bg-slate-50 last:border-0 dark:hover:bg-slate-800 sm:flex-row sm:items-center sm:gap-4 sm:p-6 ${
+                      !menu.is_available ? 'opacity-60' : ''
+                    }`}
+                  >
+                    {/* Image - Simple Render */}
+                    <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-lg border border-slate-300 bg-slate-100 dark:border-slate-600 dark:bg-slate-800">
+                      <img
+                        src={getImageSrc(menu.image)}
+                        alt={menu.name}
+                        className="h-full w-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.src = '/foodimages.png';
+                        }}
+                      />
+                    </div>
+
+                    {/* Content */}
+                    <div className="min-w-0 flex-1">
+                      <h3 className="truncate text-sm font-bold text-slate-900 dark:text-white">
+                        {menu.name}
+                      </h3>
+                      <p className="mt-1.5 text-lg font-bold text-blue-600 dark:text-blue-400">
+                        {formatCurrency(menu.price)}
+                      </p>
+
+                      {/* Status Badge */}
+                      <div className="mt-2.5">
+                        {menu.is_available ? (
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                            <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+                            Tersedia
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                            <div className="h-1.5 w-1.5 rounded-full bg-red-500" />
+                            Tidak Tersedia
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex flex-shrink-0 gap-1.5 sm:gap-2">
+                      <button
+                        onClick={() => handleEdit(menu)}
+                        className="rounded-lg p-2.5 text-blue-600 transition-colors hover:bg-blue-100 dark:text-blue-400 dark:hover:bg-blue-900/40"
+                        title="Edit"
+                      >
+                        <Edit2 className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() =>
+                          handleToggleAvailability(
+                            menu.id,
+                            menu.is_available
+                          )
+                        }
+                        disabled={togglingId === menu.id}
+                        className="rounded-lg p-2.5 text-amber-600 transition-colors hover:bg-amber-100 disabled:opacity-50 dark:text-amber-400 dark:hover:bg-amber-900/40"
+                        title={
+                          menu.is_available
+                            ? 'Tandai tidak tersedia'
+                            : 'Tandai tersedia'
+                        }
+                      >
+                        {togglingId === menu.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : menu.is_available ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </button>
+                      <button
+                        onClick={() => setDeleteConfirm(menu.id)}
+                        className="rounded-lg p-2.5 text-red-600 transition-colors hover:bg-red-100 dark:text-red-400 dark:hover:bg-red-900/40"
+                        title="Hapus"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center px-4 py-12">
+                <ChefHat className="mb-3 h-12 w-12 text-slate-300 dark:text-slate-600" />
+                <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+                  {filterStatus === 'available'
+                    ? 'Tidak ada menu tersedia'
+                    : filterStatus === 'unavailable'
+                      ? 'Tidak ada menu tidak tersedia'
+                      : 'Menu Kosong'}
+                </h3>
+                <p className="mt-1 text-center text-xs text-slate-600 dark:text-slate-400">
+                  {menus.length === 0
+                    ? 'Tambahkan menu pertama untuk memulai'
+                    : 'Ubah filter untuk melihat menu lain'}
+                </p>
+                {menus.length === 0 && (
+                  <button
+                    onClick={() => setShowForm(true)}
+                    className="mt-3 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 dark:hover:bg-blue-800"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Tambah Menu Pertama
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
-      )}
-    </div>
-  );
+      </div>
+    </main>
+
+    {/* Delete Modal */}
+    {deleteConfirm && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+        <div className="w-full max-w-sm rounded-xl bg-white shadow-xl dark:bg-slate-800">
+          <div className="space-y-4 p-6">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/40">
+                <AlertCircle className="h-6 w-6 text-red-600 dark:text-red-400" />
+              </div>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                Hapus Menu?
+              </h3>
+            </div>
+            <p className="text-sm text-slate-600 dark:text-slate-300">
+              Data tidak dapat dipulihkan setelah dihapus.
+            </p>
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setDeleteConfirm(null)}
+                className="flex-1 rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
+              >
+                Batal
+              </button>
+              <button
+                onClick={() =>
+                  deleteConfirm && handleDelete(deleteConfirm)
+                }
+                className="flex-1 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 dark:hover:bg-red-800"
+              >
+                Hapus
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+  </div>
+);
 }

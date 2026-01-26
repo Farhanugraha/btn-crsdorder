@@ -49,7 +49,8 @@ interface FormData {
   address: string;
   photoFile?: File | null;           
   photoPreview?: string | null;      
-  currentPhoto?: string | null;      
+  currentPhoto?: string | null; 
+  deletePhoto?: boolean;     
 }
 
 export default function RestaurantsPage() {
@@ -193,7 +194,10 @@ export default function RestaurantsPage() {
           
       if (editingId) {
       submitData.append('_method', 'PUT'); 
-     }
+      }
+      if (editingId && formData.deletePhoto) {
+      submitData.append('delete_photo', 'true');
+      }
 
       if (formData.photoFile) {
         submitData.append('photo', formData.photoFile);
@@ -295,10 +299,14 @@ export default function RestaurantsPage() {
       address: '',
       photoFile: null,
       photoPreview: null,
-      currentPhoto: null
+      currentPhoto: null,
+      deletePhoto: false
     });
     setEditingId(null);
     setShowForm(false);
+
+    const input = document.getElementById('photoInput') as HTMLInputElement;
+    if (input) input.value = '';
   };
 
   const showMessage = (type: 'success' | 'error', text: string) => {
@@ -607,7 +615,8 @@ export default function RestaurantsPage() {
                               ...formData,
                               currentPhoto: null,
                               photoFile: null,
-                              photoPreview: null
+                              photoPreview: null,
+                              deletePhoto: true 
                             });
                             const input = document.getElementById('photoInput') as HTMLInputElement;
                             if (input) input.value = '';
