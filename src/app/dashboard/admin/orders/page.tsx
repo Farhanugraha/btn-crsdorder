@@ -287,14 +287,17 @@ export default function OrdersPage() {
 
   if (loading) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-white dark:bg-gray-900">
-        <div className="text-center">
-          <Loader2 className="mx-auto mb-3 h-8 w-8 animate-spin text-blue-600" />
-          <p className="text-sm text-gray-700 dark:text-gray-400">
-            Memuat pesanan...
-          </p>
-        </div>
+      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white dark:bg-slate-900">
+      <div className="relative">
+        <Loader2 className="h-14 w-14 animate-spin text-blue-600 dark:text-blue-400" />
+        {/* Optional: Background circle */}
+        <div className="absolute inset-0 -z-10 rounded-full bg-blue-50 dark:bg-blue-900/10 blur-sm"></div>
       </div>
+      <div className="mt-6 text-center">
+        <p className="text-lg font-medium text-slate-800 dark:text-slate-200">Memuat halaman</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Harap tunggu sebentar...</p>
+      </div>
+    </div>
     );
   }
 

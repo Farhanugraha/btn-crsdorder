@@ -24,7 +24,8 @@ import {
   UserX,
   AlertTriangle,
   Eye,
-  Calendar
+  Calendar,
+  Loader2
 } from 'lucide-react';
 
 interface User {
@@ -456,16 +457,21 @@ export default function UserManagement() {
     return pages;
   };
 
-  if (!mounted) {
-    return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-slate-200 dark:border-slate-700 border-t-blue-500 rounded-full animate-spin mx-auto"></div>
-          <p className="text-slate-600 dark:text-slate-400 mt-4 font-medium">Menyiapkan dashboard...</p>
-        </div>
+if (!mounted) {
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white dark:bg-slate-900">
+      <div className="relative">
+        <Loader2 className="h-14 w-14 animate-spin text-blue-600 dark:text-blue-400" />
+        {/* Optional: Background circle */}
+        <div className="absolute inset-0 -z-10 rounded-full bg-blue-50 dark:bg-blue-900/10 blur-sm"></div>
       </div>
-    );
-  }
+      <div className="mt-6 text-center">
+        <p className="text-lg font-medium text-slate-800 dark:text-slate-200">Memuat halaman</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Harap tunggu sebentar...</p>
+      </div>
+    </div>
+  );
+}
 
   if (!isAuthenticated) {
     return (
