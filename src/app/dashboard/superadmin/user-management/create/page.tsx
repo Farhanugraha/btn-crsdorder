@@ -507,7 +507,7 @@ export default function CreateUserPage() {
                 </p>
                 </div>
                 <div className="order-1 sm:order-2 flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-                <Link href="/superadmin/user-management" className="w-full">
+                <Link href="/dashboard/superadmin/user-management" className="w-full">
                     <button
                     type="button"
                     className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-sm"

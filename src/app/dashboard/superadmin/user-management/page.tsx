@@ -841,12 +841,12 @@ export default function UserManagement() {
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center justify-end gap-2">
-                            <Link href={`/superadmin/user-management/${user.id}`}>
+                            <Link href={`/dashboard/superadmin/user-management/${user.id}`}>
                               <button className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors duration-200" title="Detail">
                                 <Eye className="w-4 h-4" />
                               </button>
                             </Link>
-                            <Link href={`/superadmin/user-management/${user.id}/edit`}>
+                            <Link href={`/dashboard/superadmin/user-management/${user.id}/edit`}>
                               <button className="p-2 text-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg transition-colors duration-200" title="Edit">
                                 <Edit className="w-4 h-4" />
                               </button>
@@ -935,13 +935,13 @@ export default function UserManagement() {
                       {showMobileMenu === user.id && (
                         <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
                           <div className="grid grid-cols-2 gap-2">
-                            <Link href={`/superadmin/user-management/${user.id}`}>
+                            <Link href={`/dashboard/superadmin/user-management/${user.id}`}>
                               <button className="flex items-center justify-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg font-medium hover:bg-blue-100 dark:hover:bg-blue-800/30 transition-colors">
                                 <Eye className="w-4 h-4" />
                                 Lihat
                               </button>
                             </Link>
-                            <Link href={`/superadmin/user-management/${user.id}/edit`}>
+                            <Link href={`/dashboard/superadmin/user-management/${user.id}/edit`}>
                               <button className="flex items-center justify-center gap-2 px-3 py-2 bg-slate-50 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg font-medium hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors">
                                 <Edit className="w-4 h-4" />
                                 Edit

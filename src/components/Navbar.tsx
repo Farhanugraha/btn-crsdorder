@@ -544,7 +544,7 @@ const Navbar = () => {
                         <MenubarSeparator />
                         <MenubarItem asChild>
                           <Link href="/dashboard/superadmin/user-management">
-                            Buat Admin
+                            Manajemen User
                           </Link>
                         </MenubarItem>
                         <MenubarItem asChild>
