@@ -403,7 +403,7 @@ const StatisticsPage = () => {
         {/* Header */}
         <div className="mb-8 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900 dark:text-white sm:text-4xl">
+            <h1 className="text-3xl font-bold text-blue-900 dark:text-white sm:text-4xl">
               Dashboard Analitik
             </h1>
             <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
@@ -448,7 +448,7 @@ const StatisticsPage = () => {
 
         {/* Filter Section */}
         <div className="mb-8 rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-800">
-          <h2 className="mb-4 flex items-center gap-2 text-lg font-bold text-slate-900 dark:text-white">
+          <h2 className="mb-4 flex items-center gap-2 text-lg font-bold text-blue-900 dark:text-white">
             <Calendar className="h-5 w-5" />
             Rentang Waktu
           </h2>
@@ -584,7 +584,7 @@ const StatisticsPage = () => {
             {/* Line Chart - Revenue & Orders Trend */}
             <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
               <div className="dark:bg-slate-750 border-b border-slate-200 bg-slate-50 px-6 py-4 dark:border-slate-700">
-                <h3 className="font-bold text-slate-900 dark:text-white">
+                <h3 className="font-bold text-blue-900 dark:text-white">
                   Grafik Pesanan & Penerimaan
                 </h3>
               </div>
@@ -652,7 +652,7 @@ const StatisticsPage = () => {
             {/* Pie Chart - Status Distribution */}
             <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
               <div className="border-b border-slate-200 bg-slate-50 px-6 py-4 dark:border-slate-700 dark:bg-slate-700/50">
-                <h3 className="font-bold text-slate-900 dark:text-white">
+                <h3 className="font-bold text-blue-900 dark:text-white">
                   Distribusi Status Pesanan
                 </h3>
               </div>
@@ -784,7 +784,7 @@ const StatisticsPage = () => {
         {/* Order Status Summary */}
         <div className="mb-8 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
           <div className="border-b border-slate-200 bg-slate-50 px-6 py-4 dark:border-slate-700 dark:bg-slate-700/50">
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+            <h2 className="text-lg font-bold text-blue-900 dark:text-white">
               Status Pesanan Saat Ini
             </h2>
           </div>
@@ -819,7 +819,7 @@ const StatisticsPage = () => {
 
         {/* Summary Info */}
         <div className="rounded-xl border border-slate-200 bg-slate-50 p-6 dark:border-slate-700 dark:bg-slate-700/50">
-          <h3 className="mb-4 text-sm font-bold uppercase tracking-wider text-slate-900 dark:text-white">
+          <h3 className="mb-4 text-sm font-bold uppercase tracking-wider text-blue-900 dark:text-white">
             Ringkasan Performa
           </h3>
           <div className="grid gap-4 text-sm sm:grid-cols-3">

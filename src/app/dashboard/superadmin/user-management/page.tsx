@@ -3,6 +3,29 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { 
+  Search, 
+  Filter, 
+  Plus, 
+  Edit, 
+  Trash2, 
+  User, 
+  Mail, 
+  Phone, 
+  Shield,
+  Building,
+  CheckCircle,
+  XCircle,
+  MoreVertical,
+  ChevronLeft,
+  ChevronRight,
+  Users,
+  UserCheck,
+  UserX,
+  AlertTriangle,
+  Eye,
+  Calendar
+} from 'lucide-react';
 
 interface User {
   id: number;
@@ -55,33 +78,28 @@ export default function UserManagement() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<number | null>(null);
+  const [showMobileMenu, setShowMobileMenu] = useState<number | null>(null);
+  const [showFilterPanel, setShowFilterPanel] = useState(false);
 
-  // Perbaikan 1: Ambil API URL dengan fallback yang lebih baik
   const getApiUrl = useCallback(() => {
     const envUrl = process.env.NEXT_PUBLIC_API_URL;
     
-    // Jika sudah lengkap dengan /api, gunakan langsung
     if (envUrl && envUrl.includes('/api')) {
       return envUrl;
     }
     
-    // Jika ada URL tanpa /api, tambahkan /api
     if (envUrl) {
       return `${envUrl}/api`;
     }
     
-    // Default fallback
     return 'http://localhost:8000/api';
   }, []);
 
-  // Perbaikan 2: Perbaiki cara mendapatkan token dari localStorage
   const getAuthToken = useCallback((): string | null => {
     try {
       if (typeof window === 'undefined') return null;
       
       const token = localStorage.getItem('auth_token');
-      console.log('Token dari localStorage:', token ? 'Ada' : 'Tidak ada');
-      
       return token;
     } catch (error) {
       console.error('Error getting token:', error);
@@ -89,7 +107,6 @@ export default function UserManagement() {
     }
   }, []);
 
-  // Perbaikan 3: Perbaiki cara mengecek autentikasi
   const checkAuthentication = useCallback(() => {
     try {
       if (typeof window === 'undefined') return;
@@ -97,12 +114,7 @@ export default function UserManagement() {
       const token = localStorage.getItem('auth_token');
       const userStr = localStorage.getItem('auth_user');
 
-      console.log('=== AUTH CHECK ===');
-      console.log('Token exists:', !!token);
-      console.log('User exists:', !!userStr);
-
       if (!token || !userStr) {
-        console.log('Auth failed: No token or user');
         setIsAuthenticated(false);
         setAuthData(null);
         setError('Silakan login terlebih dahulu');
@@ -114,10 +126,8 @@ export default function UserManagement() {
       }
 
       const userData = JSON.parse(userStr);
-      console.log('User role:', userData.role);
 
       if (userData.role !== 'superadmin') {
-        console.log('Auth failed: Not superadmin');
         setIsAuthenticated(false);
         setAuthData(null);
         setError('Hanya superadmin yang dapat mengakses halaman ini');
@@ -134,7 +144,6 @@ export default function UserManagement() {
       });
       setIsAuthenticated(true);
       setError(null);
-      console.log('Auth success');
     } catch (error) {
       console.error('Error checking authentication:', error);
       setIsAuthenticated(false);
@@ -147,13 +156,11 @@ export default function UserManagement() {
     }
   }, [router]);
 
-  // Perbaikan 4: Client side mounting
   useEffect(() => {
     setMounted(true);
     checkAuthentication();
   }, [checkAuthentication]);
 
-  // Perbaikan 5: Perbaiki fetch users dengan better error handling
   const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
@@ -162,7 +169,6 @@ export default function UserManagement() {
       const token = getAuthToken();
       
       if (!token) {
-        console.log('No token available for fetching users');
         setError('Token tidak ditemukan. Silakan login kembali.');
         setIsAuthenticated(false);
         setTimeout(() => router.push('/auth/login'), 2000);
@@ -171,7 +177,6 @@ export default function UserManagement() {
 
       const apiUrl = getApiUrl();
       
-      // Build query params
       const queryParams = new URLSearchParams({
         page: currentPage.toString(),
         per_page: perPage.toString(),
@@ -186,7 +191,6 @@ export default function UserManagement() {
       }
 
       const url = `${apiUrl}/superadmin/users?${queryParams.toString()}`;
-      console.log('Fetching from:', url);
 
       const response = await fetch(url, {
         method: 'GET',
@@ -197,11 +201,8 @@ export default function UserManagement() {
         },
       });
 
-      console.log('Response status:', response.status);
-
       if (!response.ok) {
         if (response.status === 401) {
-          console.log('Token expired or invalid');
           setError('Token Anda telah kadaluarsa. Silakan login kembali.');
           localStorage.removeItem('token');
           localStorage.removeItem('user');
@@ -211,14 +212,12 @@ export default function UserManagement() {
         }
 
         if (response.status === 403) {
-          console.log('Forbidden - not superadmin');
           setError('Anda tidak memiliki akses ke halaman ini.');
           setIsAuthenticated(false);
           return;
         }
 
         if (response.status === 404) {
-          console.log('Not found - showing empty state');
           setUsers([]);
           setTotalPages(1);
           setTotalUsers(0);
@@ -230,26 +229,14 @@ export default function UserManagement() {
       }
 
       const result = await response.json();
-      console.log('Response structure:', {
-        has_data: !!result.data,
-        has_data_data: !!result.data?.data,
-        success: result.success,
-      });
 
       if (!result.success) {
         throw new Error(result.message || 'Gagal mengambil data pengguna');
       }
 
-      // Handle pagination response - sesuaikan dengan struktur Laravel
       const userData = result.data?.data || result.data || [];
       const lastPage = result.data?.last_page || result.last_page || 1;
       const total = result.data?.total || result.total || 0;
-
-      console.log('Data mapped:', {
-        users_count: Array.isArray(userData) ? userData.length : 0,
-        total,
-        last_page: lastPage,
-      });
 
       setUsers(Array.isArray(userData) ? userData : []);
       setTotalPages(lastPage);
@@ -263,14 +250,12 @@ export default function UserManagement() {
     }
   }, [currentPage, perPage, searchTerm, filterRole, getAuthToken, getApiUrl, router]);
 
-  // Fetch users ketika mounted dan authenticated
   useEffect(() => {
     if (mounted && isAuthenticated) {
       fetchUsers();
     }
   }, [mounted, isAuthenticated, fetchUsers]);
 
-  // Perbaikan 6: Delete user dengan better error handling
   const handleDeleteUser = useCallback(async (id: number) => {
     try {
       setIsProcessing(true);
@@ -283,7 +268,6 @@ export default function UserManagement() {
 
       const apiUrl = getApiUrl();
       const url = `${apiUrl}/superadmin/users/${id}`;
-      console.log('Deleting user:', url);
 
       const response = await fetch(url, {
         method: 'DELETE',
@@ -300,8 +284,9 @@ export default function UserManagement() {
         throw new Error(data.message || 'Gagal menghapus pengguna');
       }
 
-      setSuccessMessage('Pengguna berhasil dihapus');
+      setSuccessMessage('User berhasil dihapus');
       setShowDeleteConfirm(null);
+      setShowMobileMenu(null);
       setTimeout(() => setSuccessMessage(null), 3000);
       await fetchUsers();
     } catch (error) {
@@ -313,7 +298,6 @@ export default function UserManagement() {
     }
   }, [getAuthToken, getApiUrl, fetchUsers]);
 
-  // Perbaikan 7: Activate user
   const handleActivateUser = useCallback(async (id: number) => {
     try {
       setIsProcessing(true);
@@ -326,7 +310,6 @@ export default function UserManagement() {
 
       const apiUrl = getApiUrl();
       const url = `${apiUrl}/superadmin/users/${id}/activate`;
-      console.log('Activating user:', url);
 
       const response = await fetch(url, {
         method: 'POST',
@@ -343,8 +326,9 @@ export default function UserManagement() {
         throw new Error(data.message || 'Gagal mengaktifkan pengguna');
       }
 
-      setSuccessMessage('Pengguna berhasil diaktifkan');
+      setSuccessMessage('User berhasil diaktifkan');
       setTimeout(() => setSuccessMessage(null), 3000);
+      setShowMobileMenu(null);
       await fetchUsers();
     } catch (error) {
       console.error('Activate error:', error);
@@ -355,7 +339,6 @@ export default function UserManagement() {
     }
   }, [getAuthToken, getApiUrl, fetchUsers]);
 
-  // Perbaikan 8: Deactivate user
   const handleDeactivateUser = useCallback(async (id: number) => {
     try {
       setIsProcessing(true);
@@ -368,7 +351,6 @@ export default function UserManagement() {
 
       const apiUrl = getApiUrl();
       const url = `${apiUrl}/superadmin/users/${id}/deactivate`;
-      console.log('Deactivating user:', url);
 
       const response = await fetch(url, {
         method: 'POST',
@@ -385,8 +367,9 @@ export default function UserManagement() {
         throw new Error(data.message || 'Gagal menonaktifkan pengguna');
       }
 
-      setSuccessMessage('Pengguna berhasil dinonaktifkan');
+      setSuccessMessage('User berhasil dinonaktifkan');
       setTimeout(() => setSuccessMessage(null), 3000);
+      setShowMobileMenu(null);
       await fetchUsers();
     } catch (error) {
       console.error('Deactivate error:', error);
@@ -397,21 +380,6 @@ export default function UserManagement() {
     }
   }, [getAuthToken, getApiUrl, fetchUsers]);
 
-  // Perbaikan 9: Logout
-  const handleLogout = useCallback(() => {
-    try {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      localStorage.removeItem('token_expires_in');
-      setIsAuthenticated(false);
-      setAuthData(null);
-      router.push('/auth/login');
-    } catch (error) {
-      console.error('Logout error:', error);
-      router.push('/auth/login');
-    }
-  }, [router]);
-
   const getRoleLabel = (role: string) => {
     switch (role) {
       case 'superadmin':
@@ -419,7 +387,7 @@ export default function UserManagement() {
       case 'admin':
         return 'Admin';
       case 'user':
-        return 'Pengguna';
+        return 'User';
       default:
         return role;
     }
@@ -428,14 +396,20 @@ export default function UserManagement() {
   const getRoleColor = (role: string) => {
     switch (role) {
       case 'superadmin':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800';
       case 'admin':
-        return 'bg-blue-50 text-blue-700';
+        return 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800';
       case 'user':
-        return 'bg-gray-100 text-gray-700';
+        return 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700';
       default:
-        return 'bg-gray-100 text-gray-700';
+        return 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700';
     }
+  };
+
+  const getStatusColor = (isActive: boolean) => {
+    return isActive
+      ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+      : 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800';
   };
 
   const formatDate = (dateString: string | null) => {
@@ -443,21 +417,51 @@ export default function UserManagement() {
     const date = new Date(dateString);
     return new Intl.DateTimeFormat('id-ID', {
       year: 'numeric',
-      month: 'long',
+      month: 'short',
       day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
     }).format(date);
+  };
+
+  const getPaginationNumbers = () => {
+    const pages = [];
+    const maxPages = 5;
+    
+    if (totalPages <= maxPages) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      if (currentPage <= 3) {
+        for (let i = 1; i <= 4; i++) {
+          pages.push(i);
+        }
+        pages.push('...');
+        pages.push(totalPages);
+      } else if (currentPage >= totalPages - 2) {
+        pages.push(1);
+        pages.push('...');
+        for (let i = totalPages - 3; i <= totalPages; i++) {
+          pages.push(i);
+        }
+      } else {
+        pages.push(1);
+        pages.push('...');
+        for (let i = currentPage - 1; i <= currentPage + 1; i++) {
+          pages.push(i);
+        }
+        pages.push('...');
+        pages.push(totalPages);
+      }
+    }
+    return pages;
   };
 
   if (!mounted) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center">
         <div className="text-center">
-          <div className="inline-block">
-            <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
-          </div>
-          <p className="text-blue-600 mt-4 font-medium">Memuat aplikasi...</p>
+          <div className="w-12 h-12 border-4 border-slate-200 dark:border-slate-700 border-t-blue-500 rounded-full animate-spin mx-auto"></div>
+          <p className="text-slate-600 dark:text-slate-400 mt-4 font-medium">Menyiapkan dashboard...</p>
         </div>
       </div>
     );
@@ -465,307 +469,611 @@ export default function UserManagement() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center p-4">
-        <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full">
-          <div className="mb-4">
-            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto">
-              <span className="text-red-600 text-xl">!</span>
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center p-4">
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-8 max-w-md w-full border border-slate-200 dark:border-slate-700">
+          <div className="mb-4 flex justify-center">
+            <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center border border-blue-200 dark:border-blue-800">
+              <AlertTriangle className="w-8 h-8 text-blue-600 dark:text-blue-400" />
             </div>
           </div>
-          <h2 className="text-xl font-bold text-gray-900 text-center mb-2">Autentikasi Diperlukan</h2>
-          <p className="text-gray-600 text-center mb-4">{error || 'Silakan login untuk melanjutkan'}</p>
-          <p className="text-sm text-gray-500 text-center">Anda akan dialihkan ke halaman login...</p>
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white text-center mb-2">Autentikasi Diperlukan</h2>
+          <p className="text-slate-600 dark:text-slate-300 text-center mb-4">{error || 'Silakan login untuk melanjutkan'}</p>
+          <div className="flex justify-center">
+            <div className="w-8 h-1 bg-blue-200 dark:bg-blue-800 rounded-full"></div>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50">
-      <header className="bg-white border-b border-blue-100 sticky top-0 z-40 shadow-sm">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+      {/* Header */}
+      <header className="sticky top-0 z-40 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-b border-slate-200 dark:border-slate-700">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-blue-900">Manajemen Pengguna</h1>
-              <p className="text-sm text-blue-600 mt-1">Kelola semua pengguna sistem</p>
+              <h1 className="text-2xl sm:text-3xl font-bold text-blue-900 dark:text-white">
+                Kelola User
+              </h1>
+              <p className="text-sm mt-1 text-blue-600 dark:text-slate-400">Kelola semua pengguna di sistem</p>
             </div>
             <div className="flex items-center gap-3">
-              {authData?.user && (
-                <div className="hidden md:block text-right">
-                  <p className="text-sm font-medium text-gray-900">{authData.user.name}</p>
-                  <p className="text-xs text-gray-500">Super Admin</p>
-                </div>
-              )}
+              <button 
+                onClick={() => setShowFilterPanel(!showFilterPanel)}
+                className="sm:hidden p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+              >
+                <Filter className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+              </button>
               <Link href="/superadmin/management-user/create">
-                <button className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors duration-200">
-                  Tambah Pengguna
+                <button className="flex items-center gap-2 px-2 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors duration-200 shadow-sm hover:shadow">
+                  <Plus className="w-4 h-4" />
+                  <span>Tambah User</span>
                 </button>
               </Link>
-              <button
-                onClick={handleLogout}
-                className="px-6 py-2 border border-blue-200 text-blue-600 rounded-lg font-medium hover:bg-blue-50 transition-colors duration-200"
-              >
-                Logout
-              </button>
             </div>
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* Alerts */}
         {successMessage && (
-          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-            <p className="text-green-800 text-sm font-medium">{successMessage}</p>
+          <div className="mb-6 animate-fade-in">
+            <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg p-4 flex items-center gap-3">
+              <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+              <p className="text-emerald-700 dark:text-emerald-300 font-medium">{successMessage}</p>
+            </div>
           </div>
         )}
 
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-red-800 text-sm font-medium">{error}</p>
+          <div className="mb-6 animate-fade-in">
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 flex items-center gap-3">
+              <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400" />
+              <p className="text-red-700 dark:text-red-300 font-medium">{error}</p>
+            </div>
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white rounded-lg border border-blue-100 p-6 shadow-sm">
-            <p className="text-sm text-blue-600 font-medium">Total Pengguna</p>
-            <p className="text-3xl font-bold text-blue-900 mt-2">{totalUsers}</p>
-          </div>
-          <div className="bg-white rounded-lg border border-blue-100 p-6 shadow-sm">
-            <p className="text-sm text-blue-600 font-medium">Super Admin</p>
-            <p className="text-3xl font-bold text-blue-900 mt-2">
-              {users.filter(u => u.role === 'superadmin').length}
-            </p>
-          </div>
-          <div className="bg-white rounded-lg border border-blue-100 p-6 shadow-sm">
-            <p className="text-sm text-blue-600 font-medium">Admin</p>
-            <p className="text-3xl font-bold text-blue-900 mt-2">
-              {users.filter(u => u.role === 'admin').length}
-            </p>
-          </div>
-          <div className="bg-white rounded-lg border border-blue-100 p-6 shadow-sm">
-            <p className="text-sm text-blue-600 font-medium">Pengguna</p>
-            <p className="text-3xl font-bold text-blue-900 mt-2">
-              {users.filter(u => u.role === 'user').length}
-            </p>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg border border-blue-100 shadow-sm">
-          <div className="border-b border-blue-100 p-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Cari Pengguna</label>
-                <input
-                  type="text"
-                  placeholder="Cari berdasarkan nama, email, atau telepon..."
-                  value={searchTerm}
-                  onChange={(e) => {
-                    setSearchTerm(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                  disabled={loading || isProcessing}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Filter Role</label>
-                <select
-                  value={filterRole}
-                  onChange={(e) => {
-                    setFilterRole(e.target.value as any);
-                    setCurrentPage(1);
-                  }}
-                  disabled={loading || isProcessing}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+        {/* Filter Panel untuk Mobile */}
+        {showFilterPanel && (
+          <div className="sm:hidden mb-6 animate-slide-down">
+            <div className="bg-white dark:bg-slate-800 rounded-lg shadow border border-slate-200 dark:border-slate-700 p-4">
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Cari User</label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="Nama, email, atau telepon..."
+                      value={searchTerm}
+                      onChange={(e) => {
+                        setSearchTerm(e.target.value);
+                        setCurrentPage(1);
+                      }}
+                      className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Filter Role</label>
+                  <select
+                    value={filterRole}
+                    onChange={(e) => {
+                      setFilterRole(e.target.value as any);
+                      setCurrentPage(1);
+                    }}
+                    className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="all">Semua Role</option>
+                    <option value="superadmin">Super Admin</option>
+                    <option value="admin">Admin</option>
+                    <option value="user">User</option>
+                  </select>
+                </div>
+                <button
+                  onClick={() => setShowFilterPanel(false)}
+                  className="w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
                 >
-                  <option value="all">Semua Role</option>
-                  <option value="superadmin">Super Admin</option>
-                  <option value="admin">Admin</option>
-                  <option value="user">Pengguna</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Item Per Halaman</label>
-                <select
-                  value={perPage}
-                  onChange={(e) => {
-                    setPerPage(Number(e.target.value));
-                    setCurrentPage(1);
-                  }}
-                  disabled={loading || isProcessing}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
-                >
-                  <option value={5}>5 Item</option>
-                  <option value={10}>10 Item</option>
-                  <option value={15}>15 Item</option>
-                  <option value={25}>25 Item</option>
-                </select>
+                  Terapkan Filter
+                </button>
               </div>
             </div>
           </div>
+        )}
 
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="text-center">
-                <div className="inline-block">
-                  <div className="w-10 h-10 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+        {/* Statistics Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <div className="bg-white dark:bg-slate-800 rounded-lg p-6 border border-slate-200 dark:border-slate-700 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total User</p>
+                <p className="text-3xl font-bold text-slate-900 dark:text-white mt-2">{totalUsers}</p>
+              </div>
+              <div className="w-12 h-12 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center border border-blue-200 dark:border-blue-800">
+                <Users className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+              </div>
+            </div>
+            <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700">
+              <p className="text-xs text-slate-500 dark:text-slate-400">Semua role pengguna</p>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-slate-800 rounded-lg p-6 border border-slate-200 dark:border-slate-700 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Super Admin</p>
+                <p className="text-3xl font-bold text-slate-900 dark:text-white mt-2">
+                  {users.filter(u => u.role === 'superadmin').length}
+                </p>
+              </div>
+              <div className="w-12 h-12 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center border border-blue-200 dark:border-blue-800">
+                <Shield className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+              </div>
+            </div>
+            <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700">
+              <p className="text-xs text-slate-500 dark:text-slate-400">Admin tingkat tinggi</p>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-slate-800 rounded-lg p-6 border border-slate-200 dark:border-slate-700 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Admin</p>
+                <p className="text-3xl font-bold text-slate-900 dark:text-white mt-2">
+                  {users.filter(u => u.role === 'admin').length}
+                </p>
+              </div>
+              <div className="w-12 h-12 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center border border-indigo-200 dark:border-indigo-800">
+                <UserCheck className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+              </div>
+            </div>
+            <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700">
+              <p className="text-xs text-slate-500 dark:text-slate-400">Admin biasa</p>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-slate-800 rounded-lg p-6 border border-slate-200 dark:border-slate-700 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">User</p>
+                <p className="text-3xl font-bold text-slate-900 dark:text-white mt-2">
+                  {users.filter(u => u.role === 'user').length}
+                </p>
+              </div>
+              <div className="w-12 h-12 rounded-lg bg-slate-100 dark:bg-slate-700 flex items-center justify-center border border-slate-200 dark:border-slate-700">
+                <User className="w-6 h-6 text-slate-600 dark:text-slate-400" />
+              </div>
+            </div>
+            <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700">
+              <p className="text-xs text-slate-500 dark:text-slate-400">User biasa</p>
+            </div>
+          </div>
+        </div>
+
+      {/* Search and Filter Section - Compact */}
+        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 mb-6">
+          <div className="p-4 border-b border-slate-200 dark:border-slate-700">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+              {/* Search Input */}
+              <div className="flex-1">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Cari pengguna..."
+                    value={searchTerm}
+                    onChange={(e) => {
+                      setSearchTerm(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    className="w-full pl-9 pr-4 py-2 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
                 </div>
-                <p className="text-gray-600 mt-3 font-medium">Memuat data pengguna...</p>
+              </div>
+              
+              {/* Filter Controls */}
+              <div className="flex items-center gap-2">
+                <div className="hidden sm:block">
+                  <select
+                    value={filterRole}
+                    onChange={(e) => {
+                      setFilterRole(e.target.value as any);
+                      setCurrentPage(1);
+                    }}
+                    className="px-3 py-2 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="all">Semua Role</option>
+                    <option value="superadmin">Super Admin</option>
+                    <option value="admin">Admin</option>
+                    <option value="user">User</option>
+                  </select>
+                </div>
+                <div className="hidden sm:block">
+                  <select
+                    value={perPage}
+                    onChange={(e) => {
+                      setPerPage(Number(e.target.value));
+                      setCurrentPage(1);
+                    }}
+                    className="px-3 py-2 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value={5}>5</option>
+                    <option value={10}>10</option>
+                    <option value={15}>15</option>
+                    <option value={25}>25</option>
+                  </select>
+                </div>
+                
+                {/* Mobile Filter Button */}
+                <button 
+                  onClick={() => setShowFilterPanel(!showFilterPanel)}
+                  className="sm:hidden p-2 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  title="Filter"
+                >
+                  <Filter className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+                </button>
+              </div>
+            </div>
+            
+            {/* Quick Filter Tags - Mobile */}
+            <div className="flex flex-wrap gap-2 mt-3 sm:hidden">
+              <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Filter:</span>
+              <button
+                onClick={() => {
+                  setFilterRole('all');
+                  setCurrentPage(1);
+                }}
+                className={`px-2 py-1 text-xs rounded-full ${filterRole === 'all' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700'}`}
+              >
+                Semua
+              </button>
+              <button
+                onClick={() => {
+                  setFilterRole('superadmin');
+                  setCurrentPage(1);
+                }}
+                className={`px-2 py-1 text-xs rounded-full ${filterRole === 'superadmin' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700'}`}
+              >
+                Super Admin
+              </button>
+              <button
+                onClick={() => {
+                  setFilterRole('admin');
+                  setCurrentPage(1);
+                }}
+                className={`px-2 py-1 text-xs rounded-full ${filterRole === 'admin' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700'}`}
+              >
+                Admin
+              </button>
+              <button
+                onClick={() => {
+                  setFilterRole('user');
+                  setCurrentPage(1);
+                }}
+                className={`px-2 py-1 text-xs rounded-full ${filterRole === 'user' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700'}`}
+              >
+                User
+              </button>
+            </div>
+          </div>
+
+          {/* Table Section */}
+          {loading ? (
+            <div className="flex items-center justify-center py-16">
+              <div className="text-center">
+                <div className="w-12 h-12 border-4 border-slate-200 dark:border-slate-700 border-t-blue-500 rounded-full animate-spin mx-auto"></div>
+                <p className="text-slate-600 dark:text-slate-400 mt-4 font-medium">Memuat data pengguna...</p>
               </div>
             </div>
           ) : users.length === 0 ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="text-center">
-                <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-2xl text-blue-300">∅</span>
+            <div className="flex items-center justify-center py-16">
+              <div className="text-center max-w-md">
+                <div className="w-20 h-20 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <UserX className="w-10 h-10 text-slate-400" />
                 </div>
-                <p className="text-gray-600 font-medium mb-1">Tidak ada pengguna ditemukan</p>
-                <p className="text-sm text-gray-500">Coba sesuaikan pencarian atau filter Anda</p>
+                <p className="text-slate-900 dark:text-white font-semibold mb-2">Tidak ada pengguna ditemukan</p>
+                <p className="text-sm text-slate-600 dark:text-slate-400">Coba sesuaikan pencarian atau filter Anda</p>
               </div>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-blue-100 bg-blue-50">
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-blue-900">Nama</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-blue-900">Email</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-blue-900">Role</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-blue-900">Divisi</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-blue-900">Status</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-blue-900">Dibuat</th>
-                    <th className="px-6 py-4 text-right text-sm font-semibold text-blue-900">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-blue-100">
+            <>
+              <div className="overflow-x-auto">
+                {/* Desktop Table */}
+                <table className="w-full hidden lg:table">
+                  <thead>
+                    <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
+                      <th className="px-6 py-4 text-left text-xs font-medium text-slate-700 dark:text-slate-400 uppercase tracking-wider">User</th>
+                      <th className="px-6 py-4 text-left text-xs font-medium text-slate-700 dark:text-slate-400 uppercase tracking-wider">Role</th>
+                      <th className="px-6 py-4 text-left text-xs font-medium text-slate-700 dark:text-slate-400 uppercase tracking-wider">Divisi</th>
+                      <th className="px-6 py-4 text-left text-xs font-medium text-slate-700 dark:text-slate-400 uppercase tracking-wider">Status</th>
+                      <th className="px-6 py-4 text-left text-xs font-medium text-slate-700 dark:text-slate-400 uppercase tracking-wider">Tanggal Bergabung</th>
+                      <th className="px-6 py-4 text-right text-xs font-medium text-slate-700 dark:text-slate-400 uppercase tracking-wider">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                    {users.map((user) => (
+                      <tr key={user.id} className="hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors duration-150">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 font-semibold border border-blue-200 dark:border-blue-800">
+                              {user.name.charAt(0).toUpperCase()}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{user.name}</p>
+                              <div className="flex items-center gap-2 mt-1">
+                                <Mail className="w-3 h-3 text-slate-400" />
+                                <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{user.email}</p>
+                              </div>
+                              {user.phone && (
+                                <div className="flex items-center gap-2 mt-1">
+                                  <Phone className="w-3 h-3 text-slate-400" />
+                                  <p className="text-xs text-slate-500 dark:text-slate-400">{user.phone}</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`inline-block px-3 py-1.5 rounded-full text-xs font-medium ${getRoleColor(user.role)}`}>
+                            {getRoleLabel(user.role)}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2">
+                            <Building className="w-4 h-4 text-slate-400" />
+                            <span className="text-sm text-slate-600 dark:text-slate-300">{user.divisi || '-'}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`inline-block px-3 py-1.5 rounded-full text-xs font-medium ${getStatusColor(!!user.email_verified_at)}`}>
+                            {user.email_verified_at ? 'Aktif' : 'Pending'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2">
+                            <Calendar className="w-4 h-4 text-slate-400" />
+                            <span className="text-sm text-slate-600 dark:text-slate-300">{formatDate(user.created_at)}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center justify-end gap-2">
+                            <Link href={`/superadmin/management-user/${user.id}`}>
+                              <button className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors duration-200" title="Detail">
+                                <Eye className="w-4 h-4" />
+                              </button>
+                            </Link>
+                            <Link href={`/superadmin/management-user/${user.id}/edit`}>
+                              <button className="p-2 text-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg transition-colors duration-200" title="Edit">
+                                <Edit className="w-4 h-4" />
+                              </button>
+                            </Link>
+                            {user.email_verified_at ? (
+                              <button
+                                onClick={() => handleDeactivateUser(user.id)}
+                                className="p-2 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/30 rounded-lg transition-colors duration-200"
+                                title="Nonaktifkan"
+                              >
+                                <UserX className="w-4 h-4" />
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleActivateUser(user.id)}
+                                className="p-2 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 rounded-lg transition-colors duration-200"
+                                title="Aktifkan"
+                              >
+                                <UserCheck className="w-4 h-4" />
+                              </button>
+                            )}
+                            <button
+                              onClick={() => setShowDeleteConfirm(user.id)}
+                              className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors duration-200"
+                              title="Hapus"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                {/* Mobile Cards */}
+                <div className="lg:hidden space-y-3 p-4">
                   {users.map((user) => (
-                    <tr key={user.id} className="hover:bg-blue-50 transition-colors duration-150">
-                      <td className="px-6 py-4">
+                    <div key={user.id} className="bg-white dark:bg-slate-800 rounded-lg p-4 border border-slate-200 dark:border-slate-700 shadow-sm">
+                      <div className="flex items-start justify-between mb-3">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-semibold">
+                          <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 font-semibold border border-blue-200 dark:border-blue-800">
                             {user.name.charAt(0).toUpperCase()}
                           </div>
                           <div>
-                            <p className="font-medium text-gray-900">{user.name}</p>
-                            <p className="text-xs text-gray-500">ID: {user.id}</p>
+                            <p className="font-medium text-slate-900 dark:text-white">{user.name}</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{user.email}</p>
                           </div>
                         </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <p className="text-sm text-gray-700">{user.email}</p>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${getRoleColor(user.role)}`}>
-                          {getRoleLabel(user.role)}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <p className="text-sm text-gray-700">{user.divisi || '-'}</p>
-                      </td>
-                      <td className="px-6 py-4">
-                        {user.email_verified_at ? (
-                          <span className="inline-block px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                            Aktif
+                        <button
+                          onClick={() => setShowMobileMenu(showMobileMenu === user.id ? null : user.id)}
+                          className="p-2 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                        >
+                          <MoreVertical className="w-5 h-5 text-slate-400" />
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3 mb-4">
+                        <div className="space-y-1">
+                          <p className="text-xs text-slate-500 dark:text-slate-400">Role</p>
+                          <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${getRoleColor(user.role)}`}>
+                            {getRoleLabel(user.role)}
                           </span>
-                        ) : (
-                          <span className="inline-block px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
-                            Pending
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-xs text-slate-500 dark:text-slate-400">Status</p>
+                          <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(!!user.email_verified_at)}`}>
+                            {user.email_verified_at ? 'Aktif' : 'Pending'}
                           </span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        <p className="text-sm text-gray-600">{formatDate(user.created_at)}</p>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center justify-end gap-2">
-                          <Link href={`/superadmin/management-user/${user.id}`}>
-                            <button
-                              className="px-3 py-1 text-blue-600 font-medium text-sm hover:bg-blue-50 rounded-lg transition-colors duration-200 disabled:opacity-50"
-                              disabled={isProcessing}
-                            >
-                              Edit
-                            </button>
-                          </Link>
-                          {user.email_verified_at ? (
-                            <button
-                              onClick={() => handleDeactivateUser(user.id)}
-                              className="px-3 py-1 text-orange-600 font-medium text-sm hover:bg-orange-50 rounded-lg transition-colors duration-200 disabled:opacity-50"
-                              disabled={isProcessing}
-                            >
-                              Nonaktifkan
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => handleActivateUser(user.id)}
-                              className="px-3 py-1 text-green-600 font-medium text-sm hover:bg-green-50 rounded-lg transition-colors duration-200 disabled:opacity-50"
-                              disabled={isProcessing}
-                            >
-                              Aktifkan
-                            </button>
-                          )}
-                          <div className="relative">
+                        </div>
+                        <div className="col-span-2 space-y-1">
+                          <div className="flex items-center gap-2">
+                            <Building className="w-4 h-4 text-slate-400" />
+                            <p className="text-sm text-slate-600 dark:text-slate-300">{user.divisi || '-'}</p>
+                          </div>
+                        </div>
+                        <div className="col-span-2 space-y-1">
+                          <div className="flex items-center gap-2">
+                            <Calendar className="w-4 h-4 text-slate-400" />
+                            <p className="text-sm text-slate-600 dark:text-slate-300">{formatDate(user.created_at)}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Mobile Action Menu */}
+                      {showMobileMenu === user.id && (
+                        <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+                          <div className="grid grid-cols-2 gap-2">
+                            <Link href={`/superadmin/management-user/${user.id}`}>
+                              <button className="flex items-center justify-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg font-medium hover:bg-blue-100 dark:hover:bg-blue-800/30 transition-colors">
+                                <Eye className="w-4 h-4" />
+                                Lihat
+                              </button>
+                            </Link>
+                            <Link href={`/superadmin/management-user/${user.id}/edit`}>
+                              <button className="flex items-center justify-center gap-2 px-3 py-2 bg-slate-50 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg font-medium hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors">
+                                <Edit className="w-4 h-4" />
+                                Edit
+                              </button>
+                            </Link>
+                            {user.email_verified_at ? (
+                              <button
+                                onClick={() => handleDeactivateUser(user.id)}
+                                className="flex items-center justify-center gap-2 px-3 py-2 bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-lg font-medium hover:bg-amber-100 dark:hover:bg-amber-800/30 transition-colors"
+                              >
+                                <UserX className="w-4 h-4" />
+                                Nonaktifkan
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleActivateUser(user.id)}
+                                className="flex items-center justify-center gap-2 px-3 py-2 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-lg font-medium hover:bg-emerald-100 dark:hover:bg-emerald-800/30 transition-colors"
+                              >
+                                <UserCheck className="w-4 h-4" />
+                                Aktifkan
+                              </button>
+                            )}
                             <button
                               onClick={() => setShowDeleteConfirm(user.id)}
-                              className="px-3 py-1 text-red-600 font-medium text-sm hover:bg-red-50 rounded-lg transition-colors duration-200 disabled:opacity-50"
-                              disabled={isProcessing}
+                              className="col-span-2 flex items-center justify-center gap-2 px-3 py-2 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg font-medium hover:bg-red-100 dark:hover:bg-red-800/30 transition-colors"
                             >
-                              Hapus
+                              <Trash2 className="w-4 h-4" />
+                              Hapus User
                             </button>
-                            {showDeleteConfirm === user.id && (
-                              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 p-4 z-10">
-                                <p className="text-sm text-gray-700 font-medium mb-3">Yakin ingin menghapus pengguna ini?</p>
-                                <div className="flex gap-2">
-                                  <button
-                                    onClick={() => handleDeleteUser(user.id)}
-                                    className="flex-1 px-3 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors"
-                                    disabled={isProcessing}
-                                  >
-                                    Hapus
-                                  </button>
-                                  <button
-                                    onClick={() => setShowDeleteConfirm(null)}
-                                    className="flex-1 px-3 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
-                                  >
-                                    Batal
-                                  </button>
-                                </div>
-                              </div>
-                            )}
                           </div>
                         </div>
-                      </td>
-                    </tr>
+                      )}
+                    </div>
                   ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {!loading && users.length > 0 && totalPages > 1 && (
-            <div className="border-t border-blue-100 px-6 py-4 flex items-center justify-between">
-              <p className="text-sm text-gray-600">
-                Halaman <span className="font-semibold text-gray-900">{currentPage}</span> dari <span className="font-semibold text-gray-900">{totalPages}</span>
-              </p>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                  disabled={currentPage === 1 || isProcessing}
-                  className="px-4 py-2 border border-blue-200 text-blue-600 rounded-lg font-medium hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  Sebelumnya
-                </button>
-                <button
-                  onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                  disabled={currentPage === totalPages || isProcessing}
-                  className="px-4 py-2 border border-blue-200 text-blue-600 rounded-lg font-medium hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  Selanjutnya
-                </button>
+                </div>
               </div>
-            </div>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="border-t border-slate-200 dark:border-slate-700 p-6">
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div className="text-sm text-slate-600 dark:text-slate-400">
+                      Menampilkan <span className="font-medium text-slate-900 dark:text-white">{(currentPage - 1) * perPage + 1}</span> - <span className="font-medium text-slate-900 dark:text-white">{Math.min(currentPage * perPage, totalUsers)}</span> dari <span className="font-medium text-slate-900 dark:text-white">{totalUsers}</span> pengguna
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                        disabled={currentPage === 1 || isProcessing}
+                        className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                        <span className="hidden sm:inline">Sebelumnya</span>
+                      </button>
+
+                      <div className="flex items-center gap-1">
+                        {getPaginationNumbers().map((pageNum, idx) => (
+                          pageNum === '...' ? (
+                            <span key={`dots-${idx}`} className="px-3 py-2 text-slate-400">...</span>
+                          ) : (
+                            <button
+                              key={pageNum}
+                              onClick={() => setCurrentPage(pageNum as number)}
+                              disabled={isProcessing}
+                              className={`px-4 py-2 rounded-lg font-medium transition-colors duration-200 ${
+                                currentPage === pageNum
+                                  ? 'bg-blue-600 text-white'
+                                  : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
+                              }`}
+                            >
+                              {pageNum}
+                            </button>
+                          )
+                        ))}
+                      </div>
+
+                      <button
+                        onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                        disabled={currentPage === totalPages || isProcessing}
+                        className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <span className="hidden sm:inline">Selanjutnya</span>
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       </main>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl max-w-md w-full p-6 transform animate-scale-up">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-lg bg-red-100 dark:bg-red-900/30 flex items-center justify-center border border-red-200 dark:border-red-800">
+                <AlertTriangle className="w-6 h-6 text-red-600 dark:text-red-400" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Hapus User</h3>
+                <p className="text-sm text-slate-600 dark:text-slate-400">Tindakan ini tidak dapat dibatalkan</p>
+              </div>
+            </div>
+            
+            <p className="text-slate-700 dark:text-slate-300 mb-6">
+              Apakah Anda yakin ingin menghapus pengguna ini? Semua data terkait akan dihapus secara permanen.
+            </p>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={() => handleDeleteUser(showDeleteConfirm)}
+                disabled={isProcessing}
+                className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-colors duration-200 disabled:opacity-50"
+              >
+                {isProcessing ? 'Menghapus...' : 'Ya, Hapus'}
+              </button>
+              <button
+                onClick={() => {
+                  setShowDeleteConfirm(null);
+                  setShowMobileMenu(null);
+                }}
+                className="flex-1 px-4 py-3 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors duration-200"
+              >
+                Batal
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

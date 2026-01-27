@@ -394,7 +394,7 @@ export const BasicTab = ({
       {data.payment_summary.length > 0 && (
         <div className="overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
           <div className="border-b border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900 sm:p-4">
-            <h3 className="text-sm font-bold text-slate-900 dark:text-white sm:text-base">
+            <h3 className="text-sm font-bold text-blue-900 dark:text-white sm:text-base">
               Ringkasan Pembayaran
             </h3>
           </div>

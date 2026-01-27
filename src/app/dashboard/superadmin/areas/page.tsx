@@ -251,7 +251,7 @@ export default function AreasPage() {
                     day: 'numeric'
                   })}
                 </p>
-                <h1 className="truncate text-lg font-bold text-slate-900 dark:text-white">
+                <h1 className="truncate text-lg font-bold text-blue-900 dark:text-white">
                   Manajemen Area
                 </h1>
               </div>
@@ -488,7 +488,7 @@ export default function AreasPage() {
                     <MapPin className="h-5 w-5" />
                   </div>
                   <div>
-                    <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                    <h2 className="text-base font-bold text-blue-900 dark:text-white">
                       Daftar Area Terdaftar
                     </h2>
                     <p className="text-xs font-medium text-slate-500">

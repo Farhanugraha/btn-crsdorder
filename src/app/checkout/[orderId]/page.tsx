@@ -498,7 +498,7 @@ const CheckoutConfirmationPage = () => {
           <div className="space-y-6 lg:col-span-2">
             {/* Order Summary - Grouped by Restaurant */}
             <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800 sm:p-6">
-              <h2 className="mb-4 text-lg font-bold text-slate-900 dark:text-white sm:text-xl">
+              <h2 className="mb-4 text-lg font-bold text-blue-900 dark:text-white sm:text-xl">
                 Ringkasan Pesanan
               </h2>
 

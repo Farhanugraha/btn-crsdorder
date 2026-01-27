@@ -377,7 +377,7 @@ export default function RestaurantsPage() {
                     day: 'numeric'
                   })}
                 </p>
-                <h1 className="text-sm font-bold text-slate-900 dark:text-white sm:text-lg">
+                <h1 className="text-sm font-bold text-blue-900 dark:text-white sm:text-lg">
                   Manajemen Restoran
                 </h1>
               </div>
@@ -811,7 +811,7 @@ export default function RestaurantsPage() {
                       </div>
                     </div>
                     <div>
-                      <h2 className="text-base font-bold tracking-tight text-slate-900 dark:text-white">
+                      <h2 className="text-base font-bold tracking-tight text-blue-900 dark:text-white">
                         Daftar Restoran
                       </h2>
                       <div className="mt-0.5 flex items-center gap-1.5">
@@ -823,7 +823,7 @@ export default function RestaurantsPage() {
                     </div>
                   </div>
                 </div>
-
+                
                 {/* Filter Toolbar */}
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   {/* Status Segmented Control */}

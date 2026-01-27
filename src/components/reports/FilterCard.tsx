@@ -31,7 +31,7 @@ export const FilterCard = ({
 
   return (
     <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-800 sm:p-4 md:p-6">
-      <h2 className="mb-4 flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-white sm:text-base md:text-lg">
+      <h2 className="mb-4 flex items-center gap-2 text-sm font-bold text-blue-900 dark:text-white sm:text-base md:text-lg">
         <Filter className="h-4 w-4 flex-shrink-0 sm:h-5 sm:w-5" />
         <span>Filter & Export</span>
       </h2>

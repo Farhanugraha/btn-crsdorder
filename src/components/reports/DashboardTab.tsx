@@ -41,7 +41,7 @@ export const DashboardTab = ({
     <div className="w-full space-y-4 sm:space-y-5 md:space-y-6">
       {/* Orders Section */}
       <div className="w-full">
-        <h2 className="mb-3 text-sm font-bold text-slate-900 dark:text-white sm:mb-4 sm:text-base md:text-lg">
+        <h2 className="mb-3 text-sm font-bold text-blue-900 dark:text-white sm:mb-4 sm:text-base md:text-lg">
           Ringkasan Pesanan
         </h2>
         <div className="grid w-full grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-3 md:grid-cols-3 md:gap-4 lg:grid-cols-5">
@@ -80,7 +80,7 @@ export const DashboardTab = ({
 
       {/* Payments Section */}
       <div className="w-full">
-        <h2 className="mb-3 text-sm font-bold text-slate-900 dark:text-white sm:mb-4 sm:text-base md:text-lg">
+        <h2 className="mb-3 text-sm font-bold text-blue-900 dark:text-white sm:mb-4 sm:text-base md:text-lg">
           Ringkasan Pembayaran
         </h2>
         <div className="grid w-full grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-3 md:gap-4">
@@ -101,7 +101,7 @@ export const DashboardTab = ({
 
       {/* Users Section */}
       <div className="w-full">
-        <h2 className="mb-3 text-sm font-bold text-slate-900 dark:text-white sm:mb-4 sm:text-base md:text-lg">
+        <h2 className="mb-3 text-sm font-bold text-blue-900 dark:text-white sm:mb-4 sm:text-base md:text-lg">
           Ringkasan Pengguna
         </h2>
         <div className="grid w-full grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-3 md:gap-4">

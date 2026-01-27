@@ -650,7 +650,7 @@ export default function PaymentDetailPage({
             {/* Order Summary Card */}
             <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
               <div className="border-b border-gray-200 bg-gradient-to-r from-slate-100 to-slate-50 px-6 py-4 dark:border-gray-700 dark:from-slate-800 dark:to-slate-900">
-                <h2 className="flex items-center gap-2 text-lg font-semibold text-gray-800 dark:text-gray-100">
+                <h2 className="flex items-center gap-2 text-lg font-semibold text-blue-900 dark:text-gray-100">
                   <FileText className="h-5 w-5" />
                   Ringkasan Pesanan
                 </h2>

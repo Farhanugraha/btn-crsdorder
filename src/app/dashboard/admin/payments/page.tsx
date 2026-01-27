@@ -281,13 +281,13 @@ export default function PaymentsPage() {
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
         {/* PAGE HEADER */}
         <div className="mb-8">
-          <div className="mb-2 flex items-center gap-3">
-            <FileText className="h-8 w-8 text-blue-600" />
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+          <div className="flex items-center gap-3">
+             <FileText className="h-8 w-8 text-blue-600" />
+            <h2 className="text-2xl font-bold text-blue-900 dark:text-white">
               Manajemen Pembayaran
-            </h1>
+            </h2>
           </div>
-          <p className="text-gray-600 dark:text-gray-400">
+          <p className="text-s text-blue-600 dark:text-gray-400">
             Kelola, verifikasi, dan pantau semua pembayaran pesanan
             pelanggan dengan mudah
           </p>

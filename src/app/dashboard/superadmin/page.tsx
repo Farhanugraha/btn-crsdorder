@@ -203,7 +203,7 @@ export default function SuperadminDashboard() {
                   day: 'numeric'
                 })}
               </p>
-              <h2 className="text-base font-bold text-slate-900 dark:text-white sm:text-lg">
+              <h2 className="text-base font-bold text-blue-900 dark:text-white sm:text-lg">
                 Manajemen Sistem
               </h2>
             </div>

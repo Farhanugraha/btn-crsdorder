@@ -489,10 +489,10 @@ const ReportsPage = () => {
         {/* Header Section */}
         <div className="w-full space-y-3 sm:flex sm:flex-row sm:items-start sm:justify-between sm:space-y-0">
           <div className="flex-1">
-            <h1 className="text-xl font-bold text-slate-900 dark:text-white sm:text-2xl lg:text-3xl">
+            <h1 className="text-xl font-bold text-blue-900 dark:text-white sm:text-2xl lg:text-3xl">
               Laporan & Statistik
             </h1>
-            <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+            <p className="mt-1 text-sm text-blue-600 dark:text-slate-400">
               Kelola dan analisis data bisnis Anda
             </p>
             {activeFilterStartDate && activeFilterEndDate && (
