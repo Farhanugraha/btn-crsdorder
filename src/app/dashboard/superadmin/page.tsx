@@ -395,7 +395,7 @@ export default function SuperadminDashboard() {
                 <QuickActionItem
                   title="Buat Admin"
                   description="Tambah admin baru"
-                  href="/dashboard/superadmin/create-admin"
+                  href="/dashboard/superadmin/user-management"
                   icon="👤"
                 />
                 <QuickActionItem

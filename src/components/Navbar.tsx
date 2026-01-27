@@ -409,7 +409,7 @@ const Navbar = () => {
                 {isSuperAdmin && (
                   <>
                     <Link
-                      href="/dashboard/superadmin/create-admin"
+                      href="/dashboard/superadmin/user-management"
                       className={cn(
                         buttonVariants({ variant: 'ghost' }),
                         'text-sm'
@@ -543,7 +543,7 @@ const Navbar = () => {
                       <>
                         <MenubarSeparator />
                         <MenubarItem asChild>
-                          <Link href="/dashboard/superadmin/create-admin">
+                          <Link href="/dashboard/superadmin/user-management">
                             Buat Admin
                           </Link>
                         </MenubarItem>
@@ -645,7 +645,7 @@ const Navbar = () => {
                           <DropdownMenuSeparator />
                           <DropdownMenuItem asChild>
                             <Link
-                              href="/dashboard/superadmin/create-admin"
+                              href="/dashboard/superadmin/user-management"
                               className="cursor-pointer"
                             >
                               <UserPlus className="mr-2 h-4 w-4" />

@@ -356,20 +356,20 @@ export default function RestaurantsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 transition-colors duration-300 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+   <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 transition-colors duration-300 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       {/* Header */}
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/80 backdrop-blur-md transition-colors dark:border-slate-700 dark:bg-slate-900/80">
-        <div className="px-4 py-3 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex min-w-0 flex-1 items-center gap-3">
+        <div className="px-3 py-2 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between gap-2 sm:gap-4">
+            <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
               <a
                 href="/dashboard/superadmin"
-                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
+                className="inline-flex h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-600 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
               >
-                <ArrowLeft className="h-4 w-4" />
+                <ArrowLeft className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </a>
               <div className="min-w-0">
-                <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                <p className="hidden text-xs font-medium text-slate-500 dark:text-slate-400 sm:block">
                   {new Date().toLocaleDateString('id-ID', {
                     weekday: 'long',
                     year: 'numeric',
@@ -377,12 +377,12 @@ export default function RestaurantsPage() {
                     day: 'numeric'
                   })}
                 </p>
-                <h1 className="text-lg font-bold text-slate-900 dark:text-white">
+                <h1 className="text-sm font-bold text-slate-900 dark:text-white sm:text-lg">
                   Manajemen Restoran
                 </h1>
               </div>
             </div>
-            <div className="flex flex-shrink-0 items-center gap-2">
+            <div className="flex flex-shrink-0 items-center gap-1 sm:gap-2">
               {!showForm && restaurants.length > 0 && (
                 <div className="hidden items-center gap-1 rounded-lg bg-slate-100 p-1 dark:bg-slate-800 sm:flex">
                   <button
@@ -410,12 +410,10 @@ export default function RestaurantsPage() {
               {!showForm && (
                 <button
                   onClick={() => setShowForm(true)}
-                  className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 sm:px-4"
+                  className="inline-flex items-center gap-1.5 sm:gap-2 rounded-lg bg-blue-600 px-2.5 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-white hover:bg-blue-700"
                 >
                   <Plus className="h-4 w-4" />
-                  <span className="hidden sm:inline">
-                    Tambah Restoran
-                  </span>
+                  <span className="hidden sm:inline">Tambah Restoran</span>
                 </button>
               )}
             </div>
@@ -425,21 +423,21 @@ export default function RestaurantsPage() {
 
       {/* Alert Messages */}
       {message && (
-        <div className="border-b border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900 sm:px-6 lg:px-8">
+        <div className="border-b border-slate-200 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-900 sm:px-6 lg:px-8">
           <div
-            className={`flex items-center gap-3 rounded-lg border p-3 ${
+            className={`flex items-center gap-2 sm:gap-3 rounded-lg border p-2 sm:p-3 ${
               message.type === 'success'
                 ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-900/30'
                 : 'border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-900/30'
             }`}
           >
             {message.type === 'success' ? (
-              <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+              <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
             ) : (
-              <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
+              <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-red-600 dark:text-red-400 flex-shrink-0" />
             )}
             <p
-              className={`flex-1 text-sm font-medium ${
+              className={`flex-1 text-xs sm:text-sm font-medium ${
                 message.type === 'success'
                   ? 'text-emerald-800 dark:text-emerald-200'
                   : 'text-red-800 dark:text-red-200'
@@ -449,7 +447,7 @@ export default function RestaurantsPage() {
             </p>
             <button
               onClick={() => setMessage(null)}
-              className="text-slate-400 transition-colors hover:text-slate-600 dark:hover:text-slate-300"
+              className="text-slate-400 transition-colors hover:text-slate-600 dark:hover:text-slate-300 flex-shrink-0"
             >
               <X className="h-4 w-4" />
             </button>
@@ -459,18 +457,18 @@ export default function RestaurantsPage() {
 
       {/* Search Bar Section */}
       {!showForm && restaurants.length > 0 && (
-        <div className="border-b border-slate-200 bg-white px-4 py-4 dark:border-slate-700 dark:bg-slate-900 sm:px-6 lg:px-8">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="border-b border-slate-200 bg-white px-3 py-3 dark:border-slate-700 dark:bg-slate-900 sm:px-6 lg:px-8">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="relative flex-1">
               <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                 <Search className="h-4 w-4 text-slate-400" />
               </div>
               <input
                 type="text"
-                placeholder="Cari restoran, deskripsi, atau alamat..."
+                placeholder="Cari restoran..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 bg-white pl-10 pr-4 py-2 text-sm placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-500 sm:max-w-md"
+                className="w-full rounded-lg border border-slate-300 bg-white pl-10 pr-4 py-2 text-xs sm:text-sm placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-500"
               />
               {searchQuery && (
                 <button
@@ -482,14 +480,15 @@ export default function RestaurantsPage() {
               )}
             </div>
             <div className="text-xs font-medium text-slate-500 dark:text-slate-400">
-              Ditemukan: <span className="font-bold text-slate-900 dark:text-white">{filteredRestaurants.length}</span> restoran
+              Ditemukan: <span className="font-bold text-slate-900 dark:text-white">{filteredRestaurants.length}</span>
             </div>
           </div>
         </div>
       )}
 
+
       {/* Main Content */}
-      <main className="px-4 py-6 sm:px-6 lg:px-8">
+      <main className="px-4 py-6 sm:px-6 lg:px-8 pt-6">
         <div
           className={`grid gap-6 ${
             showForm ? 'lg:grid-cols-4' : 'lg:grid-cols-1'
