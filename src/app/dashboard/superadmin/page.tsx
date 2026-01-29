@@ -134,7 +134,7 @@ export default function SuperadminDashboard() {
           : null;
       if (!token) return;
 
-      const response = await fetch(`${apiUrl}/api/admin/users`, {
+      const response = await fetch(`${apiUrl}/api/superadmin/users`, {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${token}`,
