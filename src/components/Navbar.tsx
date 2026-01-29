@@ -18,7 +18,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuSeparator
+  DropdownMenuSeparator,
+  DropdownMenuLabel
 } from '@/components/ui/dropdown-menu';
 import {
   AlertDialog,
@@ -43,7 +44,22 @@ import {
   MapPin,
   UtensilsCrossed,
   UserPlus,
-  Settings
+  Settings,
+  Home,
+  Package,
+  DollarSign,
+  PieChart,
+  Shield,
+  ChefHat,
+  Mail,
+  Phone,
+  HelpCircle,
+  Info,
+  Bell,
+  ChevronDown,
+  LayoutDashboard,
+  BadgeCheck,
+  X
 } from 'lucide-react';
 import logo from '../../public/logobtn.png';
 import { cn } from '@/lib/utils';
@@ -70,17 +86,15 @@ const Navbar = () => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [latestOrderId, setLatestOrderId] = useState<number | null>(
-    null
-  );
+  const [latestOrderId, setLatestOrderId] = useState<number | null>(null);
   const [isLoadingOrder, setIsLoadingOrder] = useState(false);
-  const [showNoPaymentDialog, setShowNoPaymentDialog] =
-    useState(false);
+  const [showNoPaymentDialog, setShowNoPaymentDialog] = useState(false);
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
+  const [notificationsCount, setNotificationsCount] = useState(0);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Check role authorization
-  const isAdmin =
-    user && (user.role === 'admin' || user.role === 'superadmin');
+  const isAdmin = user && (user.role === 'admin' || user.role === 'superadmin');
   const isSuperAdmin = user && user.role === 'superadmin';
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
@@ -94,24 +108,16 @@ const Navbar = () => {
 
   // Helper untuk get admin/superadmin routes
   const getAdminOrdersLink = () =>
-    isSuperAdmin
-      ? '/dashboard/admin/orders'
-      : '/dashboard/admin/orders';
+    isSuperAdmin ? '/dashboard/admin/orders' : '/dashboard/admin/orders';
 
   const getAdminPaymentsLink = () =>
-    isSuperAdmin
-      ? '/dashboard/admin/payments'
-      : '/dashboard/admin/payments';
+    isSuperAdmin ? '/dashboard/admin/payments' : '/dashboard/admin/payments';
 
   const getAdminStatisticsLink = () =>
-    isSuperAdmin
-      ? '/dashboard/admin/statistics'
-      : '/dashboard/admin/statistics';
+    isSuperAdmin ? '/dashboard/admin/statistics' : '/dashboard/admin/statistics';
 
   const getAdminReportsLink = () =>
-    isSuperAdmin
-      ? '/dashboard/admin/reports'
-      : '/dashboard/admin/reports';
+    isSuperAdmin ? '/dashboard/admin/reports' : '/dashboard/admin/reports';
 
   useEffect(() => {
     const checkAuth = () => {
@@ -149,11 +155,7 @@ const Navbar = () => {
     checkAuth();
 
     const handleStorageChange = (e: StorageEvent) => {
-      if (
-        e.key === 'auth_user' ||
-        e.key === 'auth_token' ||
-        e.key === null
-      ) {
+      if (e.key === 'auth_user' || e.key === 'auth_token' || e.key === null) {
         checkAuth();
       }
     };
@@ -194,10 +196,7 @@ const Navbar = () => {
     window.addEventListener('payment-success', handlePaymentSuccess);
 
     return () => {
-      window.removeEventListener(
-        'payment-success',
-        handlePaymentSuccess
-      );
+      window.removeEventListener('payment-success', handlePaymentSuccess);
     };
   }, [isAdmin]);
 
@@ -331,436 +330,642 @@ const Navbar = () => {
     }
   };
 
+  // Get role badge color
+  const getRoleColor = (role: string) => {
+    switch (role) {
+      case 'superadmin':
+        return 'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800/50';
+      case 'admin':
+        return 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800/50';
+      default:
+        return 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800/50';
+    }
+  };
+
   return (
-    <nav className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container mx-auto flex flex-row items-center justify-between px-4 py-3">
-        {/* Desktop Navigation */}
-        <div className="hidden flex-row items-center gap-8 md:flex">
-          <Link
-            href={getDashboardLink()}
-            className="transition-opacity hover:opacity-80"
-          >
-            <Image
-              src={logo}
-              alt="Logo"
-              width={45}
-              height={45}
-              placeholder="blur"
-              priority
-            />
-          </Link>
-          <div className="flex flex-row items-center gap-1">
-            <Link
-              href={getDashboardLink()}
-              className={cn(
-                buttonVariants({ variant: 'ghost' }),
-                'text-sm'
-              )}
-            >
-              {isAdmin
-                ? isSuperAdmin
-                  ? 'Dashboard'
-                  : 'Dashboard'
-                : 'Home'}
-            </Link>
+    <>
+      {/* Main Navbar */}
+      <nav className="sticky top-0 z-50 border-b border-border/50 bg-background/95 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60">
+        <div className="px-4">
+          <div className="flex h-16 items-center justify-between">
+            {/* Logo Section */}
+            <div className="flex items-center gap-3">
+              <Link
+                href={getDashboardLink()}
+                className="flex items-center gap-3 transition-opacity hover:opacity-90"
+              >
+                <div className="relative h-10 w-10 overflow-hidden rounded-xl border-2 border-primary/20 bg-gradient-to-br from-primary/10 to-primary/5 p-1.5">
+                  <Image
+                    src={logo}
+                    alt="BTN Food Order"
+                    width={40}
+                    height={40}
+                    placeholder="blur"
+                    priority
+                    className="h-full w-full object-contain"
+                  />
+                </div>
+                <div className="hidden lg:block">
+                  <h1 className="text-lg font-bold tracking-tight text-blue-900 dark:text-white">
+                    BTN Food Order
+                  </h1>
+                  <p className="text-xs text-muted-foreground">Sistem Pemesanan Makanan</p>
+                </div>
+              </Link>
+            </div>
 
-            {/* Admin Navigation Menu */}
-            {isAdmin && (
-              <>
-                <Link
-                  href={getAdminOrdersLink()}
-                  className={cn(
-                    buttonVariants({ variant: 'ghost' }),
-                    'text-sm'
-                  )}
-                >
-                  Pesanan
-                </Link>
-                <Link
-                  href={getAdminPaymentsLink()}
-                  className={cn(
-                    buttonVariants({ variant: 'ghost' }),
-                    'text-sm'
-                  )}
-                >
-                  Pembayaran
-                </Link>
-                <Link
-                  href={getAdminStatisticsLink()}
-                  className={cn(
-                    buttonVariants({ variant: 'ghost' }),
-                    'text-sm'
-                  )}
-                >
-                  Statistik
-                </Link>
-
-                <Link
-                  href={getAdminReportsLink()}
-                  className={cn(
-                    buttonVariants({ variant: 'ghost' }),
-                    'text-sm'
-                  )}
-                >
-                  Laporan
-                </Link>
-
-                {/* Superadmin Exclusive Menu */}
-                {isSuperAdmin && (
-                  <>
-                    <Link
-                      href="/dashboard/superadmin/user-management"
-                      className={cn(
-                        buttonVariants({ variant: 'ghost' }),
-                        'text-sm'
-                      )}
-                    >
-                      Manajemen User
-                    </Link>
-                    <Link
-                      href="/dashboard/superadmin/areas"
-                      className={cn(
-                        buttonVariants({ variant: 'ghost' }),
-                        'text-sm'
-                      )}
-                    >
-                      Area
-                    </Link>
-                    <Link
-                      href="/dashboard/superadmin/restaurants"
-                      className={cn(
-                        buttonVariants({ variant: 'ghost' }),
-                        'text-sm'
-                      )}
-                    >
-                      Restaurant
-                    </Link>
-                  </>
+            {/* Desktop Navigation Menu */}
+            <div className="hidden items-center gap-1 md:flex">
+              <Link
+                href={getDashboardLink()}
+                className={cn(
+                  buttonVariants({ variant: 'ghost', size: 'sm' }),
+                  'group flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all hover:bg-primary/10 hover:text-primary'
                 )}
-              </>
-            )}
+              >
+                <Home className="h-4 w-4" />
+                {isAdmin ? 'Dashboard' : 'Beranda'}
+              </Link>
 
-            {/* Pesan Makanan - Hanya untuk non-admin */}
-            {!isAdmin && (
-              <>
-                <Link
-                  href="/areas"
-                  className={cn(
-                    buttonVariants({ variant: 'ghost' }),
-                    'text-sm'
+              {/* Admin Navigation Menu */}
+              {isAdmin && (
+                <>
+                  <Link
+                    href={getAdminOrdersLink()}
+                    className={cn(
+                      buttonVariants({ variant: 'ghost', size: 'sm' }),
+                      'group flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all hover:bg-primary/10 hover:text-primary'
+                    )}
+                  >
+                    <Package className="h-4 w-4" />
+                    Pesanan
+                  </Link>
+                  <Link
+                    href={getAdminPaymentsLink()}
+                    className={cn(
+                      buttonVariants({ variant: 'ghost', size: 'sm' }),
+                      'group flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all hover:bg-primary/10 hover:text-primary'
+                    )}
+                  >
+                    <DollarSign className="h-4 w-4" />
+                    Pembayaran
+                  </Link>
+                  <Link
+                    href={getAdminStatisticsLink()}
+                    className={cn(
+                      buttonVariants({ variant: 'ghost', size: 'sm' }),
+                      'group flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all hover:bg-primary/10 hover:text-primary'
+                    )}
+                  >
+                    <PieChart className="h-4 w-4" />
+                    Statistik
+                  </Link>
+                  <Link
+                    href={getAdminReportsLink()}
+                    className={cn(
+                      buttonVariants({ variant: 'ghost', size: 'sm' }),
+                      'group flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all hover:bg-primary/10 hover:text-primary'
+                    )}
+                  >
+                    <FileText className="h-4 w-4" />
+                    Laporan
+                  </Link>
+
+                  {/* Superadmin Exclusive Menu */}
+                  {isSuperAdmin && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button className="group flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium transition-all hover:bg-primary/10 hover:text-primary">
+                          <Shield className="h-4 w-4" />
+                          Superadmin
+                          <ChevronDown className="h-3 w-3 opacity-50 transition-transform group-hover:rotate-180" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="center" className="w-48">
+                        <DropdownMenuLabel className="text-xs font-semibold text-muted-foreground">
+                          Menu Superadmin
+                        </DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem asChild>
+                          <Link href="/dashboard/superadmin/user-management" className="flex items-center gap-2 cursor-pointer">
+                            <Users className="h-4 w-4" />
+                            Manajemen User
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <Link href="/dashboard/superadmin/areas" className="flex items-center gap-2 cursor-pointer">
+                            <MapPin className="h-4 w-4" />
+                            Area
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <Link href="/dashboard/superadmin/restaurants" className="flex items-center gap-2 cursor-pointer">
+                            <ChefHat className="h-4 w-4" />
+                            Restaurant
+                          </Link>
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   )}
-                >
-                  Pesan Makanan
-                </Link>
-                <Link
-                  href="/contact"
-                  className={cn(
-                    buttonVariants({ variant: 'ghost' }),
-                    'text-sm'
+                </>
+              )}
+
+              {/* User Navigation Menu - Tampilkan untuk SEMUA user (login atau belum) */}
+              {!isAdmin && (
+                <>
+                  <Link
+                    href="/areas"
+                    className={cn(
+                      buttonVariants({ variant: 'ghost', size: 'sm' }),
+                      'group flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all hover:bg-primary/10 hover:text-primary'
+                    )}
+                  >
+                    <UtensilsCrossed className="h-4 w-4" />
+                    Pesan Makanan
+                  </Link>
+                  
+                  {/* Pesanan Saya - HANYA tampilkan jika user sudah login */}
+                  {user && (
+                    <Link
+                      href="/order"
+                      className={cn(
+                        buttonVariants({ variant: 'ghost', size: 'sm' }),
+                        'group flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all hover:bg-primary/10 hover:text-primary'
+                      )}
+                    >
+                      <ShoppingCart className="h-4 w-4" />
+                      Pesanan Saya
+                    </Link>
                   )}
-                >
-                  Contact
-                </Link>
-                <Link
-                  href="/support"
-                  className={cn(
-                    buttonVariants({ variant: 'ghost' }),
-                    'text-sm'
+                  
+                  {/* Pembayaran - HANYA tampilkan jika user sudah login */}
+                  {user && (
+                    <Link
+                      href={latestOrderId ? `/checkout/${latestOrderId}` : '#'}
+                      onClick={handlePaymentClick}
+                      className={cn(
+                        buttonVariants({ variant: latestOrderId ? 'default' : 'ghost', size: 'sm' }),
+                        'group relative flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all',
+                        latestOrderId && 'bg-emerald-600 hover:bg-emerald-700'
+                      )}
+                    >
+                      <CreditCard className="h-4 w-4" />
+                      Pembayaran
+                      {latestOrderId && (
+                        <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white">
+                          !
+                        </span>
+                      )}
+                    </Link>
                   )}
-                >
-                  Support
-                </Link>
-                <Link
-                  href="/about"
-                  className={cn(
-                    buttonVariants({ variant: 'ghost' }),
-                    'text-sm'
+                  
+                  {/* Lainnya - Tampilkan untuk SEMUA user (login atau belum) */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button className="group flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium transition-all hover:bg-primary/10 hover:text-primary">
+                        Lainnya
+                        <ChevronDown className="h-3 w-3 opacity-50 transition-transform group-hover:rotate-180" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="center" className="w-48">
+                      <DropdownMenuItem asChild>
+                        <Link href="/contact" className="flex items-center gap-2 cursor-pointer">
+                          <Mail className="h-4 w-4" />
+                          Contact
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href="/support" className="flex items-center gap-2 cursor-pointer">
+                          <HelpCircle className="h-4 w-4" />
+                          Support
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href="/about" className="flex items-center gap-2 cursor-pointer">
+                          <Info className="h-4 w-4" />
+                          About
+                        </Link>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </>
+              )}
+            </div>
+
+            {/* Right Side - User Actions & Theme */}
+            <div className="flex items-center gap-2">
+              {/* Notifications Bell - Hanya tampilkan jika user login */}
+              {user && (
+                <button className="relative rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
+                  <Bell className="h-5 w-5" />
+                  {notificationsCount > 0 && (
+                    <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white">
+                      {notificationsCount > 9 ? '9+' : notificationsCount}
+                    </span>
                   )}
-                >
-                  About
-                </Link>
-              </>
-            )}
+                </button>
+              )}
+
+              {/* Cart - Hanya untuk non-admin users yang sudah login */}
+              {user && !isAdmin && (
+                <>
+                  <Separator orientation="vertical" className="h-6" />
+                  <Cart />
+                </>
+              )}
+
+              {/* Theme Toggle */}
+              <ToggleTheme />
+
+              {/* User Profile / Auth */}
+              {isLoading ? (
+                <div className="h-9 w-20 rounded-lg bg-muted animate-pulse" />
+              ) : user ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="group hidden items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium transition-all hover:bg-accent md:flex">
+                      <div className="relative">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-primary/20 to-primary/10">
+                          <UserIcon className="h-4 w-4 text-primary" />
+                        </div>
+                        {user.email_verified_at && (
+                          <BadgeCheck className="absolute -bottom-1 -right-1 h-3 w-3 rounded-full bg-background text-emerald-500" />
+                        )}
+                      </div>
+                      <div className="hidden max-w-[120px] truncate text-left sm:block">
+                        <div className="truncate font-medium text-foreground">{user.name}</div>
+                        <div className="truncate text-xs text-muted-foreground">{user.email}</div>
+                      </div>
+                      <ChevronDown className="h-3 w-3 text-muted-foreground transition-transform group-hover:rotate-180" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-64">
+                    <div className="px-3 py-2">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-primary/20 to-primary/10">
+                          <UserIcon className="h-5 w-5 text-primary" />
+                        </div>
+                        <div className="flex-1 overflow-hidden">
+                          <p className="truncate font-semibold text-foreground">{user.name}</p>
+                          <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+                          <div className="mt-1 flex items-center gap-2">
+                            <span className={`rounded-full border px-2 py-0.5 text-xs font-medium ${getRoleColor(user.role)}`}>
+                              {user.role === 'superadmin' ? 'Super Admin' : 
+                               user.role === 'admin' ? 'Administrator' : 'User'}
+                            </span>
+                            {user.divisi && (
+                              <span className="truncate rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                                {user.divisi}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <DropdownMenuSeparator />
+
+                    {/* Profile Link */}
+                    <DropdownMenuItem asChild>
+                      <Link href={`/user/${user.id}/user`} className="flex items-center gap-2 cursor-pointer">
+                        <UserIcon className="h-4 w-4" />
+                        <span>Profile</span>
+                      </Link>
+                    </DropdownMenuItem>
+
+                    {/* Admin Links */}
+                    {isAdmin && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuLabel className="text-xs font-semibold text-muted-foreground">
+                          Menu Admin
+                        </DropdownMenuLabel>
+                        <DropdownMenuItem asChild>
+                          <Link href={getAdminReportsLink()} className="flex items-center gap-2 cursor-pointer">
+                            <FileText className="h-4 w-4" />
+                            Laporan
+                          </Link>
+                        </DropdownMenuItem>
+
+                        {/* Superadmin Exclusive */}
+                        {isSuperAdmin && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuLabel className="text-xs font-semibold text-muted-foreground">
+                              Menu Superadmin
+                            </DropdownMenuLabel>
+                            <DropdownMenuItem asChild>
+                              <Link href="/dashboard/superadmin/user-management" className="flex items-center gap-2 cursor-pointer">
+                                <Users className="h-4 w-4" />
+                                Manajemen User
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem asChild>
+                              <Link href="/dashboard/superadmin/areas" className="flex items-center gap-2 cursor-pointer">
+                                <MapPin className="h-4 w-4" />
+                                Area
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem asChild>
+                              <Link href="/dashboard/superadmin/restaurants" className="flex items-center gap-2 cursor-pointer">
+                                <ChefHat className="h-4 w-4" />
+                                Restaurant
+                              </Link>
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                      </>
+                    )}
+
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={() => setShowLogoutDialog(true)}
+                      disabled={isLoggingOut}
+                      className="flex items-center gap-2 cursor-pointer text-red-600 focus:bg-red-50 focus:text-red-600 dark:text-red-500 dark:focus:bg-red-950 dark:focus:text-red-500"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      <span>{isLoggingOut ? 'Logging out...' : 'Logout'}</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <div className="hidden items-center gap-2 md:flex">
+                  <Link
+                    href="/auth/login"
+                    className={cn(
+                      buttonVariants({ variant: 'outline', size: 'sm' }),
+                      'h-9 text-sm'
+                    )}
+                  >
+                    Login
+                  </Link>
+                  <Link
+                    href="/auth/register"
+                    className={cn(
+                      buttonVariants({ variant: 'default', size: 'sm' }),
+                      'h-9 bg-gradient-to-r from-primary to-primary/80 text-sm hover:from-primary/90 hover:to-primary/70'
+                    )}
+                  >
+                    Daftar
+                  </Link>
+                </div>
+              )}
+
+              {/* Mobile Menu Button */}
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground md:hidden"
+              >
+                {mobileMenuOpen ? (
+                  <X className="h-5 w-5" />
+                ) : (
+                  <Menu className="h-5 w-5" />
+                )}
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Mobile Navigation */}
-        <div className="flex items-center gap-4 md:hidden">
-          <Link
-            href={getDashboardLink()}
-            className="transition-opacity hover:opacity-80"
-          >
-            <Image
-              src={logo}
-              alt="Logo"
-              width={40}
-              height={40}
-              placeholder="blur"
-              priority
-            />
-          </Link>
-          <Menubar className="border-0">
-            <MenubarMenu>
-              <MenubarTrigger className="cursor-pointer">
-                <Menu className="h-5 w-5" />
-              </MenubarTrigger>
-              <MenubarContent align="start">
-                <MenubarItem asChild>
-                  <Link href={getDashboardLink()}>
-                    {isAdmin
-                      ? isSuperAdmin
-                        ? 'Superadmin'
-                        : 'Dashboard'
-                      : 'Home'}
+        {/* Mobile Navigation Menu */}
+        <div className={`md:hidden ${mobileMenuOpen ? 'block' : 'hidden'}`}>
+          <div className="border-t border-border/50 bg-background px-4 py-4">
+            <div className="space-y-1">
+              <Link
+                href={getDashboardLink()}
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
+              >
+                <Home className="h-4 w-4" />
+                {isAdmin ? 'Dashboard' : 'Beranda'}
+              </Link>
+
+              {isAdmin ? (
+                <>
+                  <Link
+                    href={getAdminOrdersLink()}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
+                  >
+                    <Package className="h-4 w-4" />
+                    Pesanan
                   </Link>
-                </MenubarItem>
+                  <Link
+                    href={getAdminPaymentsLink()}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
+                  >
+                    <DollarSign className="h-4 w-4" />
+                    Pembayaran
+                  </Link>
+                  <Link
+                    href={getAdminStatisticsLink()}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
+                  >
+                    <PieChart className="h-4 w-4" />
+                    Statistik
+                  </Link>
+                  <Link
+                    href={getAdminReportsLink()}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
+                  >
+                    <FileText className="h-4 w-4" />
+                    Laporan
+                  </Link>
 
-                {/* Admin Menu Items */}
-                {isAdmin && (
-                  <>
-                    <MenubarSeparator />
-                    <MenubarItem asChild>
-                      <Link href={getAdminOrdersLink()}>Pesanan</Link>
-                    </MenubarItem>
-                    <MenubarItem asChild>
-                      <Link href={getAdminPaymentsLink()}>
-                        Pembayaran
+                  {isSuperAdmin && (
+                    <>
+                      <div className="px-3 pt-2 text-xs font-semibold text-muted-foreground">
+                        Menu Superadmin
+                      </div>
+                      <Link
+                        href="/dashboard/superadmin/user-management"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
+                      >
+                        <Users className="h-4 w-4" />
+                        Manajemen User
                       </Link>
-                    </MenubarItem>
-                    <MenubarItem asChild>
-                      <Link href={getAdminStatisticsLink()}>
-                        Statistik
+                      <Link
+                        href="/dashboard/superadmin/areas"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
+                      >
+                        <MapPin className="h-4 w-4" />
+                        Area
                       </Link>
-                    </MenubarItem>
-                    <MenubarItem asChild>
-                      <Link href={getAdminReportsLink()}>
-                        Laporan
+                      <Link
+                        href="/dashboard/superadmin/restaurants"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
+                      >
+                        <ChefHat className="h-4 w-4" />
+                        Restaurant
                       </Link>
-                    </MenubarItem>
-
-                    {/* Superadmin Exclusive Menu */}
-                    {isSuperAdmin && (
-                      <>
-                        <MenubarSeparator />
-                        <MenubarItem asChild>
-                          <Link href="/dashboard/superadmin/user-management">
-                            Manajemen User
-                          </Link>
-                        </MenubarItem>
-                        <MenubarItem asChild>
-                          <Link href="/dashboard/superadmin/areas">
-                            Area
-                          </Link>
-                        </MenubarItem>
-                        <MenubarItem asChild>
-                          <Link href="/dashboard/superadmin/restaurants">
-                            Restaurant
-                          </Link>
-                        </MenubarItem>
-                      </>
-                    )}
-                  </>
-                )}
-
-                {/* User Menu Items */}
-                {!isAdmin && (
-                  <>
-                    <MenubarSeparator />
-                    <MenubarItem asChild>
-                      <Link href="/areas">Pesan Makanan</Link>
-                    </MenubarItem>
-                    <MenubarItem asChild>
-                      <Link href="/contact">Contact</Link>
-                    </MenubarItem>
-                    <MenubarItem asChild>
-                      <Link href="/support">Support</Link>
-                    </MenubarItem>
-                    <MenubarItem asChild>
-                      <Link href="/about">About</Link>
-                    </MenubarItem>
-                  </>
-                )}
-              </MenubarContent>
-            </MenubarMenu>
-          </Menubar>
-        </div>
-
-        {/* Right Side - Authentication & Actions */}
-        <div className="flex items-center gap-3">
-          {isLoading ? (
-            <Loader2 className="h-4 w-4 animate-spin text-primary" />
-          ) : user ? (
-            <>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-primary">
-                    <UserIcon className="h-4 w-4" />
-                    <span className="hidden max-w-[120px] truncate sm:inline">
-                      {user.name}
-                    </span>
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <div className="px-2 py-1.5">
-                    <p className="text-sm font-medium text-foreground">
-                      {user.name}
-                    </p>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {user.email}
-                    </p>
-                    <p className="mt-1 text-xs font-medium text-muted-foreground">
-                      Role:{' '}
-                      <span className="uppercase">{user.role}</span>
-                    </p>
+                    </>
+                  )}
+                </>
+              ) : (
+                // Menu untuk user biasa (baik login maupun belum)
+                <>
+                  <Link
+                    href="/areas"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
+                  >
+                    <UtensilsCrossed className="h-4 w-4" />
+                    Pesan Makanan
+                  </Link>
+                  
+                  {/* Pesanan Saya - HANYA tampilkan jika user sudah login */}
+                  {user && (
+                    <Link
+                      href="/order"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
+                    >
+                      <ShoppingCart className="h-4 w-4" />
+                      Pesanan Saya
+                    </Link>
+                  )}
+                  
+                  {/* Pembayaran - HANYA tampilkan jika user sudah login */}
+                  {user && (
+                    <Link
+                      href={latestOrderId ? `/checkout/${latestOrderId}` : '#'}
+                      onClick={(e) => {
+                        if (!latestOrderId) {
+                          handlePaymentClick(e);
+                        }
+                        setMobileMenuOpen(false);
+                      }}
+                      className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
+                    >
+                      <CreditCard className="h-4 w-4" />
+                      Pembayaran
+                      {latestOrderId && (
+                        <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white">
+                          !
+                        </span>
+                      )}
+                    </Link>
+                  )}
+                  
+                  <div className="px-3 pt-2 text-xs font-semibold text-muted-foreground">
+                    Lainnya
                   </div>
-                  <DropdownMenuSeparator />
+                  <Link
+                    href="/contact"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
+                  >
+                    <Mail className="h-4 w-4" />
+                    Contact
+                  </Link>
+                  <Link
+                    href="/support"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
+                  >
+                    <HelpCircle className="h-4 w-4" />
+                    Support
+                  </Link>
+                  <Link
+                    href="/about"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
+                  >
+                    <Info className="h-4 w-4" />
+                    About
+                  </Link>
+                </>
+              )}
+            </div>
 
-                  {/* Profile - Untuk Semua */}
-                  <DropdownMenuItem asChild>
+            {/* Mobile Auth Buttons */}
+            {!user && !isLoading && (
+              <div className="mt-6 grid grid-cols-2 gap-2">
+                <Link
+                  href="/auth/login"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={cn(
+                    buttonVariants({ variant: 'outline' }),
+                    'w-full'
+                  )}
+                >
+                  Login
+                </Link>
+                <Link
+                  href="/auth/register"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={cn(
+                    buttonVariants({ variant: 'default' }),
+                    'w-full'
+                  )}
+                >
+                  Daftar
+                </Link>
+              </div>
+            )}
+
+            {/* Mobile User Info */}
+            {user && (
+              <div className="mt-6 space-y-4">
+                <div className="rounded-lg border border-border bg-card p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="relative">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-primary/20 to-primary/10">
+                        <UserIcon className="h-5 w-5 text-primary" />
+                      </div>
+                      {user.email_verified_at && (
+                        <BadgeCheck className="absolute -bottom-1 -right-1 h-3 w-3 rounded-full bg-background text-emerald-500" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-semibold text-foreground">{user.name}</p>
+                      <p className="text-sm text-muted-foreground">{user.email}</p>
+                      <div className="mt-1 flex items-center gap-2">
+                        <span className={`rounded-full border px-2 py-0.5 text-xs font-medium ${getRoleColor(user.role)}`}>
+                          {user.role === 'superadmin' ? 'Super Admin' : 
+                           user.role === 'admin' ? 'Administrator' : 'User'}
+                        </span>
+                        {user.divisi && (
+                          <span className="truncate rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                            {user.divisi}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-4 grid grid-cols-2 gap-2">
                     <Link
                       href={`/user/${user.id}/user`}
-                      className="cursor-pointer"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className={cn(
+                        buttonVariants({ variant: 'outline', size: 'sm' }),
+                        'w-full text-sm'
+                      )}
                     >
                       Profile
                     </Link>
-                  </DropdownMenuItem>
-
-                  {/* Admin Menu Items */}
-                  {isAdmin && (
-                    <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem asChild>
-                        <Link
-                          href={getAdminReportsLink()}
-                          className="cursor-pointer"
-                        >
-                          <FileText className="mr-2 h-4 w-4" />
-                          Laporan
-                        </Link>
-                      </DropdownMenuItem>
-
-                      {/* Superadmin Exclusive */}
-                      {isSuperAdmin && (
-                        <>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem asChild>
-                            <Link
-                              href="/dashboard/superadmin/user-management"
-                              className="cursor-pointer"
-                            >
-                              <UserPlus className="mr-2 h-4 w-4" />
-                              Manajemen User
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem asChild>
-                            <Link
-                              href="/dashboard/superadmin/areas"
-                              className="cursor-pointer"
-                            >
-                              <MapPin className="mr-2 h-4 w-4" />
-                              Area
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem asChild>
-                            <Link
-                              href="/dashboard/superadmin/restaurants"
-                              className="cursor-pointer"
-                            >
-                              <UtensilsCrossed className="mr-2 h-4 w-4" />
-                              Restaurant
-                            </Link>
-                          </DropdownMenuItem>
-                        </>
-                      )}
-                    </>
-                  )}
-
-                  {/* User Menu Items */}
-                  {!isAdmin && (
-                    <>
-                      <DropdownMenuItem asChild>
-                        <Link
-                          href="/order"
-                          className="cursor-pointer"
-                        >
-                          Pesanan
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link
-                          href={
-                            latestOrderId
-                              ? `/checkout/${latestOrderId}`
-                              : '#'
-                          }
-                          className="cursor-pointer"
-                          onClick={handlePaymentClick}
-                        >
-                          <div className="flex items-center gap-2">
-                            Pembayaran
-                            {isLoadingOrder && (
-                              <span className="inline-block animate-spin text-xs">
-                                ⏳
-                              </span>
-                            )}
-                            {latestOrderId && (
-                              <div className="relative inline-flex h-5 w-5 items-center justify-center">
-                                <span className="absolute h-5 w-5 animate-ping rounded-full bg-emerald-600"></span>
-                                <span className="relative h-3 w-3 rounded-full bg-emerald-600"></span>
-                              </div>
-                            )}
-                          </div>
-                        </Link>
-                      </DropdownMenuItem>
-                    </>
-                  )}
-
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={() => setShowLogoutDialog(true)}
-                    disabled={isLoggingOut}
-                    className="cursor-pointer text-red-600 focus:bg-red-50 focus:text-red-600 dark:text-red-500 dark:focus:bg-red-950 dark:focus:text-red-500"
-                  >
-                    <LogOut className="mr-2 h-4 w-4" />
-                    {isLoggingOut ? 'Logging out...' : 'Logout'}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </>
-          ) : (
-            <>
-              <Link
-                href="/auth/login"
-                className={cn(
-                  buttonVariants({ variant: 'ghost' }),
-                  'text-sm'
-                )}
-              >
-                Log in
-              </Link>
-              <Link
-                href="/auth/register"
-                className={cn(
-                  buttonVariants({ variant: 'default' }),
-                  'h-9 text-sm'
-                )}
-              >
-                Register
-              </Link>
-            </>
-          )}
-
-          {/* Cart - Hanya untuk non-admin users */}
-          {user && !isAdmin && (
-            <>
-              <Separator orientation="vertical" className="h-6" />
-              <Cart />
-            </>
-          )}
-
-          <ToggleTheme />
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        setShowLogoutDialog(true);
+                      }}
+                      className="w-full text-sm"
+                    >
+                      Logout
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      </nav>
 
       {/* No Payment Dialog */}
       <AlertDialog
@@ -832,7 +1037,7 @@ const Navbar = () => {
           </div>
         </AlertDialogContent>
       </AlertDialog>
-    </nav>
+    </>
   );
 };
 

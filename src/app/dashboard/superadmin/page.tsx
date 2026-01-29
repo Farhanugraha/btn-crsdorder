@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Loader2,
@@ -95,10 +95,18 @@ export default function SuperadminDashboard() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [filterRole, setFilterRole] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     checkAuth();
   }, []);
+
+  useEffect(() => {
+    // Fetch users when filter or search changes
+    if (user) {
+      fetchUsers(1);
+    }
+  }, [filterRole]);
 
   const checkAuth = () => {
     if (typeof window === 'undefined') return;
@@ -128,7 +136,10 @@ export default function SuperadminDashboard() {
   const fetchDashboardData = async () => {
     try {
       const token = localStorage.getItem('auth_token');
-      if (!token) return;
+      if (!token) {
+        window.location.href = '/auth/login';
+        return;
+      }
 
       const response = await fetch(`${apiUrl}/api/superadmin/dashboard`, {
         method: 'GET',
@@ -138,9 +149,18 @@ export default function SuperadminDashboard() {
         }
       });
 
+      if (response.status === 401 || response.status === 403) {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('auth_user');
+        window.location.href = '/auth/login';
+        return;
+      }
+
       const data = await response.json();
       if (data.success && data.data) {
         setDashboardData(data.data);
+      } else {
+        console.error('Failed to fetch dashboard:', data.message);
       }
     } catch (error) {
       console.error('Error fetching dashboard:', error);
@@ -151,14 +171,25 @@ export default function SuperadminDashboard() {
     setIsLoadingUsers(true);
     try {
       const token = localStorage.getItem('auth_token');
-      if (!token) return;
+      if (!token) {
+        window.location.href = '/auth/login';
+        return;
+      }
 
       const params = new URLSearchParams({
         page: page.toString(),
-        per_page: '4',
-        role: filterRole,
-        search: searchTerm
+        per_page: '4'
       });
+
+      // Only add role filter if not 'all'
+      if (filterRole !== 'all') {
+        params.append('role', filterRole);
+      }
+
+      // Only add search if not empty
+      if (searchTerm.trim()) {
+        params.append('search', searchTerm.trim());
+      }
 
       const response = await fetch(`${apiUrl}/api/superadmin/users?${params}`, {
         method: 'GET',
@@ -168,20 +199,58 @@ export default function SuperadminDashboard() {
         }
       });
 
+      if (response.status === 401 || response.status === 403) {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('auth_user');
+        window.location.href = '/auth/login';
+        return;
+      }
+
       const data = await response.json();
-      if (data.success && data.data) {
-        setUsers(data.data.data);
-        setPagination({
-          current_page: data.data.current_page,
-          total: data.data.total,
-          per_page: data.data.per_page,
-          last_page: data.data.last_page,
-          from: data.data.from,
-          to: data.data.to
-        });
+      console.log('API Response:', data); // Debug log
+      
+      if (data.success) {
+        // Check if data is paginated or direct array
+        if (data.data && data.data.data) {
+          // Laravel paginated response
+          setUsers(data.data.data);
+          setPagination({
+            current_page: data.data.current_page || 1,
+            total: data.data.total || 0,
+            per_page: data.data.per_page || 4,
+            last_page: data.data.last_page || 1,
+            from: data.data.from || 0,
+            to: data.data.to || 0
+          });
+        } else if (Array.isArray(data.data)) {
+          // Direct array response
+          setUsers(data.data);
+          setPagination({
+            current_page: 1,
+            total: data.data.length,
+            per_page: 4,
+            last_page: Math.ceil(data.data.length / 4),
+            from: 1,
+            to: Math.min(data.data.length, 4)
+          });
+        } else {
+          setUsers([]);
+          setPagination({
+            current_page: 1,
+            total: 0,
+            per_page: 4,
+            last_page: 1,
+            from: 0,
+            to: 0
+          });
+        }
+      } else {
+        console.error('Failed to fetch users:', data.message);
+        setUsers([]);
       }
     } catch (error) {
       console.error('Error fetching users:', error);
+      setUsers([]);
     } finally {
       setIsLoadingUsers(false);
     }
@@ -189,13 +258,22 @@ export default function SuperadminDashboard() {
 
   const handleRoleChange = (role: string) => {
     setFilterRole(role);
-    fetchUsers(1);
+    // Reset to page 1 when filter changes
+    setPagination(prev => ({ ...prev, current_page: 1 }));
   };
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setSearchTerm(value);
-    setTimeout(() => {
+    
+    // Clear previous timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    
+    // Set new timeout for search
+    searchTimeoutRef.current = setTimeout(() => {
+      setPagination(prev => ({ ...prev, current_page: 1 }));
       fetchUsers(1);
     }, 500);
   };
@@ -224,65 +302,67 @@ export default function SuperadminDashboard() {
   };
 
   const renderPaginationButtons = () => {
-    const buttons = [];
-    const { current_page, last_page } = pagination;
-    
-    // Always show first page
+  const buttons: React.ReactNode[] = [];
+  const { current_page, last_page } = pagination;
+  
+  if (last_page <= 1) return buttons;
+
+  // Always show first page
+  buttons.push(
+    <PaginationButton
+      key={1}
+      page={1}
+      current_page={current_page}
+      onClick={() => handlePageChange(1)}
+    />
+  );
+
+  // Show ellipsis if needed
+  if (current_page > 3) {
     buttons.push(
-      <PaginationButton
-        key={1}
-        page={1}
-        current_page={current_page}
-        onClick={() => handlePageChange(1)}
-      />
+      <span key="ellipsis1" className="flex h-9 w-9 items-center justify-center text-slate-400">
+        <MoreHorizontal className="h-4 w-4" />
+      </span>
     );
+  }
 
-    // Show ellipsis if needed
-    if (current_page > 3) {
-      buttons.push(
-        <span key="ellipsis1" className="flex h-9 w-9 items-center justify-center text-slate-400">
-          <MoreHorizontal className="h-4 w-4" />
-        </span>
-      );
-    }
-
-    // Show pages around current page
-    for (let i = Math.max(2, current_page - 1); i <= Math.min(last_page - 1, current_page + 1); i++) {
-      if (i !== 1 && i !== last_page) {
-        buttons.push(
-          <PaginationButton
-            key={i}
-            page={i}
-            current_page={current_page}
-            onClick={() => handlePageChange(i)}
-          />
-        );
-      }
-    }
-
-    // Show ellipsis if needed
-    if (current_page < last_page - 2) {
-      buttons.push(
-        <span key="ellipsis2" className="flex h-9 w-9 items-center justify-center text-slate-400">
-          <MoreHorizontal className="h-4 w-4" />
-        </span>
-      );
-    }
-
-    // Always show last page if there is more than 1 page
-    if (last_page > 1) {
+  // Show pages around current page
+  for (let i = Math.max(2, current_page - 1); i <= Math.min(last_page - 1, current_page + 1); i++) {
+    if (i !== 1 && i !== last_page) {
       buttons.push(
         <PaginationButton
-          key={last_page}
-          page={last_page}
+          key={i}
+          page={i}
           current_page={current_page}
-          onClick={() => handlePageChange(last_page)}
+          onClick={() => handlePageChange(i)}
         />
       );
     }
+  }
 
-    return buttons;
-  };
+  // Show ellipsis if needed
+  if (current_page < last_page - 2) {
+    buttons.push(
+      <span key="ellipsis2" className="flex h-9 w-9 items-center justify-center text-slate-400">
+        <MoreHorizontal className="h-4 w-4" />
+      </span>
+    );
+  }
+
+  // Always show last page if there is more than 1 page
+  if (last_page > 1) {
+    buttons.push(
+      <PaginationButton
+        key={last_page}
+        page={last_page}
+        current_page={current_page}
+        onClick={() => handlePageChange(last_page)}
+      />
+    );
+  }
+
+  return buttons;
+};
 
   if (isLoading) {
     return (
@@ -393,16 +473,19 @@ export default function SuperadminDashboard() {
               </div>
             </div>
 
-            {/* Total Pendapatan */}
+            {/* Total Revenue */}
             <div className="group relative overflow-hidden rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:shadow-md dark:border-slate-700 dark:bg-slate-800">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Total Pendapatan</p>
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Total Revenue</p>
                   <p className="mt-1 text-xl font-bold text-slate-900 dark:text-white sm:text-2xl">
                     {formatCurrency(dashboardData.total_revenue)}
                   </p>
-                  <div className="mt-2 text-xs text-slate-600 dark:text-slate-400">
-                    Pending: {dashboardData.pending_payments}
+                  <div className="mt-2 flex items-center gap-3">
+                    <div className="flex items-center gap-1 text-xs">
+                      <div className="h-1.5 w-1.5 rounded-full bg-emerald-500"></div>
+                      <span className="text-emerald-600 dark:text-emerald-400">Revenue</span>
+                    </div>
                   </div>
                 </div>
                 <div className="ml-4 rounded-lg bg-emerald-100 p-2.5 dark:bg-emerald-900/20">
@@ -411,21 +494,23 @@ export default function SuperadminDashboard() {
               </div>
             </div>
 
-            {/* Status Sistem */}
+            {/* Pending Payments */}
             <div className="group relative overflow-hidden rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:shadow-md dark:border-slate-700 dark:bg-slate-800">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Status Sistem</p>
-                  <div className="mt-1 flex items-center gap-2">
-                    <div className="h-2 w-2 rounded-full bg-emerald-500"></div>
-                    <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400">Aktif</span>
-                  </div>
-                  <div className="mt-2 text-xs text-slate-600 dark:text-slate-400">
-                    Semua layanan normal
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Pending Payments</p>
+                  <p className="mt-1 text-xl font-bold text-slate-900 dark:text-white sm:text-2xl">
+                    {dashboardData.pending_payments}
+                  </p>
+                  <div className="mt-2 flex items-center gap-3">
+                    <div className="flex items-center gap-1 text-xs">
+                      <div className="h-1.5 w-1.5 rounded-full bg-amber-500"></div>
+                      <span className="text-amber-600 dark:text-amber-400">Menunggu</span>
+                    </div>
                   </div>
                 </div>
                 <div className="ml-4 rounded-lg bg-amber-100 p-2.5 dark:bg-amber-900/20">
-                  <ShieldCheck className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                  <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
                 </div>
               </div>
             </div>
@@ -456,7 +541,7 @@ export default function SuperadminDashboard() {
                       <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                       <input
                         type="text"
-                        placeholder="Cari..."
+                        placeholder="Cari nama/email..."
                         value={searchTerm}
                         onChange={handleSearch}
                         className="w-full rounded-lg border border-slate-200 bg-white pl-10 pr-4 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
@@ -471,9 +556,9 @@ export default function SuperadminDashboard() {
                         className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-slate-600 dark:bg-slate-700 dark:text-white sm:w-auto"
                       >
                         <option value="all">Semua Role</option>
-                        <option value="user">User</option>
-                        <option value="admin">Admin</option>
                         <option value="superadmin">SuperAdmin</option>
+                        <option value="admin">Admin</option>
+                        <option value="user">User</option>
                       </select>
                     </div>
                   </div>
@@ -493,26 +578,30 @@ export default function SuperadminDashboard() {
                   ))
                 ) : (
                   <div className="flex flex-col items-center justify-center py-16">
-                    <div className="mb-4 rounded-full bg-emerald-100 p-4 dark:bg-emerald-900/20">
-                      <CheckCircle2 className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
+                    <div className="mb-4 rounded-full bg-blue-100 p-4 dark:bg-blue-900/20">
+                      <Users className="h-8 w-8 text-blue-600 dark:text-blue-400" />
                     </div>
-                    <h3 className="text-base font-bold text-slate-900 dark:text-white sm:text-lg">Tidak ada pengguna</h3>
+                    <h3 className="text-base font-bold text-slate-900 dark:text-white sm:text-lg">
+                      {searchTerm || filterRole !== 'all' ? 'Tidak ditemukan' : 'Belum ada pengguna'}
+                    </h3>
                     <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-                      {searchTerm ? 'Tidak ada data yang cocok' : 'Belum ada pengguna'}
+                      {searchTerm || filterRole !== 'all' 
+                        ? 'Tidak ada data yang cocok dengan kriteria Anda' 
+                        : 'Tambahkan pengguna baru untuk memulai'}
                     </p>
                     <button
                       onClick={handleCreateUser}
                       className="mt-4 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700"
                     >
                       <UserPlus className="h-4 w-4" />
-                      Tambah Pengguna
+                      Tambah Pengguna Baru
                     </button>
                   </div>
                 )}
               </div>
 
               {/* Pagination - Tampilkan hanya jika total > 4 */}
-              {pagination.total > 4 && (
+              {pagination.last_page > 1 && (
                 <div className="border-t border-slate-100 bg-slate-50 px-4 py-4 dark:border-slate-700 dark:bg-slate-800/50 sm:px-6">
                   <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
                     <div className="text-sm text-slate-600 dark:text-slate-400">
@@ -676,7 +765,17 @@ export default function SuperadminDashboard() {
   );
 }
 
-// Component: User List Item (TANGGAL DIHAPUS)
+// Helper function for currency formatting
+function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(amount);
+}
+
+// Component: User List Item
 function UserListItem({ userData, onView }: { userData: UserData, onView: (id: number) => void }) {
   const getRoleColor = (role: string) => {
     switch (role) {
@@ -798,14 +897,4 @@ function QuickActionItem({ title, description, href, icon, color }: any) {
       <ChevronRight className="h-4 w-4 text-slate-400 transition-transform group-hover:translate-x-1 group-hover:text-blue-500" />
     </a>
   );
-}
-
-// Helper Functions
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0
-  }).format(amount);
 }

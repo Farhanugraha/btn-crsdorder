@@ -15,7 +15,9 @@ import {
   Calendar,
   Users,
   Package,
-  BarChart3
+  BarChart3,
+  PieChart as PieChartIcon,
+  LineChart as LineChartIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -149,6 +151,7 @@ const StatisticsPage = () => {
         ) {
           setChartData(data.data.chartData);
         } else {
+          // Jika tidak ada data chart, buat array kosong
           setChartData([]);
         }
         setError(null);
@@ -339,7 +342,7 @@ const StatisticsPage = () => {
 
   if (!statistics) {
     return (
-      <div className="min-h-screen bg-white px-4 py-8 dark:bg-slate-900 sm:px-6 sm:py-12">
+      <div className="min-h-screen bg-slate-50 px-4 py-8 dark:bg-slate-900 sm:px-6 sm:py-12">
         <div className="mx-auto max-w-7xl">
           <div className="rounded-xl border border-red-200 bg-red-50 p-6 dark:border-red-800 dark:bg-red-900/20">
             <div className="flex items-start gap-4">
@@ -365,6 +368,7 @@ const StatisticsPage = () => {
     );
   }
 
+  // Hitung total dan persentase status
   const totalStatusCount =
     statistics.completedOrders +
     statistics.processingOrders +
@@ -383,21 +387,28 @@ const StatisticsPage = () => {
       ? (statistics.canceledOrders / totalStatusCount) * 100
       : 0;
 
+  // Data untuk PieChart
   const pieData = [
     {
       name: 'Selesai',
       value: statistics.completedOrders,
-      fill: '#10b981'
+      fill: '#10b981',
+      color: 'text-emerald-600 dark:text-emerald-400',
+      bgColor: 'bg-emerald-100 dark:bg-emerald-900/30'
     },
     {
-      name: 'Sedang Diproses',
+      name: 'Diproses',
       value: statistics.processingOrders,
-      fill: '#f59e0b'
+      fill: '#f59e0b',
+      color: 'text-amber-600 dark:text-amber-400',
+      bgColor: 'bg-amber-100 dark:bg-amber-900/30'
     },
     {
       name: 'Dibatalkan',
       value: statistics.canceledOrders,
-      fill: '#ef4444'
+      fill: '#ef4444',
+      color: 'text-red-600 dark:text-red-400',
+      bgColor: 'bg-red-100 dark:bg-red-900/30'
     }
   ];
 
@@ -406,6 +417,9 @@ const StatisticsPage = () => {
   // Filter data untuk PieChart (hanya yang value > 0)
   const filteredPieData = pieData.filter(item => item.value > 0);
   const hasPieData = filteredPieData.length > 0;
+
+  // Cek apakah ada data untuk chart
+  const hasChartData = chartData.length > 0;
 
   return (
     <div className="min-h-screen bg-slate-50 px-4 py-6 dark:bg-slate-900 sm:px-6 sm:py-8">
@@ -582,106 +596,45 @@ const StatisticsPage = () => {
           {/* Line Chart - Revenue & Orders Trend */}
           <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
             <div className="border-b border-slate-200 bg-slate-50 px-5 py-4 dark:border-slate-700 dark:bg-slate-800/50">
-              <h3 className="font-bold text-slate-900 dark:text-white">
-                Tren Pesanan & Penerimaan
-              </h3>
+              <div className="flex items-center gap-3">
+                <LineChartIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                <h3 className="font-bold text-slate-900 dark:text-white">
+                  Tren Pesanan & Penerimaan
+                </h3>
+              </div>
+              <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
+                {filterType === 'today' ? 'Hari ini' : 
+                 filterType === 'week' ? '7 hari terakhir' :
+                 filterType === 'month' ? '30 hari terakhir' :
+                 filterType === 'custom' && customStartDate ? `${customStartDate} s/d ${customEndDate}` :
+                 '30 hari terakhir'}
+              </p>
             </div>
             <div className="p-4 sm:p-6">
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart
-                  data={chartData.length > 0 ? chartData : [{ date: 'No Data', orders: 0, revenue: 0 }]}
-                  margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                >
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    stroke="#e2e8f0"
-                    strokeOpacity={0.6}
-                  />
-                  <XAxis
-                    dataKey="date"
-                    stroke="#94a3b8"
-                    style={{ fontSize: '12px' }}
-                    tick={{ fill: '#64748b' }}
-                  />
-                  <YAxis
-                    stroke="#94a3b8"
-                    style={{ fontSize: '12px' }}
-                    tick={{ fill: '#64748b' }}
-                    tickFormatter={(value) => formatNumber(value)}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'white',
-                      border: '1px solid #e2e8f0',
-                      borderRadius: '8px',
-                      color: '#1e293b',
-                      fontSize: '12px',
-                      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
-                    }}
-                    formatter={(value: any, name: any) => {
-                      const numericValue = typeof value === 'number' ? value : Number(value) || 0;
-                      if (name === 'Penerimaan') {
-                        return [formatCurrency(numericValue), name];
-                      }
-                      return [formatNumber(numericValue), name];
-                    }}
-                    labelFormatter={(label: string) => `Tanggal: ${label}`}
-                  />
-                  <Legend
-                    wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }}
-                    iconType="circle"
-                    iconSize={8}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="orders"
-                    stroke="#3b82f6"
-                    name="Jumlah Pesanan"
-                    strokeWidth={2}
-                    dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }}
-                    activeDot={{ r: 6, strokeWidth: 0 }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="revenue"
-                    stroke="#10b981"
-                    name="Penerimaan"
-                    strokeWidth={2}
-                    dot={{ fill: '#10b981', strokeWidth: 2, r: 4 }}
-                    activeDot={{ r: 6, strokeWidth: 0 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          {/* Pie Chart - Status Distribution */}
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
-            <div className="border-b border-slate-200 bg-slate-50 px-5 py-4 dark:border-slate-700 dark:bg-slate-800/50">
-              <h3 className="font-bold text-slate-900 dark:text-white">
-                Distribusi Status Pesanan
-              </h3>
-            </div>
-            <div className="p-4 sm:p-6">
-              <ResponsiveContainer width="100%" height={250}>
-                {hasPieData ? (
-                  <PieChart>
-                    <Pie
-                      data={filteredPieData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={90}
-                      paddingAngle={2}
-                      dataKey="value"
-                      label={false}
-                    >
-                      {filteredPieData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
+              {hasChartData ? (
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart
+                    data={chartData}
+                    margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                  >
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke="#e2e8f0"
+                      strokeOpacity={0.6}
+                    />
+                    <XAxis
+                      dataKey="date"
+                      stroke="#94a3b8"
+                      style={{ fontSize: '12px' }}
+                      tick={{ fill: '#64748b' }}
+                    />
+                    <YAxis
+                      stroke="#94a3b8"
+                      style={{ fontSize: '12px' }}
+                      tick={{ fill: '#64748b' }}
+                      tickFormatter={(value) => formatNumber(value)}
+                    />
                     <Tooltip
-                      formatter={(value: unknown) => formatNumber(Number(value) || 0)}
                       contentStyle={{
                         backgroundColor: 'white',
                         border: '1px solid #e2e8f0',
@@ -690,47 +643,152 @@ const StatisticsPage = () => {
                         fontSize: '12px',
                         boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
                       }}
+                      formatter={(value: any, name: any) => {
+                        const numericValue = typeof value === 'number' ? value : Number(value) || 0;
+                        if (name === 'Penerimaan') {
+                          return [formatCurrency(numericValue), name];
+                        }
+                        return [formatNumber(numericValue), name];
+                      }}
+                      labelFormatter={(label: string) => `Tanggal: ${label}`}
                     />
-                  </PieChart>
-                ) : (
-                  <div className="flex h-full items-center justify-center">
-                    <div className="text-center">
-                      <AlertCircle className="mx-auto h-10 w-10 text-slate-400" />
-                      <p className="mt-3 text-sm font-medium text-slate-500 dark:text-slate-400">
-                        Tidak ada data status pesanan
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </ResponsiveContainer>
+                    <Legend
+                      wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }}
+                      iconType="circle"
+                      iconSize={8}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="orders"
+                      stroke="#3b82f6"
+                      name="Jumlah Pesanan"
+                      strokeWidth={2}
+                      dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }}
+                      activeDot={{ r: 6, strokeWidth: 0 }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="revenue"
+                      stroke="#10b981"
+                      name="Penerimaan"
+                      strokeWidth={2}
+                      dot={{ fill: '#10b981', strokeWidth: 2, r: 4 }}
+                      activeDot={{ r: 6, strokeWidth: 0 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex h-[300px] flex-col items-center justify-center">
+                  <AlertCircle className="h-16 w-16 text-slate-300 dark:text-slate-600" />
+                  <p className="mt-4 text-sm font-medium text-slate-500 dark:text-slate-400">
+                    Tidak ada data tren untuk periode ini
+                  </p>
+                  <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+                    Coba pilih periode waktu yang berbeda
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
 
-              {/* Legend */}
-              <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
-                {pieData.map((item, index) => (
-                  <div 
-                    key={item.name} 
-                    className="flex flex-col items-center rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/50"
-                  >
-                    <div className="flex items-center gap-2">
-                      <div 
-                        className="h-3 w-3 rounded-full" 
-                        style={{ backgroundColor: COLORS[index] }}
-                      ></div>
-                      <span className="text-sm font-semibold text-slate-900 dark:text-white">
-                        {item.name}
-                      </span>
-                    </div>
-                    <p className="mt-2 text-2xl font-bold" style={{ color: COLORS[index] }}>
-                      {formatNumber(item.value)}
-                    </p>
-                    <p className="text-xs text-slate-600 dark:text-slate-400">
-                      {totalStatusCount > 0
-                        ? ((item.value / totalStatusCount) * 100).toFixed(1)
-                        : 0}% dari total
-                    </p>
-                  </div>
-                ))}
+          {/* Pie Chart - Status Distribution */}
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
+            <div className="border-b border-slate-200 bg-slate-50 px-5 py-4 dark:border-slate-700 dark:bg-slate-800/50">
+              <div className="flex items-center gap-3">
+                <PieChartIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                <h3 className="font-bold text-slate-900 dark:text-white">
+                  Distribusi Status Pesanan
+                </h3>
               </div>
+              <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
+                Total: {formatNumber(totalStatusCount)} pesanan
+              </p>
+            </div>
+            <div className="p-4 sm:p-6">
+              {hasPieData ? (
+                <>
+                  <ResponsiveContainer width="100%" height={250}>
+                    <PieChart>
+                      <Pie
+                        data={filteredPieData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={90}
+                        paddingAngle={2}
+                        dataKey="value"
+                        label={(entry) => `${entry.name}: ${formatNumber(entry.value)}`}
+                        labelLine={false}
+                      >
+                        {filteredPieData.map((entry, index) => (
+                          <Cell 
+                            key={`cell-${index}`} 
+                            fill={COLORS[index % COLORS.length]} 
+                            stroke="white"
+                            strokeWidth={2}
+                          />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        formatter={(value: unknown) => [
+                          formatNumber(Number(value) || 0),
+                          'Jumlah'
+                        ]}
+                        labelFormatter={(name: string) => `Status: ${name}`}
+                        contentStyle={{
+                          backgroundColor: 'white',
+                          border: '1px solid #e2e8f0',
+                          borderRadius: '8px',
+                          color: '#1e293b',
+                          fontSize: '12px',
+                          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+                        }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+
+                  {/* Legend */}
+                  <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    {pieData.map((item, index) => (
+                      <div 
+                        key={item.name} 
+                        className={`flex flex-col items-center rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/50 ${item.value === 0 ? 'opacity-60' : ''}`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <div 
+                            className="h-3 w-3 rounded-full" 
+                            style={{ backgroundColor: COLORS[index] }}
+                          ></div>
+                          <span className="text-sm font-semibold text-slate-900 dark:text-white">
+                            {item.name}
+                          </span>
+                        </div>
+                        <p className="mt-2 text-2xl font-bold" style={{ color: COLORS[index] }}>
+                          {formatNumber(item.value)}
+                        </p>
+                        <p className="text-xs text-slate-600 dark:text-slate-400">
+                          {totalStatusCount > 0
+                            ? ((item.value / totalStatusCount) * 100).toFixed(1)
+                            : 0}%
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div className="flex h-[300px] flex-col items-center justify-center">
+                  <div className="relative">
+                    <PieChartIcon className="h-16 w-16 text-slate-300 dark:text-slate-600" />
+                    <AlertCircle className="absolute -right-2 -top-2 h-8 w-8 text-amber-500" />
+                  </div>
+                  <p className="mt-4 text-sm font-medium text-slate-500 dark:text-slate-400">
+                    Tidak ada data status pesanan
+                  </p>
+                  <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+                    Belum ada pesanan yang tercatat
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -738,9 +796,20 @@ const StatisticsPage = () => {
         {/* Order Status Summary */}
         <div className="mb-8 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
           <div className="border-b border-slate-200 bg-slate-50 px-5 py-4 dark:border-slate-700 dark:bg-slate-800/50">
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-              Status Pesanan Saat Ini
-            </h2>
+            <div className="flex items-center gap-3">
+              <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                Status Pesanan Saat Ini
+              </h2>
+            </div>
+            <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
+              Update terbaru: {new Date().toLocaleDateString('id-ID', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+              })}
+            </p>
           </div>
 
           <div className="grid gap-4 p-4 sm:grid-cols-3 sm:p-6">
@@ -778,34 +847,75 @@ const StatisticsPage = () => {
           </h3>
           <div className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/50">
-              <p className="text-slate-600 dark:text-slate-400">Pesanan Selesai</p>
-              <p className="mt-1 text-lg font-bold text-slate-900 dark:text-white">
+              <div className="flex items-center gap-2">
+                <div className="h-2 w-2 rounded-full bg-emerald-500"></div>
+                <p className="text-slate-600 dark:text-slate-400">Pesanan Selesai</p>
+              </div>
+              <p className="mt-2 text-xl font-bold text-emerald-600 dark:text-emerald-400">
                 {statistics.totalOrders > 0
                   ? ((statistics.completedOrders / statistics.totalOrders) * 100).toFixed(1)
                   : 0}%
               </p>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-500">
+                {formatNumber(statistics.completedOrders)} dari {formatNumber(statistics.totalOrders)}
+              </p>
             </div>
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/50">
-              <p className="text-slate-600 dark:text-slate-400">Pesanan Diproses</p>
-              <p className="mt-1 text-lg font-bold text-slate-900 dark:text-white">
+              <div className="flex items-center gap-2">
+                <div className="h-2 w-2 rounded-full bg-amber-500"></div>
+                <p className="text-slate-600 dark:text-slate-400">Pesanan Diproses</p>
+              </div>
+              <p className="mt-2 text-xl font-bold text-amber-600 dark:text-amber-400">
                 {statistics.totalOrders > 0
                   ? ((statistics.processingOrders / statistics.totalOrders) * 100).toFixed(1)
                   : 0}%
               </p>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-500">
+                {formatNumber(statistics.processingOrders)} dari {formatNumber(statistics.totalOrders)}
+              </p>
             </div>
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/50">
-              <p className="text-slate-600 dark:text-slate-400">Pesanan Batal</p>
-              <p className="mt-1 text-lg font-bold text-slate-900 dark:text-white">
+              <div className="flex items-center gap-2">
+                <div className="h-2 w-2 rounded-full bg-red-500"></div>
+                <p className="text-slate-600 dark:text-slate-400">Pesanan Batal</p>
+              </div>
+              <p className="mt-2 text-xl font-bold text-red-600 dark:text-red-400">
                 {statistics.totalOrders > 0
                   ? ((statistics.canceledOrders / statistics.totalOrders) * 100).toFixed(1)
                   : 0}%
               </p>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-500">
+                {formatNumber(statistics.canceledOrders)} dari {formatNumber(statistics.totalOrders)}
+              </p>
             </div>
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/50">
-              <p className="text-slate-600 dark:text-slate-400">Rata-rata Pesanan</p>
-              <p className="mt-1 text-lg font-bold text-slate-900 dark:text-white">
+              <div className="flex items-center gap-2">
+                <div className="h-2 w-2 rounded-full bg-blue-500"></div>
+                <p className="text-slate-600 dark:text-slate-400">Rata-rata Pesanan</p>
+              </div>
+              <p className="mt-2 text-xl font-bold text-blue-600 dark:text-blue-400">
                 {formatCurrency(statistics.averageOrderValue)}
               </p>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-500">
+                Nilai per transaksi
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Info Box */}
+        <div className="mt-8 rounded-xl border border-blue-200 bg-blue-50 p-5 dark:border-blue-800 dark:bg-blue-900/20">
+          <div className="flex items-start gap-4">
+            <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-blue-600 dark:text-blue-400" />
+            <div>
+              <p className="text-sm font-medium text-blue-900 dark:text-blue-300">
+                <span className="font-bold">Tips:</span> Untuk mendapatkan data yang lebih akurat, pastikan:
+              </p>
+              <ul className="mt-2 list-inside list-disc text-xs text-blue-800 dark:text-blue-400">
+                <li>Semua pesanan telah dimasukkan dengan status yang benar</li>
+                <li>Pilih periode waktu yang sesuai untuk analisis</li>
+                <li>Refresh data secara berkala untuk update terbaru</li>
+              </ul>
             </div>
           </div>
         </div>
