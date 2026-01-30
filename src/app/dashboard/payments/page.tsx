@@ -160,19 +160,24 @@ export default function PaymentsPage() {
     try {
       const token = localStorage.getItem('auth_token');
       if (!token) {
-        setError('⚠️ Token tidak ditemukan. Silakan login terlebih dahulu.');
+        setError(
+          '⚠️ Token tidak ditemukan. Silakan login terlebih dahulu.'
+        );
         setLoading(false);
         return;
       }
 
-      const res = await fetch(`${apiUrl}/api/admin/payments?per_page=100`, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          Accept: 'application/json'
+      const res = await fetch(
+        `${apiUrl}/api/admin/payments?per_page=100`,
+        {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            Accept: 'application/json'
+          }
         }
-      });
+      );
 
       if (!res.ok) {
         throw new Error(`HTTP ${res.status}`);
@@ -184,8 +189,8 @@ export default function PaymentsPage() {
         const paymentsData = Array.isArray(data.data.data)
           ? data.data.data
           : Array.isArray(data.data)
-          ? data.data
-          : [];
+            ? data.data
+            : [];
 
         setPayments(paymentsData);
       } else {
@@ -215,28 +220,34 @@ export default function PaymentsPage() {
 
   // Fungsi untuk memeriksa apakah tanggal pembayaran sesuai dengan filter
   const checkDateFilter = (paymentDateStr: string) => {
-    const paymentDate = new Date(paymentDateStr).toISOString().split('T')[0];
-    
+    const paymentDate = new Date(paymentDateStr)
+      .toISOString()
+      .split('T')[0];
+
     // Jika ada dateFilter (filter tanggal spesifik)
     if (dateFilter) {
       return paymentDate === dateFilter;
     }
-    
+
     // Jika ada dateRange (filter rentang tanggal)
     if (dateRange.start || dateRange.end) {
       const paymentDateObj = new Date(paymentDate);
-      const startDate = dateRange.start ? new Date(dateRange.start) : null;
+      const startDate = dateRange.start
+        ? new Date(dateRange.start)
+        : null;
       const endDate = dateRange.end ? new Date(dateRange.end) : null;
-      
+
       if (startDate && endDate) {
-        return paymentDateObj >= startDate && paymentDateObj <= endDate;
+        return (
+          paymentDateObj >= startDate && paymentDateObj <= endDate
+        );
       } else if (startDate) {
         return paymentDateObj >= startDate;
       } else if (endDate) {
         return paymentDateObj <= endDate;
       }
     }
-    
+
     // Jika tidak ada filter tanggal, return true
     return true;
   };
@@ -245,8 +256,12 @@ export default function PaymentsPage() {
     // Filter berdasarkan pencarian
     const hasContent =
       p.transaction_id.toLowerCase().includes(search.toLowerCase()) ||
-      p.order.order_code.toLowerCase().includes(search.toLowerCase()) ||
-      p.order.user.name.toLowerCase().includes(search.toLowerCase()) ||
+      p.order.order_code
+        .toLowerCase()
+        .includes(search.toLowerCase()) ||
+      p.order.user.name
+        .toLowerCase()
+        .includes(search.toLowerCase()) ||
       p.order.user.email.toLowerCase().includes(search.toLowerCase());
 
     // Filter berdasarkan status
@@ -265,19 +280,47 @@ export default function PaymentsPage() {
   // Statistics
   const stats = {
     total: payments.length,
-    pending: payments.filter((p) => p.payment_status === 'pending').length,
-    completed: payments.filter((p) => p.payment_status === 'completed').length,
-    rejected: payments.filter((p) => p.payment_status === 'rejected').length,
+    pending: payments.filter((p) => p.payment_status === 'pending')
+      .length,
+    completed: payments.filter(
+      (p) => p.payment_status === 'completed'
+    ).length,
+    rejected: payments.filter((p) => p.payment_status === 'rejected')
+      .length,
     totalRevenue: payments
       .filter((p) => p.payment_status === 'completed')
       .reduce((sum, p) => sum + parseInt(p.order.total_price), 0)
   };
 
   const statusOptions = [
-    { value: 'pending', label: 'Menunggu', shortLabel: 'Pending', icon: Clock, color: 'text-amber-600' },
-    { value: 'completed', label: 'Terverifikasi', shortLabel: 'Verified', icon: CheckCircle, color: 'text-green-600' },
-    { value: 'rejected', label: 'Ditolak', shortLabel: 'Rejected', icon: XCircle, color: 'text-red-600' },
-    { value: 'all', label: 'Semua Status', shortLabel: 'All', icon: FileText, color: 'text-blue-600' }
+    {
+      value: 'pending',
+      label: 'Menunggu',
+      shortLabel: 'Pending',
+      icon: Clock,
+      color: 'text-amber-600'
+    },
+    {
+      value: 'completed',
+      label: 'Terverifikasi',
+      shortLabel: 'Verified',
+      icon: CheckCircle,
+      color: 'text-green-600'
+    },
+    {
+      value: 'rejected',
+      label: 'Ditolak',
+      shortLabel: 'Rejected',
+      icon: XCircle,
+      color: 'text-red-600'
+    },
+    {
+      value: 'all',
+      label: 'Semua Status',
+      shortLabel: 'All',
+      icon: FileText,
+      color: 'text-blue-600'
+    }
   ];
 
   // Loading State
@@ -286,11 +329,15 @@ export default function PaymentsPage() {
       <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white dark:bg-slate-900">
         <div className="relative">
           <Loader2 className="h-14 w-14 animate-spin text-blue-600 dark:text-blue-400" />
-          <div className="absolute inset-0 -z-10 rounded-full bg-blue-50 dark:bg-blue-900/10 blur-sm"></div>
+          <div className="absolute inset-0 -z-10 rounded-full bg-blue-50 blur-sm dark:bg-blue-900/10"></div>
         </div>
         <div className="mt-6 text-center">
-          <p className="text-lg font-medium text-slate-800 dark:text-slate-200">Memuat halaman</p>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Harap tunggu sebentar...</p>
+          <p className="text-lg font-medium text-slate-800 dark:text-slate-200">
+            Memuat halaman
+          </p>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            Harap tunggu sebentar...
+          </p>
         </div>
       </div>
     );
@@ -315,7 +362,12 @@ export default function PaymentsPage() {
   };
 
   // Cek apakah ada filter aktif
-  const hasActiveFilters = dateFilter || dateRange.start || dateRange.end || statusFilter !== 'all' || search;
+  const hasActiveFilters =
+    dateFilter ||
+    dateRange.start ||
+    dateRange.end ||
+    statusFilter !== 'all' ||
+    search;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -325,13 +377,13 @@ export default function PaymentsPage() {
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-center gap-3">
               <div className="rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 p-2.5 shadow-lg lg:p-3">
-                <FileText className="h-6 w-6 lg:h-8 lg:w-8 text-white" />
+                <FileText className="h-6 w-6 text-white lg:h-8 lg:w-8" />
               </div>
               <div>
                 <h1 className="text-xl font-bold text-gray-900 dark:text-white lg:text-2xl">
                   Manajemen Pembayaran
                 </h1>
-                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 lg:text-sm">
+                <p className="mt-1 text-xs text-gray-600 dark:text-gray-400 lg:text-sm">
                   Kelola semua pembayaran pesanan pelanggan
                 </p>
               </div>
@@ -351,13 +403,19 @@ export default function PaymentsPage() {
                 className="flex items-center gap-2 rounded-lg bg-gray-100 px-3 py-2 text-xs font-medium text-gray-700 transition-all hover:bg-gray-200 disabled:opacity-50 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 lg:px-4 lg:py-2.5 lg:text-sm"
                 title="Refresh data"
               >
-                <RefreshCw className={`h-3.5 w-3.5 lg:h-4 lg:w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                <RefreshCw
+                  className={`h-3.5 w-3.5 lg:h-4 lg:w-4 ${
+                    isRefreshing ? 'animate-spin' : ''
+                  }`}
+                />
                 <span className="hidden sm:inline">Refresh</span>
               </button>
-              
+
               {/* Mobile Filter Toggle Button */}
               <button
-                onClick={() => setShowMobileFilters(!showMobileFilters)}
+                onClick={() =>
+                  setShowMobileFilters(!showMobileFilters)
+                }
                 className="rounded-lg bg-gray-100 p-2 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 lg:hidden"
               >
                 <Filter className="h-4 w-4" />
@@ -372,8 +430,12 @@ export default function PaymentsPage() {
           <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-800 lg:p-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-gray-600 dark:text-gray-400 lg:text-sm">Total Pembayaran</p>
-                <p className="mt-1 text-xl font-bold text-gray-900 dark:text-white lg:mt-2 lg:text-3xl">{stats.total}</p>
+                <p className="text-xs font-medium text-gray-600 dark:text-gray-400 lg:text-sm">
+                  Total Pembayaran
+                </p>
+                <p className="mt-1 text-xl font-bold text-gray-900 dark:text-white lg:mt-2 lg:text-3xl">
+                  {stats.total}
+                </p>
               </div>
               <div className="rounded-lg bg-gradient-to-br from-blue-100 to-blue-200 p-2 dark:from-blue-900/30 dark:to-blue-800/30 lg:p-3">
                 <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400 lg:h-6 lg:w-6" />
@@ -388,8 +450,12 @@ export default function PaymentsPage() {
           <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-800 lg:p-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-gray-600 dark:text-gray-400 lg:text-sm">Menunggu Verifikasi</p>
-                <p className="mt-1 text-xl font-bold text-gray-900 dark:text-white lg:mt-2 lg:text-3xl">{stats.pending}</p>
+                <p className="text-xs font-medium text-gray-600 dark:text-gray-400 lg:text-sm">
+                  Menunggu Verifikasi
+                </p>
+                <p className="mt-1 text-xl font-bold text-gray-900 dark:text-white lg:mt-2 lg:text-3xl">
+                  {stats.pending}
+                </p>
               </div>
               <div className="rounded-lg bg-gradient-to-br from-amber-100 to-amber-200 p-2 dark:from-amber-900/30 dark:to-amber-800/30 lg:p-3">
                 <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400 lg:h-6 lg:w-6" />
@@ -404,8 +470,12 @@ export default function PaymentsPage() {
           <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-800 lg:p-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-gray-600 dark:text-gray-400 lg:text-sm">Terverifikasi</p>
-                <p className="mt-1 text-xl font-bold text-gray-900 dark:text-white lg:mt-2 lg:text-3xl">{stats.completed}</p>
+                <p className="text-xs font-medium text-gray-600 dark:text-gray-400 lg:text-sm">
+                  Terverifikasi
+                </p>
+                <p className="mt-1 text-xl font-bold text-gray-900 dark:text-white lg:mt-2 lg:text-3xl">
+                  {stats.completed}
+                </p>
               </div>
               <div className="rounded-lg bg-gradient-to-br from-emerald-100 to-emerald-200 p-2 dark:from-emerald-900/30 dark:to-emerald-800/30 lg:p-3">
                 <CheckCircle className="h-4 w-4 text-emerald-600 dark:text-emerald-400 lg:h-6 lg:w-6" />
@@ -420,11 +490,13 @@ export default function PaymentsPage() {
           <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-800 lg:p-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-gray-600 dark:text-gray-400 lg:text-sm">Total Pendapatan</p>
+                <p className="text-xs font-medium text-gray-600 dark:text-gray-400 lg:text-sm">
+                  Total Pendapatan
+                </p>
                 <p className="mt-1 text-lg font-bold text-gray-900 dark:text-white lg:mt-2 lg:text-2xl">
                   {formatCurrency(stats.totalRevenue)}
                 </p>
-                <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5 lg:text-xs">
+                <p className="mt-0.5 text-[10px] text-gray-500 dark:text-gray-400 lg:text-xs">
                   Rp {stats.totalRevenue.toLocaleString('id-ID')}
                 </p>
               </div>
@@ -454,10 +526,18 @@ export default function PaymentsPage() {
 
         {/* MOBILE FILTERS OVERLAY */}
         {showMobileFilters && (
-          <div className="fixed inset-0 z-50 bg-black/50 lg:hidden" onClick={() => setShowMobileFilters(false)}>
-            <div className="fixed bottom-0 left-0 right-0 max-h-[80vh] overflow-y-auto rounded-t-2xl bg-white p-6 dark:bg-gray-800" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="fixed inset-0 z-50 bg-black/50 lg:hidden"
+            onClick={() => setShowMobileFilters(false)}
+          >
+            <div
+              className="fixed bottom-0 left-0 right-0 max-h-[80vh] overflow-y-auto rounded-t-2xl bg-white p-6 dark:bg-gray-800"
+              onClick={(e) => e.stopPropagation()}
+            >
               <div className="mb-4 flex items-center justify-between">
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Filter</h3>
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                  Filter
+                </h3>
                 <button
                   onClick={() => setShowMobileFilters(false)}
                   className="rounded-full p-1 hover:bg-gray-100 dark:hover:bg-gray-700"
@@ -465,7 +545,7 @@ export default function PaymentsPage() {
                   <span className="text-2xl">×</span>
                 </button>
               </div>
-              
+
               {/* Mobile Status Filter */}
               <div className="mb-4">
                 <label className="mb-2 block text-sm font-semibold text-gray-900 dark:text-white">
@@ -488,7 +568,9 @@ export default function PaymentsPage() {
                         }`}
                       >
                         <Icon className={`h-5 w-5 ${option.color}`} />
-                        <span className="text-xs font-medium">{option.shortLabel}</span>
+                        <span className="text-xs font-medium">
+                          {option.shortLabel}
+                        </span>
                       </button>
                     );
                   })}
@@ -515,15 +597,20 @@ export default function PaymentsPage() {
                   >
                     Hari Ini
                   </button>
-                  
+
                   <div className="space-y-2">
                     <div>
-                      <label className="mb-1 block text-xs text-gray-600 dark:text-gray-400">Dari Tanggal</label>
+                      <label className="mb-1 block text-xs text-gray-600 dark:text-gray-400">
+                        Dari Tanggal
+                      </label>
                       <input
                         type="date"
                         value={dateRange.start}
                         onChange={(e) => {
-                          setDateRange({ ...dateRange, start: e.target.value });
+                          setDateRange({
+                            ...dateRange,
+                            start: e.target.value
+                          });
                           setDateFilter('');
                           setPage(1);
                         }}
@@ -532,12 +619,17 @@ export default function PaymentsPage() {
                       />
                     </div>
                     <div>
-                      <label className="mb-1 block text-xs text-gray-600 dark:text-gray-400">Sampai Tanggal</label>
+                      <label className="mb-1 block text-xs text-gray-600 dark:text-gray-400">
+                        Sampai Tanggal
+                      </label>
                       <input
                         type="date"
                         value={dateRange.end}
                         onChange={(e) => {
-                          setDateRange({ ...dateRange, end: e.target.value });
+                          setDateRange({
+                            ...dateRange,
+                            end: e.target.value
+                          });
                           setDateFilter('');
                           setPage(1);
                         }}
@@ -599,7 +691,9 @@ export default function PaymentsPage() {
                             : 'text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-600'
                         }`}
                       >
-                        <Icon className={`h-3.5 w-3.5 ${option.color}`} />
+                        <Icon
+                          className={`h-3.5 w-3.5 ${option.color}`}
+                        />
                         <span>{option.label}</span>
                       </button>
                     );
@@ -620,13 +714,16 @@ export default function PaymentsPage() {
                 >
                   Hari Ini
                 </button>
-                
+
                 <div className="flex items-center gap-2">
                   <input
                     type="date"
                     value={dateRange.start}
                     onChange={(e) => {
-                      setDateRange({ ...dateRange, start: e.target.value });
+                      setDateRange({
+                        ...dateRange,
+                        start: e.target.value
+                      });
                       setDateFilter('');
                       setPage(1);
                     }}
@@ -634,12 +731,17 @@ export default function PaymentsPage() {
                     placeholder="Dari"
                     max={new Date().toISOString().split('T')[0]}
                   />
-                  <span className="text-gray-400 dark:text-gray-500">-</span>
+                  <span className="text-gray-400 dark:text-gray-500">
+                    -
+                  </span>
                   <input
                     type="date"
                     value={dateRange.end}
                     onChange={(e) => {
-                      setDateRange({ ...dateRange, end: e.target.value });
+                      setDateRange({
+                        ...dateRange,
+                        end: e.target.value
+                      });
                       setDateFilter('');
                       setPage(1);
                     }}
@@ -662,7 +764,9 @@ export default function PaymentsPage() {
                       {filtered.length}
                     </span>{' '}
                     pembayaran ditemukan
-                    {(dateFilter || dateRange.start || dateRange.end) && (
+                    {(dateFilter ||
+                      dateRange.start ||
+                      dateRange.end) && (
                       <span className="ml-2 text-xs text-blue-600 dark:text-blue-400">
                         (difilter berdasarkan tanggal)
                       </span>
@@ -707,10 +811,13 @@ export default function PaymentsPage() {
                             {payment.transaction_id.slice(0, 12)}...
                           </p>
                         </div>
-                        <StatusBadge status={payment.payment_status} type="payment" />
+                        <StatusBadge
+                          status={payment.payment_status}
+                          type="payment"
+                        />
                       </div>
                     </div>
-                    
+
                     <div className="p-3">
                       {/* Customer Info */}
                       <div className="mb-3">
@@ -721,43 +828,57 @@ export default function PaymentsPage() {
                           {payment.order.user.email}
                         </p>
                       </div>
-                      
+
                       {/* Details Grid */}
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">Metode</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            Metode
+                          </p>
                           <p className="text-sm font-medium text-gray-900 dark:text-white">
-                            {payment.payment_method === 'bank_transfer'
+                            {payment.payment_method ===
+                            'bank_transfer'
                               ? 'Transfer'
-                              : payment.payment_method === 'credit_card'
+                              : payment.payment_method ===
+                                  'credit_card'
                                 ? 'Kartu'
-                                : payment.payment_method === 'e_wallet'
+                                : payment.payment_method ===
+                                    'e_wallet'
                                   ? 'E-Wallet'
                                   : 'QRIS'}
                           </p>
                         </div>
                         <div>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">Tanggal</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            Tanggal
+                          </p>
                           <p className="text-sm font-medium text-gray-900 dark:text-white">
-                            {new Date(payment.created_at).toLocaleDateString('id-ID', {
+                            {new Date(
+                              payment.created_at
+                            ).toLocaleDateString('id-ID', {
                               day: 'numeric',
                               month: 'short'
                             })}
                           </p>
                         </div>
                       </div>
-                      
+
                       {/* Amount & Action */}
                       <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 dark:border-gray-700">
                         <div>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">Jumlah</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            Jumlah
+                          </p>
                           <p className="text-lg font-bold text-gray-900 dark:text-white">
-                            Rp {parseInt(payment.order.total_price).toLocaleString('id-ID')}
+                            Rp{' '}
+                            {parseInt(
+                              payment.order.total_price
+                            ).toLocaleString('id-ID')}
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
                           <a
-                            href={`/dashboard/admin/payments/${payment.id}`}
+                            href={`/dashboard/payments/${payment.id}`}
                             className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition-all hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600"
                           >
                             <Eye className="h-3.5 w-3.5" />
@@ -826,25 +947,36 @@ export default function PaymentsPage() {
                         </td>
                         <td className="whitespace-nowrap px-6 py-4">
                           <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-800 dark:bg-gray-700 dark:text-gray-300">
-                            {payment.payment_method === 'bank_transfer'
+                            {payment.payment_method ===
+                            'bank_transfer'
                               ? 'Transfer Bank'
-                              : payment.payment_method === 'credit_card'
+                              : payment.payment_method ===
+                                  'credit_card'
                                 ? 'Kartu Kredit'
-                                : payment.payment_method === 'e_wallet'
+                                : payment.payment_method ===
+                                    'e_wallet'
                                   ? 'E-Wallet'
                                   : 'QRIS'}
                           </span>
                         </td>
                         <td className="whitespace-nowrap px-6 py-4">
                           <p className="font-semibold text-gray-900 dark:text-white">
-                            Rp {parseInt(payment.order.total_price).toLocaleString('id-ID')}
+                            Rp{' '}
+                            {parseInt(
+                              payment.order.total_price
+                            ).toLocaleString('id-ID')}
                           </p>
                         </td>
                         <td className="whitespace-nowrap px-6 py-4">
-                          <StatusBadge status={payment.payment_status} type="payment" />
+                          <StatusBadge
+                            status={payment.payment_status}
+                            type="payment"
+                          />
                         </td>
                         <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                          {new Date(payment.created_at).toLocaleDateString('id-ID', {
+                          {new Date(
+                            payment.created_at
+                          ).toLocaleDateString('id-ID', {
                             day: 'numeric',
                             month: 'short',
                             year: 'numeric'
@@ -853,7 +985,7 @@ export default function PaymentsPage() {
                         <td className="whitespace-nowrap px-6 py-4">
                           <div className="flex items-center gap-2">
                             <a
-                              href={`/dashboard/admin/payments/${payment.id}`}
+                              href={`/dashboard/payments/${payment.id}`}
                               className="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 transition-all hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50"
                             >
                               <Eye className="h-3.5 w-3.5" />
@@ -876,8 +1008,8 @@ export default function PaymentsPage() {
                 Tidak ada pembayaran ditemukan
               </p>
               <p className="mt-1 text-sm text-gray-600 dark:text-gray-400 sm:mt-2">
-                {hasActiveFilters 
-                  ? 'Coba ubah filter pencarian Anda' 
+                {hasActiveFilters
+                  ? 'Coba ubah filter pencarian Anda'
                   : 'Belum ada data pembayaran'}
               </p>
               {hasActiveFilters && (
@@ -896,7 +1028,9 @@ export default function PaymentsPage() {
             <div className="border-t border-gray-200 px-4 py-4 dark:border-gray-700 sm:px-6">
               <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
                 <div className="text-xs text-gray-600 dark:text-gray-400 sm:text-sm">
-                  Menampilkan {(page - 1) * perPage + 1} - {Math.min(page * perPage, filtered.length)} dari {filtered.length}
+                  Menampilkan {(page - 1) * perPage + 1} -{' '}
+                  {Math.min(page * perPage, filtered.length)} dari{' '}
+                  {filtered.length}
                 </div>
                 <div className="flex items-center gap-1">
                   <button
@@ -906,12 +1040,13 @@ export default function PaymentsPage() {
                   >
                     <ChevronLeft className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                   </button>
-                  
+
                   <div className="flex items-center gap-0.5 sm:gap-1">
                     {(() => {
                       const buttons = [];
-                      const maxVisible = window.innerWidth < 640 ? 3 : 5;
-                      
+                      const maxVisible =
+                        window.innerWidth < 640 ? 3 : 5;
+
                       if (pages <= maxVisible) {
                         for (let i = 1; i <= pages; i++) {
                           buttons.push(
@@ -947,7 +1082,10 @@ export default function PaymentsPage() {
                         // Ellipsis if needed
                         if (page > 3) {
                           buttons.push(
-                            <span key="ellipsis1" className="px-1 text-gray-400 dark:text-gray-600">
+                            <span
+                              key="ellipsis1"
+                              className="px-1 text-gray-400 dark:text-gray-600"
+                            >
                               ...
                             </span>
                           );
@@ -956,7 +1094,7 @@ export default function PaymentsPage() {
                         // Current page and neighbors
                         const start = Math.max(2, page - 1);
                         const end = Math.min(pages - 1, page + 1);
-                        
+
                         for (let i = start; i <= end; i++) {
                           if (i !== 1 && i !== pages) {
                             buttons.push(
@@ -978,7 +1116,10 @@ export default function PaymentsPage() {
                         // Ellipsis if needed
                         if (page < pages - 2) {
                           buttons.push(
-                            <span key="ellipsis2" className="px-1 text-gray-400 dark:text-gray-600">
+                            <span
+                              key="ellipsis2"
+                              className="px-1 text-gray-400 dark:text-gray-600"
+                            >
                               ...
                             </span>
                           );
@@ -999,7 +1140,7 @@ export default function PaymentsPage() {
                           </button>
                         );
                       }
-                      
+
                       return buttons;
                     })()}
                   </div>

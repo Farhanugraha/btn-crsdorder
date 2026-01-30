@@ -288,16 +288,20 @@ export default function OrdersPage() {
   if (loading) {
     return (
       <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white dark:bg-slate-900">
-      <div className="relative">
-        <Loader2 className="h-14 w-14 animate-spin text-blue-600 dark:text-blue-400" />
-        {/* Optional: Background circle */}
-        <div className="absolute inset-0 -z-10 rounded-full bg-blue-50 dark:bg-blue-900/10 blur-sm"></div>
+        <div className="relative">
+          <Loader2 className="h-14 w-14 animate-spin text-blue-600 dark:text-blue-400" />
+          {/* Optional: Background circle */}
+          <div className="absolute inset-0 -z-10 rounded-full bg-blue-50 blur-sm dark:bg-blue-900/10"></div>
+        </div>
+        <div className="mt-6 text-center">
+          <p className="text-lg font-medium text-slate-800 dark:text-slate-200">
+            Memuat halaman
+          </p>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            Harap tunggu sebentar...
+          </p>
+        </div>
       </div>
-      <div className="mt-6 text-center">
-        <p className="text-lg font-medium text-slate-800 dark:text-slate-200">Memuat halaman</p>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Harap tunggu sebentar...</p>
-      </div>
-    </div>
     );
   }
 
@@ -554,7 +558,7 @@ export default function OrdersPage() {
                       </td>
                       <td className="whitespace-nowrap px-6 py-4">
                         <a
-                          href={`/dashboard/admin/orders/${order.id}`}
+                          href={`/dashboard/orders/${order.id}`}
                           className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600"
                         >
                           <Eye className="h-4 w-4" />
@@ -653,7 +657,7 @@ export default function OrdersPage() {
                       )}
                     </p>
                     <a
-                      href={`/dashboard/admin/orders/${order.id}`}
+                      href={`/dashboard/orders/${order.id}`}
                       className="inline-flex items-center gap-2 whitespace-nowrap rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600"
                     >
                       <Eye className="h-4 w-4" />

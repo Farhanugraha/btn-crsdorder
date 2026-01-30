@@ -414,25 +414,25 @@ export default function AdminDashboard() {
                 <QuickActionItem
                   title="Semua Pesanan"
                   description="Kelola pesanan"
-                  href="/dashboard/admin/orders"
+                  href="/dashboard/orders"
                   icon="📋"
                 />
                 <QuickActionItem
                   title="Pembayaran"
                   description="Verifikasi pembayaran"
-                  href="/dashboard/admin/payments"
+                  href="/dashboard/payments"
                   icon="💳"
                 />
                 <QuickActionItem
                   title="Statistik"
                   description="Lihat analytics"
-                  href="/dashboard/admin/statistics"
+                  href="/dashboard/statistics"
                   icon="📊"
                 />
                 <QuickActionItem
                   title="Laporan"
                   description="Export data"
-                  href="/dashboard/admin/reports"
+                  href="/dashboard/reports"
                   icon="📄"
                 />
               </div>
@@ -513,7 +513,7 @@ function OrderRow({ order }: { order: Order }) {
           </div>
           <button
             onClick={() =>
-              (window.location.href = `/dashboard/admin/orders/${order.id}`)
+              (window.location.href = `/dashboard/orders/${order.id}`)
             }
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white transition-all hover:bg-blue-700 hover:shadow-md active:scale-95 dark:bg-blue-700 dark:hover:bg-blue-600 sm:h-9 sm:w-9"
           >

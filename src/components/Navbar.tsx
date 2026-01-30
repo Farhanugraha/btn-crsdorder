@@ -86,15 +86,19 @@ const Navbar = () => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [latestOrderId, setLatestOrderId] = useState<number | null>(null);
+  const [latestOrderId, setLatestOrderId] = useState<number | null>(
+    null
+  );
   const [isLoadingOrder, setIsLoadingOrder] = useState(false);
-  const [showNoPaymentDialog, setShowNoPaymentDialog] = useState(false);
+  const [showNoPaymentDialog, setShowNoPaymentDialog] =
+    useState(false);
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
   const [notificationsCount, setNotificationsCount] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Check role authorization
-  const isAdmin = user && (user.role === 'admin' || user.role === 'superadmin');
+  const isAdmin =
+    user && (user.role === 'admin' || user.role === 'superadmin');
   const isSuperAdmin = user && user.role === 'superadmin';
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
@@ -108,16 +112,16 @@ const Navbar = () => {
 
   // Helper untuk get admin/superadmin routes
   const getAdminOrdersLink = () =>
-    isSuperAdmin ? '/dashboard/admin/orders' : '/dashboard/admin/orders';
+    isSuperAdmin ? '/dashboard/orders' : '/dashboard/orders';
 
   const getAdminPaymentsLink = () =>
-    isSuperAdmin ? '/dashboard/admin/payments' : '/dashboard/admin/payments';
+    isSuperAdmin ? '/dashboard/payments' : '/dashboard/payments';
 
   const getAdminStatisticsLink = () =>
-    isSuperAdmin ? '/dashboard/admin/statistics' : '/dashboard/admin/statistics';
+    isSuperAdmin ? '/dashboard/statistics' : '/dashboard/statistics';
 
   const getAdminReportsLink = () =>
-    isSuperAdmin ? '/dashboard/admin/reports' : '/dashboard/admin/reports';
+    isSuperAdmin ? '/dashboard/reports' : '/dashboard/reports';
 
   useEffect(() => {
     const checkAuth = () => {
@@ -155,7 +159,11 @@ const Navbar = () => {
     checkAuth();
 
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'auth_user' || e.key === 'auth_token' || e.key === null) {
+      if (
+        e.key === 'auth_user' ||
+        e.key === 'auth_token' ||
+        e.key === null
+      ) {
         checkAuth();
       }
     };
@@ -196,7 +204,10 @@ const Navbar = () => {
     window.addEventListener('payment-success', handlePaymentSuccess);
 
     return () => {
-      window.removeEventListener('payment-success', handlePaymentSuccess);
+      window.removeEventListener(
+        'payment-success',
+        handlePaymentSuccess
+      );
     };
   }, [isAdmin]);
 
@@ -367,9 +378,11 @@ const Navbar = () => {
                 </div>
                 <div className="hidden lg:block">
                   <h1 className="text-lg font-bold tracking-tight text-blue-900 dark:text-white">
-                    BTN Food Order
+                    OBAMA
                   </h1>
-                  <p className="text-xs text-muted-foreground">Sistem Pemesanan Makanan</p>
+                  <p className="text-xs text-muted-foreground">
+                    Order By Bang Ahmad
+                  </p>
                 </div>
               </Link>
             </div>
@@ -393,7 +406,10 @@ const Navbar = () => {
                   <Link
                     href={getAdminOrdersLink()}
                     className={cn(
-                      buttonVariants({ variant: 'ghost', size: 'sm' }),
+                      buttonVariants({
+                        variant: 'ghost',
+                        size: 'sm'
+                      }),
                       'group flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all hover:bg-primary/10 hover:text-primary'
                     )}
                   >
@@ -403,7 +419,10 @@ const Navbar = () => {
                   <Link
                     href={getAdminPaymentsLink()}
                     className={cn(
-                      buttonVariants({ variant: 'ghost', size: 'sm' }),
+                      buttonVariants({
+                        variant: 'ghost',
+                        size: 'sm'
+                      }),
                       'group flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all hover:bg-primary/10 hover:text-primary'
                     )}
                   >
@@ -413,7 +432,10 @@ const Navbar = () => {
                   <Link
                     href={getAdminStatisticsLink()}
                     className={cn(
-                      buttonVariants({ variant: 'ghost', size: 'sm' }),
+                      buttonVariants({
+                        variant: 'ghost',
+                        size: 'sm'
+                      }),
                       'group flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all hover:bg-primary/10 hover:text-primary'
                     )}
                   >
@@ -423,7 +445,10 @@ const Navbar = () => {
                   <Link
                     href={getAdminReportsLink()}
                     className={cn(
-                      buttonVariants({ variant: 'ghost', size: 'sm' }),
+                      buttonVariants({
+                        variant: 'ghost',
+                        size: 'sm'
+                      }),
                       'group flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all hover:bg-primary/10 hover:text-primary'
                     )}
                   >
@@ -441,25 +466,37 @@ const Navbar = () => {
                           <ChevronDown className="h-3 w-3 opacity-50 transition-transform group-hover:rotate-180" />
                         </button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="center" className="w-48">
+                      <DropdownMenuContent
+                        align="center"
+                        className="w-48"
+                      >
                         <DropdownMenuLabel className="text-xs font-semibold text-muted-foreground">
                           Menu Superadmin
                         </DropdownMenuLabel>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem asChild>
-                          <Link href="/dashboard/superadmin/user-management" className="flex items-center gap-2 cursor-pointer">
+                          <Link
+                            href="/dashboard/user-management"
+                            className="flex cursor-pointer items-center gap-2"
+                          >
                             <Users className="h-4 w-4" />
                             Manajemen User
                           </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem asChild>
-                          <Link href="/dashboard/superadmin/areas" className="flex items-center gap-2 cursor-pointer">
+                          <Link
+                            href="/dashboard/areas"
+                            className="flex cursor-pointer items-center gap-2"
+                          >
                             <MapPin className="h-4 w-4" />
                             Area
                           </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem asChild>
-                          <Link href="/dashboard/superadmin/restaurants" className="flex items-center gap-2 cursor-pointer">
+                          <Link
+                            href="/dashboard/restaurants"
+                            className="flex cursor-pointer items-center gap-2"
+                          >
                             <ChefHat className="h-4 w-4" />
                             Restaurant
                           </Link>
@@ -476,20 +513,26 @@ const Navbar = () => {
                   <Link
                     href="/areas"
                     className={cn(
-                      buttonVariants({ variant: 'ghost', size: 'sm' }),
+                      buttonVariants({
+                        variant: 'ghost',
+                        size: 'sm'
+                      }),
                       'group flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all hover:bg-primary/10 hover:text-primary'
                     )}
                   >
                     <UtensilsCrossed className="h-4 w-4" />
                     Pesan Makanan
                   </Link>
-                  
+
                   {/* Pesanan Saya - HANYA tampilkan jika user sudah login */}
                   {user && (
                     <Link
                       href="/order"
                       className={cn(
-                        buttonVariants({ variant: 'ghost', size: 'sm' }),
+                        buttonVariants({
+                          variant: 'ghost',
+                          size: 'sm'
+                        }),
                         'group flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all hover:bg-primary/10 hover:text-primary'
                       )}
                     >
@@ -497,16 +540,26 @@ const Navbar = () => {
                       Pesanan Saya
                     </Link>
                   )}
-                  
+
                   {/* Pembayaran - HANYA tampilkan jika user sudah login */}
                   {user && (
                     <Link
-                      href={latestOrderId ? `/checkout/${latestOrderId}` : '#'}
+                      href={
+                        latestOrderId
+                          ? `/checkout/${latestOrderId}`
+                          : '#'
+                      }
                       onClick={handlePaymentClick}
                       className={cn(
-                        buttonVariants({ variant: latestOrderId ? 'default' : 'ghost', size: 'sm' }),
+                        buttonVariants({
+                          variant: latestOrderId
+                            ? 'default'
+                            : 'ghost',
+                          size: 'sm'
+                        }),
                         'group relative flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all',
-                        latestOrderId && 'bg-emerald-600 hover:bg-emerald-700'
+                        latestOrderId &&
+                          'bg-emerald-600 hover:bg-emerald-700'
                       )}
                     >
                       <CreditCard className="h-4 w-4" />
@@ -518,7 +571,7 @@ const Navbar = () => {
                       )}
                     </Link>
                   )}
-                  
+
                   {/* Lainnya - Tampilkan untuk SEMUA user (login atau belum) */}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -527,21 +580,33 @@ const Navbar = () => {
                         <ChevronDown className="h-3 w-3 opacity-50 transition-transform group-hover:rotate-180" />
                       </button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="center" className="w-48">
+                    <DropdownMenuContent
+                      align="center"
+                      className="w-48"
+                    >
                       <DropdownMenuItem asChild>
-                        <Link href="/contact" className="flex items-center gap-2 cursor-pointer">
+                        <Link
+                          href="/contact"
+                          className="flex cursor-pointer items-center gap-2"
+                        >
                           <Mail className="h-4 w-4" />
                           Contact
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
-                        <Link href="/support" className="flex items-center gap-2 cursor-pointer">
+                        <Link
+                          href="/support"
+                          className="flex cursor-pointer items-center gap-2"
+                        >
                           <HelpCircle className="h-4 w-4" />
                           Support
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
-                        <Link href="/about" className="flex items-center gap-2 cursor-pointer">
+                        <Link
+                          href="/about"
+                          className="flex cursor-pointer items-center gap-2"
+                        >
                           <Info className="h-4 w-4" />
                           About
                         </Link>
@@ -560,7 +625,9 @@ const Navbar = () => {
                   <Bell className="h-5 w-5" />
                   {notificationsCount > 0 && (
                     <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white">
-                      {notificationsCount > 9 ? '9+' : notificationsCount}
+                      {notificationsCount > 9
+                        ? '9+'
+                        : notificationsCount}
                     </span>
                   )}
                 </button>
@@ -579,7 +646,7 @@ const Navbar = () => {
 
               {/* User Profile / Auth */}
               {isLoading ? (
-                <div className="h-9 w-20 rounded-lg bg-muted animate-pulse" />
+                <div className="h-9 w-20 animate-pulse rounded-lg bg-muted" />
               ) : user ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -593,8 +660,12 @@ const Navbar = () => {
                         )}
                       </div>
                       <div className="hidden max-w-[120px] truncate text-left sm:block">
-                        <div className="truncate font-medium text-foreground">{user.name}</div>
-                        <div className="truncate text-xs text-muted-foreground">{user.email}</div>
+                        <div className="truncate font-medium text-foreground">
+                          {user.name}
+                        </div>
+                        <div className="truncate text-xs text-muted-foreground">
+                          {user.email}
+                        </div>
                       </div>
                       <ChevronDown className="h-3 w-3 text-muted-foreground transition-transform group-hover:rotate-180" />
                     </button>
@@ -606,12 +677,23 @@ const Navbar = () => {
                           <UserIcon className="h-5 w-5 text-primary" />
                         </div>
                         <div className="flex-1 overflow-hidden">
-                          <p className="truncate font-semibold text-foreground">{user.name}</p>
-                          <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+                          <p className="truncate font-semibold text-foreground">
+                            {user.name}
+                          </p>
+                          <p className="truncate text-xs text-muted-foreground">
+                            {user.email}
+                          </p>
                           <div className="mt-1 flex items-center gap-2">
-                            <span className={`rounded-full border px-2 py-0.5 text-xs font-medium ${getRoleColor(user.role)}`}>
-                              {user.role === 'superadmin' ? 'Super Admin' : 
-                               user.role === 'admin' ? 'Administrator' : 'User'}
+                            <span
+                              className={`rounded-full border px-2 py-0.5 text-xs font-medium ${getRoleColor(
+                                user.role
+                              )}`}
+                            >
+                              {user.role === 'superadmin'
+                                ? 'Super Admin'
+                                : user.role === 'admin'
+                                  ? 'Administrator'
+                                  : 'User'}
                             </span>
                             {user.divisi && (
                               <span className="truncate rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
@@ -626,7 +708,10 @@ const Navbar = () => {
 
                     {/* Profile Link */}
                     <DropdownMenuItem asChild>
-                      <Link href={`/user/${user.id}/user`} className="flex items-center gap-2 cursor-pointer">
+                      <Link
+                        href={`/user/${user.id}/user`}
+                        className="flex cursor-pointer items-center gap-2"
+                      >
                         <UserIcon className="h-4 w-4" />
                         <span>Profile</span>
                       </Link>
@@ -640,7 +725,10 @@ const Navbar = () => {
                           Menu Admin
                         </DropdownMenuLabel>
                         <DropdownMenuItem asChild>
-                          <Link href={getAdminReportsLink()} className="flex items-center gap-2 cursor-pointer">
+                          <Link
+                            href={getAdminReportsLink()}
+                            className="flex cursor-pointer items-center gap-2"
+                          >
                             <FileText className="h-4 w-4" />
                             Laporan
                           </Link>
@@ -654,19 +742,28 @@ const Navbar = () => {
                               Menu Superadmin
                             </DropdownMenuLabel>
                             <DropdownMenuItem asChild>
-                              <Link href="/dashboard/superadmin/user-management" className="flex items-center gap-2 cursor-pointer">
+                              <Link
+                                href="/dashboard/user-management"
+                                className="flex cursor-pointer items-center gap-2"
+                              >
                                 <Users className="h-4 w-4" />
                                 Manajemen User
                               </Link>
                             </DropdownMenuItem>
                             <DropdownMenuItem asChild>
-                              <Link href="/dashboard/superadmin/areas" className="flex items-center gap-2 cursor-pointer">
+                              <Link
+                                href="/dashboard/areas"
+                                className="flex cursor-pointer items-center gap-2"
+                              >
                                 <MapPin className="h-4 w-4" />
                                 Area
                               </Link>
                             </DropdownMenuItem>
                             <DropdownMenuItem asChild>
-                              <Link href="/dashboard/superadmin/restaurants" className="flex items-center gap-2 cursor-pointer">
+                              <Link
+                                href="/dashboard/restaurants"
+                                className="flex cursor-pointer items-center gap-2"
+                              >
                                 <ChefHat className="h-4 w-4" />
                                 Restaurant
                               </Link>
@@ -680,10 +777,12 @@ const Navbar = () => {
                     <DropdownMenuItem
                       onClick={() => setShowLogoutDialog(true)}
                       disabled={isLoggingOut}
-                      className="flex items-center gap-2 cursor-pointer text-red-600 focus:bg-red-50 focus:text-red-600 dark:text-red-500 dark:focus:bg-red-950 dark:focus:text-red-500"
+                      className="flex cursor-pointer items-center gap-2 text-red-600 focus:bg-red-50 focus:text-red-600 dark:text-red-500 dark:focus:bg-red-950 dark:focus:text-red-500"
                     >
                       <LogOut className="h-4 w-4" />
-                      <span>{isLoggingOut ? 'Logging out...' : 'Logout'}</span>
+                      <span>
+                        {isLoggingOut ? 'Logging out...' : 'Logout'}
+                      </span>
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -692,7 +791,10 @@ const Navbar = () => {
                   <Link
                     href="/auth/login"
                     className={cn(
-                      buttonVariants({ variant: 'outline', size: 'sm' }),
+                      buttonVariants({
+                        variant: 'outline',
+                        size: 'sm'
+                      }),
                       'h-9 text-sm'
                     )}
                   >
@@ -701,7 +803,10 @@ const Navbar = () => {
                   <Link
                     href="/auth/register"
                     className={cn(
-                      buttonVariants({ variant: 'default', size: 'sm' }),
+                      buttonVariants({
+                        variant: 'default',
+                        size: 'sm'
+                      }),
                       'h-9 bg-gradient-to-r from-primary to-primary/80 text-sm hover:from-primary/90 hover:to-primary/70'
                     )}
                   >
@@ -726,7 +831,11 @@ const Navbar = () => {
         </div>
 
         {/* Mobile Navigation Menu */}
-        <div className={`md:hidden ${mobileMenuOpen ? 'block' : 'hidden'}`}>
+        <div
+          className={`md:hidden ${
+            mobileMenuOpen ? 'block' : 'hidden'
+          }`}
+        >
           <div className="border-t border-border/50 bg-background px-4 py-4">
             <div className="space-y-1">
               <Link
@@ -779,7 +888,7 @@ const Navbar = () => {
                         Menu Superadmin
                       </div>
                       <Link
-                        href="/dashboard/superadmin/user-management"
+                        href="/dashboard/user-management"
                         onClick={() => setMobileMenuOpen(false)}
                         className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
                       >
@@ -787,7 +896,7 @@ const Navbar = () => {
                         Manajemen User
                       </Link>
                       <Link
-                        href="/dashboard/superadmin/areas"
+                        href="/dashboard/areas"
                         onClick={() => setMobileMenuOpen(false)}
                         className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
                       >
@@ -795,7 +904,7 @@ const Navbar = () => {
                         Area
                       </Link>
                       <Link
-                        href="/dashboard/superadmin/restaurants"
+                        href="/dashboard/restaurants"
                         onClick={() => setMobileMenuOpen(false)}
                         className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
                       >
@@ -816,7 +925,7 @@ const Navbar = () => {
                     <UtensilsCrossed className="h-4 w-4" />
                     Pesan Makanan
                   </Link>
-                  
+
                   {/* Pesanan Saya - HANYA tampilkan jika user sudah login */}
                   {user && (
                     <Link
@@ -828,11 +937,15 @@ const Navbar = () => {
                       Pesanan Saya
                     </Link>
                   )}
-                  
+
                   {/* Pembayaran - HANYA tampilkan jika user sudah login */}
                   {user && (
                     <Link
-                      href={latestOrderId ? `/checkout/${latestOrderId}` : '#'}
+                      href={
+                        latestOrderId
+                          ? `/checkout/${latestOrderId}`
+                          : '#'
+                      }
                       onClick={(e) => {
                         if (!latestOrderId) {
                           handlePaymentClick(e);
@@ -850,7 +963,7 @@ const Navbar = () => {
                       )}
                     </Link>
                   )}
-                  
+
                   <div className="px-3 pt-2 text-xs font-semibold text-muted-foreground">
                     Lainnya
                   </div>
@@ -922,12 +1035,23 @@ const Navbar = () => {
                       )}
                     </div>
                     <div className="flex-1">
-                      <p className="font-semibold text-foreground">{user.name}</p>
-                      <p className="text-sm text-muted-foreground">{user.email}</p>
+                      <p className="font-semibold text-foreground">
+                        {user.name}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {user.email}
+                      </p>
                       <div className="mt-1 flex items-center gap-2">
-                        <span className={`rounded-full border px-2 py-0.5 text-xs font-medium ${getRoleColor(user.role)}`}>
-                          {user.role === 'superadmin' ? 'Super Admin' : 
-                           user.role === 'admin' ? 'Administrator' : 'User'}
+                        <span
+                          className={`rounded-full border px-2 py-0.5 text-xs font-medium ${getRoleColor(
+                            user.role
+                          )}`}
+                        >
+                          {user.role === 'superadmin'
+                            ? 'Super Admin'
+                            : user.role === 'admin'
+                              ? 'Administrator'
+                              : 'User'}
                         </span>
                         {user.divisi && (
                           <span className="truncate rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
@@ -942,7 +1066,10 @@ const Navbar = () => {
                       href={`/user/${user.id}/user`}
                       onClick={() => setMobileMenuOpen(false)}
                       className={cn(
-                        buttonVariants({ variant: 'outline', size: 'sm' }),
+                        buttonVariants({
+                          variant: 'outline',
+                          size: 'sm'
+                        }),
                         'w-full text-sm'
                       )}
                     >

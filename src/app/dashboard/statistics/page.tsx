@@ -56,7 +56,9 @@ type FilterType = 'today' | 'week' | 'month' | 'custom';
 
 const StatisticsPage = () => {
   const router = useRouter();
-  const [statistics, setStatistics] = useState<StatisticsData | null>(null);
+  const [statistics, setStatistics] = useState<StatisticsData | null>(
+    null
+  );
   const [chartData, setChartData] = useState<
     Array<{ date: string; orders: number; revenue: number }>
   >([]);
@@ -262,17 +264,37 @@ const StatisticsPage = () => {
           )}
           {growth !== undefined && (
             <div className="mt-3 flex items-center gap-2">
-              <div className={`rounded-full p-1 ${growth >= 0 ? 'bg-emerald-100 dark:bg-emerald-900/30' : 'bg-red-100 dark:bg-red-900/30'}`}>
-                <TrendingUp className={`h-3 w-3 ${growth >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`} />
+              <div
+                className={`rounded-full p-1 ${
+                  growth >= 0
+                    ? 'bg-emerald-100 dark:bg-emerald-900/30'
+                    : 'bg-red-100 dark:bg-red-900/30'
+                }`}
+              >
+                <TrendingUp
+                  className={`h-3 w-3 ${
+                    growth >= 0
+                      ? 'text-emerald-600 dark:text-emerald-400'
+                      : 'text-red-600 dark:text-red-400'
+                  }`}
+                />
               </div>
-              <span className={`text-xs font-semibold ${growth >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+              <span
+                className={`text-xs font-semibold ${
+                  growth >= 0
+                    ? 'text-emerald-600 dark:text-emerald-400'
+                    : 'text-red-600 dark:text-red-400'
+                }`}
+              >
                 {growth >= 0 ? '+' : ''}
                 {growth.toFixed(1)}% dari periode sebelumnya
               </span>
             </div>
           )}
         </div>
-        <div className={`rounded-xl ${bgColor} flex-shrink-0 p-3 transition-transform duration-300 group-hover:scale-110`}>
+        <div
+          className={`rounded-xl ${bgColor} flex-shrink-0 p-3 transition-transform duration-300 group-hover:scale-110`}
+        >
           <Icon className={`h-6 w-6 ${iconColor}`} />
         </div>
       </div>
@@ -304,7 +326,9 @@ const StatisticsPage = () => {
             <p className="text-sm font-semibold text-slate-600 dark:text-slate-400">
               {title}
             </p>
-            <p className={`mt-1 text-2xl font-bold sm:text-3xl ${textColor}`}>
+            <p
+              className={`mt-1 text-2xl font-bold sm:text-3xl ${textColor}`}
+            >
               {formatNumber(count)}
             </p>
           </div>
@@ -312,12 +336,19 @@ const StatisticsPage = () => {
       </div>
       <div className="space-y-2">
         <div className="flex items-center justify-between text-xs">
-          <span className="text-slate-600 dark:text-slate-400">Persentase</span>
-          <span className={`font-semibold ${textColor}`}>{percentage.toFixed(1)}%</span>
+          <span className="text-slate-600 dark:text-slate-400">
+            Persentase
+          </span>
+          <span className={`font-semibold ${textColor}`}>
+            {percentage.toFixed(1)}%
+          </span>
         </div>
         <div className="h-2 w-full rounded-full bg-slate-100 dark:bg-slate-700">
           <div
-            className={`h-2 rounded-full transition-all duration-500 ${textColor.replace('text-', 'bg-')}`}
+            className={`h-2 rounded-full transition-all duration-500 ${textColor.replace(
+              'text-',
+              'bg-'
+            )}`}
             style={{ width: `${percentage}%` }}
           ></div>
         </div>
@@ -330,11 +361,15 @@ const StatisticsPage = () => {
       <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white dark:bg-slate-900">
         <div className="relative">
           <Loader2 className="h-14 w-14 animate-spin text-blue-600 dark:text-blue-400" />
-          <div className="absolute inset-0 -z-10 rounded-full bg-blue-50 dark:bg-blue-900/10 blur-sm"></div>
+          <div className="absolute inset-0 -z-10 rounded-full bg-blue-50 blur-sm dark:bg-blue-900/10"></div>
         </div>
         <div className="mt-6 text-center">
-          <p className="text-lg font-medium text-slate-800 dark:text-slate-200">Memuat Dashboard</p>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Menyiapkan data statistik...</p>
+          <p className="text-lg font-medium text-slate-800 dark:text-slate-200">
+            Memuat Dashboard
+          </p>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            Menyiapkan data statistik...
+          </p>
         </div>
       </div>
     );
@@ -352,7 +387,8 @@ const StatisticsPage = () => {
                   Tidak Dapat Memuat Data
                 </h2>
                 <p className="mt-1 text-sm text-red-800 dark:text-red-400">
-                  {error || 'Terjadi kesalahan saat memuat data statistik'}
+                  {error ||
+                    'Terjadi kesalahan saat memuat data statistik'}
                 </p>
                 <Button
                   onClick={() => fetchStatistics({}, true)}
@@ -373,7 +409,7 @@ const StatisticsPage = () => {
     statistics.completedOrders +
     statistics.processingOrders +
     statistics.canceledOrders;
-  
+
   const completedPercentage =
     totalStatusCount > 0
       ? (statistics.completedOrders / totalStatusCount) * 100
@@ -415,7 +451,7 @@ const StatisticsPage = () => {
   const COLORS = ['#10b981', '#f59e0b', '#ef4444'];
 
   // Filter data untuk PieChart (hanya yang value > 0)
-  const filteredPieData = pieData.filter(item => item.value > 0);
+  const filteredPieData = pieData.filter((item) => item.value > 0);
   const hasPieData = filteredPieData.length > 0;
 
   // Cek apakah ada data untuk chart
@@ -447,7 +483,11 @@ const StatisticsPage = () => {
             variant="outline"
             className="flex items-center gap-2 border-slate-300 text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
           >
-            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <RefreshCw
+              className={`h-4 w-4 ${
+                isRefreshing ? 'animate-spin' : ''
+              }`}
+            />
             <span className="hidden sm:inline">Refresh Data</span>
             <span className="sm:hidden">Refresh</span>
           </Button>
@@ -455,7 +495,7 @@ const StatisticsPage = () => {
 
         {/* Error Alert */}
         {error && (
-          <div className="mb-6 animate-fade-in rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-900/20">
+          <div className="animate-fade-in mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-900/20">
             <div className="flex items-start gap-3">
               <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-600 dark:text-amber-400" />
               <div className="flex-1">
@@ -485,28 +525,36 @@ const StatisticsPage = () => {
             <div className="flex flex-wrap gap-2">
               <Button
                 onClick={() => handleFilterChange('today')}
-                variant={filterType === 'today' ? 'default' : 'outline'}
+                variant={
+                  filterType === 'today' ? 'default' : 'outline'
+                }
                 className="text-sm"
               >
                 Hari Ini
               </Button>
               <Button
                 onClick={() => handleFilterChange('week')}
-                variant={filterType === 'week' ? 'default' : 'outline'}
+                variant={
+                  filterType === 'week' ? 'default' : 'outline'
+                }
                 className="text-sm"
               >
                 7 Hari Terakhir
               </Button>
               <Button
                 onClick={() => handleFilterChange('month')}
-                variant={filterType === 'month' ? 'default' : 'outline'}
+                variant={
+                  filterType === 'month' ? 'default' : 'outline'
+                }
                 className="text-sm"
               >
                 30 Hari Terakhir
               </Button>
               <Button
                 onClick={() => setFilterType('custom')}
-                variant={filterType === 'custom' ? 'default' : 'outline'}
+                variant={
+                  filterType === 'custom' ? 'default' : 'outline'
+                }
                 className="text-sm"
               >
                 Periode Kustom
@@ -524,7 +572,9 @@ const StatisticsPage = () => {
                     <input
                       type="date"
                       value={customStartDate}
-                      onChange={(e) => setCustomStartDate(e.target.value)}
+                      onChange={(e) =>
+                        setCustomStartDate(e.target.value)
+                      }
                       max={new Date().toISOString().split('T')[0]}
                       className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-900 transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-blue-400"
                     />
@@ -536,7 +586,9 @@ const StatisticsPage = () => {
                     <input
                       type="date"
                       value={customEndDate}
-                      onChange={(e) => setCustomEndDate(e.target.value)}
+                      onChange={(e) =>
+                        setCustomEndDate(e.target.value)
+                      }
                       max={new Date().toISOString().split('T')[0]}
                       className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-900 transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-blue-400"
                     />
@@ -570,7 +622,9 @@ const StatisticsPage = () => {
             icon={DollarSign}
             bgColor="bg-emerald-100 dark:bg-emerald-900/30"
             iconColor="text-emerald-600 dark:text-emerald-400"
-            subtext={`Rata-rata: ${formatCurrency(statistics.averageOrderValue)}`}
+            subtext={`Rata-rata: ${formatCurrency(
+              statistics.averageOrderValue
+            )}`}
             growth={statistics.revenueGrowth}
           />
           <StatCard
@@ -579,7 +633,9 @@ const StatisticsPage = () => {
             icon={Package}
             bgColor="bg-purple-100 dark:bg-purple-900/30"
             iconColor="text-purple-600 dark:text-purple-400"
-            subtext={`Penerimaan: ${formatCurrency(statistics.todayRevenue)}`}
+            subtext={`Penerimaan: ${formatCurrency(
+              statistics.todayRevenue
+            )}`}
           />
           <StatCard
             title="Rata-rata Pesanan"
@@ -603,11 +659,15 @@ const StatisticsPage = () => {
                 </h3>
               </div>
               <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
-                {filterType === 'today' ? 'Hari ini' : 
-                 filterType === 'week' ? '7 hari terakhir' :
-                 filterType === 'month' ? '30 hari terakhir' :
-                 filterType === 'custom' && customStartDate ? `${customStartDate} s/d ${customEndDate}` :
-                 '30 hari terakhir'}
+                {filterType === 'today'
+                  ? 'Hari ini'
+                  : filterType === 'week'
+                    ? '7 hari terakhir'
+                    : filterType === 'month'
+                      ? '30 hari terakhir'
+                      : filterType === 'custom' && customStartDate
+                        ? `${customStartDate} s/d ${customEndDate}`
+                        : '30 hari terakhir'}
               </p>
             </div>
             <div className="p-4 sm:p-6">
@@ -615,7 +675,12 @@ const StatisticsPage = () => {
                 <ResponsiveContainer width="100%" height={300}>
                   <LineChart
                     data={chartData}
-                    margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                    margin={{
+                      top: 5,
+                      right: 30,
+                      left: 20,
+                      bottom: 5
+                    }}
                   >
                     <CartesianGrid
                       strokeDasharray="3 3"
@@ -644,16 +709,24 @@ const StatisticsPage = () => {
                         boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
                       }}
                       formatter={(value: any, name: any) => {
-                        const numericValue = typeof value === 'number' ? value : Number(value) || 0;
+                        const numericValue =
+                          typeof value === 'number'
+                            ? value
+                            : Number(value) || 0;
                         if (name === 'Penerimaan') {
                           return [formatCurrency(numericValue), name];
                         }
                         return [formatNumber(numericValue), name];
                       }}
-                      labelFormatter={(label: string) => `Tanggal: ${label}`}
+                      labelFormatter={(label: string) =>
+                        `Tanggal: ${label}`
+                      }
                     />
                     <Legend
-                      wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }}
+                      wrapperStyle={{
+                        fontSize: '12px',
+                        paddingTop: '10px'
+                      }}
                       iconType="circle"
                       iconSize={8}
                     />
@@ -717,13 +790,17 @@ const StatisticsPage = () => {
                         outerRadius={90}
                         paddingAngle={2}
                         dataKey="value"
-                        label={(entry) => `${entry.name}: ${formatNumber(entry.value)}`}
+                        label={(entry) =>
+                          `${entry.name}: ${formatNumber(
+                            entry.value
+                          )}`
+                        }
                         labelLine={false}
                       >
                         {filteredPieData.map((entry, index) => (
-                          <Cell 
-                            key={`cell-${index}`} 
-                            fill={COLORS[index % COLORS.length]} 
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={COLORS[index % COLORS.length]}
                             stroke="white"
                             strokeWidth={2}
                           />
@@ -734,7 +811,9 @@ const StatisticsPage = () => {
                           formatNumber(Number(value) || 0),
                           'Jumlah'
                         ]}
-                        labelFormatter={(name: string) => `Status: ${name}`}
+                        labelFormatter={(name: string) =>
+                          `Status: ${name}`
+                        }
                         contentStyle={{
                           backgroundColor: 'white',
                           border: '1px solid #e2e8f0',
@@ -750,26 +829,35 @@ const StatisticsPage = () => {
                   {/* Legend */}
                   <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
                     {pieData.map((item, index) => (
-                      <div 
-                        key={item.name} 
-                        className={`flex flex-col items-center rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/50 ${item.value === 0 ? 'opacity-60' : ''}`}
+                      <div
+                        key={item.name}
+                        className={`flex flex-col items-center rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/50 ${
+                          item.value === 0 ? 'opacity-60' : ''
+                        }`}
                       >
                         <div className="flex items-center gap-2">
-                          <div 
-                            className="h-3 w-3 rounded-full" 
+                          <div
+                            className="h-3 w-3 rounded-full"
                             style={{ backgroundColor: COLORS[index] }}
                           ></div>
                           <span className="text-sm font-semibold text-slate-900 dark:text-white">
                             {item.name}
                           </span>
                         </div>
-                        <p className="mt-2 text-2xl font-bold" style={{ color: COLORS[index] }}>
+                        <p
+                          className="mt-2 text-2xl font-bold"
+                          style={{ color: COLORS[index] }}
+                        >
                           {formatNumber(item.value)}
                         </p>
                         <p className="text-xs text-slate-600 dark:text-slate-400">
                           {totalStatusCount > 0
-                            ? ((item.value / totalStatusCount) * 100).toFixed(1)
-                            : 0}%
+                            ? (
+                                (item.value / totalStatusCount) *
+                                100
+                              ).toFixed(1)
+                            : 0}
+                          %
                         </p>
                       </div>
                     ))}
@@ -803,11 +891,12 @@ const StatisticsPage = () => {
               </h2>
             </div>
             <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
-              Update terbaru: {new Date().toLocaleDateString('id-ID', { 
-                weekday: 'long', 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
+              Update terbaru:{' '}
+              {new Date().toLocaleDateString('id-ID', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
               })}
             </p>
           </div>
@@ -849,49 +938,75 @@ const StatisticsPage = () => {
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/50">
               <div className="flex items-center gap-2">
                 <div className="h-2 w-2 rounded-full bg-emerald-500"></div>
-                <p className="text-slate-600 dark:text-slate-400">Pesanan Selesai</p>
+                <p className="text-slate-600 dark:text-slate-400">
+                  Pesanan Selesai
+                </p>
               </div>
               <p className="mt-2 text-xl font-bold text-emerald-600 dark:text-emerald-400">
                 {statistics.totalOrders > 0
-                  ? ((statistics.completedOrders / statistics.totalOrders) * 100).toFixed(1)
-                  : 0}%
+                  ? (
+                      (statistics.completedOrders /
+                        statistics.totalOrders) *
+                      100
+                    ).toFixed(1)
+                  : 0}
+                %
               </p>
               <p className="mt-1 text-xs text-slate-500 dark:text-slate-500">
-                {formatNumber(statistics.completedOrders)} dari {formatNumber(statistics.totalOrders)}
+                {formatNumber(statistics.completedOrders)} dari{' '}
+                {formatNumber(statistics.totalOrders)}
               </p>
             </div>
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/50">
               <div className="flex items-center gap-2">
                 <div className="h-2 w-2 rounded-full bg-amber-500"></div>
-                <p className="text-slate-600 dark:text-slate-400">Pesanan Diproses</p>
+                <p className="text-slate-600 dark:text-slate-400">
+                  Pesanan Diproses
+                </p>
               </div>
               <p className="mt-2 text-xl font-bold text-amber-600 dark:text-amber-400">
                 {statistics.totalOrders > 0
-                  ? ((statistics.processingOrders / statistics.totalOrders) * 100).toFixed(1)
-                  : 0}%
+                  ? (
+                      (statistics.processingOrders /
+                        statistics.totalOrders) *
+                      100
+                    ).toFixed(1)
+                  : 0}
+                %
               </p>
               <p className="mt-1 text-xs text-slate-500 dark:text-slate-500">
-                {formatNumber(statistics.processingOrders)} dari {formatNumber(statistics.totalOrders)}
+                {formatNumber(statistics.processingOrders)} dari{' '}
+                {formatNumber(statistics.totalOrders)}
               </p>
             </div>
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/50">
               <div className="flex items-center gap-2">
                 <div className="h-2 w-2 rounded-full bg-red-500"></div>
-                <p className="text-slate-600 dark:text-slate-400">Pesanan Batal</p>
+                <p className="text-slate-600 dark:text-slate-400">
+                  Pesanan Batal
+                </p>
               </div>
               <p className="mt-2 text-xl font-bold text-red-600 dark:text-red-400">
                 {statistics.totalOrders > 0
-                  ? ((statistics.canceledOrders / statistics.totalOrders) * 100).toFixed(1)
-                  : 0}%
+                  ? (
+                      (statistics.canceledOrders /
+                        statistics.totalOrders) *
+                      100
+                    ).toFixed(1)
+                  : 0}
+                %
               </p>
               <p className="mt-1 text-xs text-slate-500 dark:text-slate-500">
-                {formatNumber(statistics.canceledOrders)} dari {formatNumber(statistics.totalOrders)}
+                {formatNumber(statistics.canceledOrders)} dari{' '}
+                {formatNumber(statistics.totalOrders)}
               </p>
             </div>
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/50">
               <div className="flex items-center gap-2">
                 <div className="h-2 w-2 rounded-full bg-blue-500"></div>
-                <p className="text-slate-600 dark:text-slate-400">Rata-rata Pesanan</p>
+                <p className="text-slate-600 dark:text-slate-400">
+                  Rata-rata Pesanan
+                </p>
               </div>
               <p className="mt-2 text-xl font-bold text-blue-600 dark:text-blue-400">
                 {formatCurrency(statistics.averageOrderValue)}
@@ -909,12 +1024,20 @@ const StatisticsPage = () => {
             <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-blue-600 dark:text-blue-400" />
             <div>
               <p className="text-sm font-medium text-blue-900 dark:text-blue-300">
-                <span className="font-bold">Tips:</span> Untuk mendapatkan data yang lebih akurat, pastikan:
+                <span className="font-bold">Tips:</span> Untuk
+                mendapatkan data yang lebih akurat, pastikan:
               </p>
               <ul className="mt-2 list-inside list-disc text-xs text-blue-800 dark:text-blue-400">
-                <li>Semua pesanan telah dimasukkan dengan status yang benar</li>
-                <li>Pilih periode waktu yang sesuai untuk analisis</li>
-                <li>Refresh data secara berkala untuk update terbaru</li>
+                <li>
+                  Semua pesanan telah dimasukkan dengan status yang
+                  benar
+                </li>
+                <li>
+                  Pilih periode waktu yang sesuai untuk analisis
+                </li>
+                <li>
+                  Refresh data secara berkala untuk update terbaru
+                </li>
               </ul>
             </div>
           </div>

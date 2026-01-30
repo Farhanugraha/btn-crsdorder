@@ -81,7 +81,8 @@ export default function SuperadminDashboard() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
+  const [dashboardData, setDashboardData] =
+    useState<DashboardData | null>(null);
   const [users, setUsers] = useState<UserData[]>([]);
   const [pagination, setPagination] = useState({
     current_page: 1,
@@ -110,7 +111,7 @@ export default function SuperadminDashboard() {
 
   const checkAuth = () => {
     if (typeof window === 'undefined') return;
-    
+
     const token = localStorage.getItem('auth_token');
     const userData = localStorage.getItem('auth_user');
 
@@ -141,13 +142,16 @@ export default function SuperadminDashboard() {
         return;
       }
 
-      const response = await fetch(`${apiUrl}/api/superadmin/dashboard`, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
+      const response = await fetch(
+        `${apiUrl}/api/superadmin/dashboard`,
+        {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
         }
-      });
+      );
 
       if (response.status === 401 || response.status === 403) {
         localStorage.removeItem('auth_token');
@@ -191,13 +195,16 @@ export default function SuperadminDashboard() {
         params.append('search', searchTerm.trim());
       }
 
-      const response = await fetch(`${apiUrl}/api/superadmin/users?${params}`, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
+      const response = await fetch(
+        `${apiUrl}/api/superadmin/users?${params}`,
+        {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
         }
-      });
+      );
 
       if (response.status === 401 || response.status === 403) {
         localStorage.removeItem('auth_token');
@@ -208,7 +215,7 @@ export default function SuperadminDashboard() {
 
       const data = await response.json();
       console.log('API Response:', data); // Debug log
-      
+
       if (data.success) {
         // Check if data is paginated or direct array
         if (data.data && data.data.data) {
@@ -259,27 +266,32 @@ export default function SuperadminDashboard() {
   const handleRoleChange = (role: string) => {
     setFilterRole(role);
     // Reset to page 1 when filter changes
-    setPagination(prev => ({ ...prev, current_page: 1 }));
+    setPagination((prev) => ({ ...prev, current_page: 1 }));
   };
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setSearchTerm(value);
-    
+
     // Clear previous timeout
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
     }
-    
+
     // Set new timeout for search
     searchTimeoutRef.current = setTimeout(() => {
-      setPagination(prev => ({ ...prev, current_page: 1 }));
+      setPagination((prev) => ({ ...prev, current_page: 1 }));
       fetchUsers(1);
     }, 500);
   };
 
   const handlePageChange = (page: number) => {
-    if (page < 1 || page > pagination.last_page || page === pagination.current_page) return;
+    if (
+      page < 1 ||
+      page > pagination.last_page ||
+      page === pagination.current_page
+    )
+      return;
     fetchUsers(page);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -294,86 +306,100 @@ export default function SuperadminDashboard() {
   };
 
   const handleViewUser = (userId: number) => {
-    router.push(`/dashboard/superadmin/user-management/${userId}`);
+    router.push(`/dashboard/user-management/${userId}`);
   };
 
   const handleCreateUser = () => {
-    router.push('/dashboard/superadmin/user-management/create');
+    router.push('/dashboard/user-management/create');
   };
 
   const renderPaginationButtons = () => {
-  const buttons: React.ReactNode[] = [];
-  const { current_page, last_page } = pagination;
-  
-  if (last_page <= 1) return buttons;
+    const buttons: React.ReactNode[] = [];
+    const { current_page, last_page } = pagination;
 
-  // Always show first page
-  buttons.push(
-    <PaginationButton
-      key={1}
-      page={1}
-      current_page={current_page}
-      onClick={() => handlePageChange(1)}
-    />
-  );
+    if (last_page <= 1) return buttons;
 
-  // Show ellipsis if needed
-  if (current_page > 3) {
+    // Always show first page
     buttons.push(
-      <span key="ellipsis1" className="flex h-9 w-9 items-center justify-center text-slate-400">
-        <MoreHorizontal className="h-4 w-4" />
-      </span>
+      <PaginationButton
+        key={1}
+        page={1}
+        current_page={current_page}
+        onClick={() => handlePageChange(1)}
+      />
     );
-  }
 
-  // Show pages around current page
-  for (let i = Math.max(2, current_page - 1); i <= Math.min(last_page - 1, current_page + 1); i++) {
-    if (i !== 1 && i !== last_page) {
+    // Show ellipsis if needed
+    if (current_page > 3) {
+      buttons.push(
+        <span
+          key="ellipsis1"
+          className="flex h-9 w-9 items-center justify-center text-slate-400"
+        >
+          <MoreHorizontal className="h-4 w-4" />
+        </span>
+      );
+    }
+
+    // Show pages around current page
+    for (
+      let i = Math.max(2, current_page - 1);
+      i <= Math.min(last_page - 1, current_page + 1);
+      i++
+    ) {
+      if (i !== 1 && i !== last_page) {
+        buttons.push(
+          <PaginationButton
+            key={i}
+            page={i}
+            current_page={current_page}
+            onClick={() => handlePageChange(i)}
+          />
+        );
+      }
+    }
+
+    // Show ellipsis if needed
+    if (current_page < last_page - 2) {
+      buttons.push(
+        <span
+          key="ellipsis2"
+          className="flex h-9 w-9 items-center justify-center text-slate-400"
+        >
+          <MoreHorizontal className="h-4 w-4" />
+        </span>
+      );
+    }
+
+    // Always show last page if there is more than 1 page
+    if (last_page > 1) {
       buttons.push(
         <PaginationButton
-          key={i}
-          page={i}
+          key={last_page}
+          page={last_page}
           current_page={current_page}
-          onClick={() => handlePageChange(i)}
+          onClick={() => handlePageChange(last_page)}
         />
       );
     }
-  }
 
-  // Show ellipsis if needed
-  if (current_page < last_page - 2) {
-    buttons.push(
-      <span key="ellipsis2" className="flex h-9 w-9 items-center justify-center text-slate-400">
-        <MoreHorizontal className="h-4 w-4" />
-      </span>
-    );
-  }
-
-  // Always show last page if there is more than 1 page
-  if (last_page > 1) {
-    buttons.push(
-      <PaginationButton
-        key={last_page}
-        page={last_page}
-        current_page={current_page}
-        onClick={() => handlePageChange(last_page)}
-      />
-    );
-  }
-
-  return buttons;
-};
+    return buttons;
+  };
 
   if (isLoading) {
     return (
       <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white dark:bg-slate-900">
         <div className="relative">
           <Loader2 className="h-14 w-14 animate-spin text-blue-600 dark:text-blue-400" />
-          <div className="absolute inset-0 -z-10 rounded-full bg-blue-50 dark:bg-blue-900/10 blur-sm"></div>
+          <div className="absolute inset-0 -z-10 rounded-full bg-blue-50 blur-sm dark:bg-blue-900/10"></div>
         </div>
         <div className="mt-6 text-center">
-          <p className="text-lg font-medium text-slate-800 dark:text-slate-200">Memuat Dashboard</p>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Menyiapkan data sistem...</p>
+          <p className="text-lg font-medium text-slate-800 dark:text-slate-200">
+            Memuat Dashboard
+          </p>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            Menyiapkan data sistem...
+          </p>
         </div>
       </div>
     );
@@ -410,8 +436,14 @@ export default function SuperadminDashboard() {
                 disabled={isRefreshing}
                 className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 sm:w-auto sm:px-3"
               >
-                <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                <span className="hidden sm:ml-2 sm:inline text-sm">Refresh</span>
+                <RefreshCw
+                  className={`h-4 w-4 ${
+                    isRefreshing ? 'animate-spin' : ''
+                  }`}
+                />
+                <span className="hidden text-sm sm:ml-2 sm:inline">
+                  Refresh
+                </span>
               </button>
             </div>
           </div>
@@ -427,18 +459,24 @@ export default function SuperadminDashboard() {
             <div className="group relative overflow-hidden rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:shadow-md dark:border-slate-700 dark:bg-slate-800">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Total Pesanan</p>
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                    Total Pesanan
+                  </p>
                   <p className="mt-1 text-xl font-bold text-slate-900 dark:text-white sm:text-2xl">
                     {dashboardData.total_orders}
                   </p>
                   <div className="mt-2 flex items-center gap-3">
                     <div className="flex items-center gap-1 text-xs">
                       <div className="h-1.5 w-1.5 rounded-full bg-emerald-500"></div>
-                      <span className="text-emerald-600 dark:text-emerald-400">{dashboardData.completed_orders}</span>
+                      <span className="text-emerald-600 dark:text-emerald-400">
+                        {dashboardData.completed_orders}
+                      </span>
                     </div>
                     <div className="flex items-center gap-1 text-xs">
                       <div className="h-1.5 w-1.5 rounded-full bg-blue-500"></div>
-                      <span className="text-blue-600 dark:text-blue-400">{dashboardData.processing_orders}</span>
+                      <span className="text-blue-600 dark:text-blue-400">
+                        {dashboardData.processing_orders}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -452,18 +490,24 @@ export default function SuperadminDashboard() {
             <div className="group relative overflow-hidden rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:shadow-md dark:border-slate-700 dark:bg-slate-800">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Total Pengguna</p>
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                    Total Pengguna
+                  </p>
                   <p className="mt-1 text-xl font-bold text-slate-900 dark:text-white sm:text-2xl">
                     {dashboardData.total_users}
                   </p>
                   <div className="mt-2 flex items-center gap-3">
                     <div className="flex items-center gap-1 text-xs">
                       <div className="h-1.5 w-1.5 rounded-full bg-orange-500"></div>
-                      <span className="text-orange-600 dark:text-orange-400">{dashboardData.total_admins}</span>
+                      <span className="text-orange-600 dark:text-orange-400">
+                        {dashboardData.total_admins}
+                      </span>
                     </div>
                     <div className="flex items-center gap-1 text-xs">
                       <div className="h-1.5 w-1.5 rounded-full bg-red-500"></div>
-                      <span className="text-red-600 dark:text-red-400">{dashboardData.total_superadmins}</span>
+                      <span className="text-red-600 dark:text-red-400">
+                        {dashboardData.total_superadmins}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -477,14 +521,18 @@ export default function SuperadminDashboard() {
             <div className="group relative overflow-hidden rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:shadow-md dark:border-slate-700 dark:bg-slate-800">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Total Revenue</p>
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                    Total Revenue
+                  </p>
                   <p className="mt-1 text-xl font-bold text-slate-900 dark:text-white sm:text-2xl">
                     {formatCurrency(dashboardData.total_revenue)}
                   </p>
                   <div className="mt-2 flex items-center gap-3">
                     <div className="flex items-center gap-1 text-xs">
                       <div className="h-1.5 w-1.5 rounded-full bg-emerald-500"></div>
-                      <span className="text-emerald-600 dark:text-emerald-400">Revenue</span>
+                      <span className="text-emerald-600 dark:text-emerald-400">
+                        Revenue
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -498,14 +546,18 @@ export default function SuperadminDashboard() {
             <div className="group relative overflow-hidden rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:shadow-md dark:border-slate-700 dark:bg-slate-800">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Pending Payments</p>
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                    Pending Payments
+                  </p>
                   <p className="mt-1 text-xl font-bold text-slate-900 dark:text-white sm:text-2xl">
                     {dashboardData.pending_payments}
                   </p>
                   <div className="mt-2 flex items-center gap-3">
                     <div className="flex items-center gap-1 text-xs">
                       <div className="h-1.5 w-1.5 rounded-full bg-amber-500"></div>
-                      <span className="text-amber-600 dark:text-amber-400">Menunggu</span>
+                      <span className="text-amber-600 dark:text-amber-400">
+                        Menunggu
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -529,7 +581,9 @@ export default function SuperadminDashboard() {
                       <Users className="h-4 w-4 sm:h-5 sm:w-5" />
                     </div>
                     <div>
-                      <h2 className="text-sm font-bold text-slate-900 dark:text-white sm:text-lg">Manajemen Pengguna</h2>
+                      <h2 className="text-sm font-bold text-slate-900 dark:text-white sm:text-lg">
+                        Manajemen Pengguna
+                      </h2>
                       <p className="text-xs text-slate-600 dark:text-slate-400 sm:text-sm">
                         Kelola semua pengguna sistem
                       </p>
@@ -544,15 +598,17 @@ export default function SuperadminDashboard() {
                         placeholder="Cari nama/email..."
                         value={searchTerm}
                         onChange={handleSearch}
-                        className="w-full rounded-lg border border-slate-200 bg-white pl-10 pr-4 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
+                        className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-10 pr-4 text-sm text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
                       />
                     </div>
-                    
+
                     <div className="flex items-center gap-2">
                       <Filter className="h-4 w-4 text-slate-400" />
                       <select
                         value={filterRole}
-                        onChange={(e) => handleRoleChange(e.target.value)}
+                        onChange={(e) =>
+                          handleRoleChange(e.target.value)
+                        }
                         className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-slate-600 dark:bg-slate-700 dark:text-white sm:w-auto"
                       >
                         <option value="all">Semua Role</option>
@@ -570,11 +626,17 @@ export default function SuperadminDashboard() {
                 {isLoadingUsers ? (
                   <div className="flex flex-col items-center justify-center py-16">
                     <Loader2 className="mb-4 h-8 w-8 animate-spin text-blue-500" />
-                    <p className="text-sm text-slate-600 dark:text-slate-400">Memuat data...</p>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">
+                      Memuat data...
+                    </p>
                   </div>
                 ) : users.length > 0 ? (
                   users.map((userData) => (
-                    <UserListItem key={userData.id} userData={userData} onView={handleViewUser} />
+                    <UserListItem
+                      key={userData.id}
+                      userData={userData}
+                      onView={handleViewUser}
+                    />
                   ))
                 ) : (
                   <div className="flex flex-col items-center justify-center py-16">
@@ -582,11 +644,13 @@ export default function SuperadminDashboard() {
                       <Users className="h-8 w-8 text-blue-600 dark:text-blue-400" />
                     </div>
                     <h3 className="text-base font-bold text-slate-900 dark:text-white sm:text-lg">
-                      {searchTerm || filterRole !== 'all' ? 'Tidak ditemukan' : 'Belum ada pengguna'}
+                      {searchTerm || filterRole !== 'all'
+                        ? 'Tidak ditemukan'
+                        : 'Belum ada pengguna'}
                     </h3>
                     <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-                      {searchTerm || filterRole !== 'all' 
-                        ? 'Tidak ada data yang cocok dengan kriteria Anda' 
+                      {searchTerm || filterRole !== 'all'
+                        ? 'Tidak ada data yang cocok dengan kriteria Anda'
                         : 'Tambahkan pengguna baru untuk memulai'}
                     </p>
                     <button
@@ -605,14 +669,24 @@ export default function SuperadminDashboard() {
                 <div className="border-t border-slate-100 bg-slate-50 px-4 py-4 dark:border-slate-700 dark:bg-slate-800/50 sm:px-6">
                   <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
                     <div className="text-sm text-slate-600 dark:text-slate-400">
-                      <span className="font-medium">{pagination.from}-{pagination.to}</span> dari{' '}
-                      <span className="font-medium">{pagination.total}</span> pengguna
+                      <span className="font-medium">
+                        {pagination.from}-{pagination.to}
+                      </span>{' '}
+                      dari{' '}
+                      <span className="font-medium">
+                        {pagination.total}
+                      </span>{' '}
+                      pengguna
                     </div>
-                    
+
                     <div className="flex items-center gap-1">
                       {/* Previous Button */}
                       <button
-                        onClick={() => handlePageChange(pagination.current_page - 1)}
+                        onClick={() =>
+                          handlePageChange(
+                            pagination.current_page - 1
+                          )
+                        }
                         disabled={pagination.current_page === 1}
                         className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-400"
                         aria-label="Previous page"
@@ -627,8 +701,15 @@ export default function SuperadminDashboard() {
 
                       {/* Next Button */}
                       <button
-                        onClick={() => handlePageChange(pagination.current_page + 1)}
-                        disabled={pagination.current_page === pagination.last_page}
+                        onClick={() =>
+                          handlePageChange(
+                            pagination.current_page + 1
+                          )
+                        }
+                        disabled={
+                          pagination.current_page ===
+                          pagination.last_page
+                        }
                         className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-400"
                         aria-label="Next page"
                       >
@@ -651,36 +732,38 @@ export default function SuperadminDashboard() {
                     <div className="rounded-lg bg-blue-600 p-2 text-white">
                       <Settings2 className="h-4 w-4 sm:h-5 sm:w-5" />
                     </div>
-                    <h3 className="text-sm font-bold text-slate-900 dark:text-white sm:text-base">Akses Cepat</h3>
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white sm:text-base">
+                      Akses Cepat
+                    </h3>
                   </div>
                 </div>
-                
+
                 <div className="space-y-1 p-4 sm:p-5">
                   <QuickActionItem
                     title="Tambah User"
                     description="Buat akun baru"
-                    href="/dashboard/superadmin/user-management/create"
+                    href="/dashboard/user-management/create"
                     icon={<UserPlus className="h-4 w-4" />}
                     color="bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400"
                   />
                   <QuickActionItem
                     title="Kelola Area"
                     description="Manajemen area"
-                    href="/dashboard/superadmin/areas"
+                    href="/dashboard/areas"
                     icon={<MapPin className="h-4 w-4" />}
                     color="bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400"
                   />
                   <QuickActionItem
                     title="Kelola Restoran"
                     description="Data restoran"
-                    href="/dashboard/superadmin/restaurants"
+                    href="/dashboard/restaurants"
                     icon={<Building2 className="h-4 w-4" />}
                     color="bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"
                   />
                   <QuickActionItem
                     title="Laporan"
                     description="Analytics sistem"
-                    href="/dashboard/superadmin/reports"
+                    href="/dashboard/reports"
                     icon={<BarChart3 className="h-4 w-4" />}
                     color="bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400"
                   />
@@ -695,46 +778,56 @@ export default function SuperadminDashboard() {
                       <div className="rounded-lg bg-emerald-600 p-2 text-white">
                         <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5" />
                       </div>
-                      <h3 className="text-sm font-bold text-slate-900 dark:text-white sm:text-base">Status Pesanan</h3>
+                      <h3 className="text-sm font-bold text-slate-900 dark:text-white sm:text-base">
+                        Status Pesanan
+                      </h3>
                     </div>
                   </div>
-                  
+
                   <div className="space-y-4 p-4 sm:p-6">
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <Clock className="h-4 w-4 text-amber-500" />
-                          <span className="text-sm text-slate-700 dark:text-slate-300">Menunggu</span>
+                          <span className="text-sm text-slate-700 dark:text-slate-300">
+                            Menunggu
+                          </span>
                         </div>
                         <span className="text-sm font-bold text-amber-600 dark:text-amber-400">
                           {dashboardData.pending_orders}
                         </span>
                       </div>
-                      
+
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <Settings2 className="h-4 w-4 text-blue-500" />
-                          <span className="text-sm text-slate-700 dark:text-slate-300">Diproses</span>
+                          <span className="text-sm text-slate-700 dark:text-slate-300">
+                            Diproses
+                          </span>
                         </div>
                         <span className="text-sm font-bold text-blue-600 dark:text-blue-400">
                           {dashboardData.processing_orders}
                         </span>
                       </div>
-                      
+
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                          <span className="text-sm text-slate-700 dark:text-slate-300">Selesai</span>
+                          <span className="text-sm text-slate-700 dark:text-slate-300">
+                            Selesai
+                          </span>
                         </div>
                         <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
                           {dashboardData.completed_orders}
                         </span>
                       </div>
-                      
+
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <XCircle className="h-4 w-4 text-red-500" />
-                          <span className="text-sm text-slate-700 dark:text-slate-300">Dibatalkan</span>
+                          <span className="text-sm text-slate-700 dark:text-slate-300">
+                            Dibatalkan
+                          </span>
                         </div>
                         <span className="text-sm font-bold text-red-600 dark:text-red-400">
                           {dashboardData.canceled_orders}
@@ -750,7 +843,9 @@ export default function SuperadminDashboard() {
                 <div className="flex gap-3">
                   <AlertCircle className="mt-0.5 h-4 w-4 text-blue-600 dark:text-blue-400 sm:h-5 sm:w-5" />
                   <div>
-                    <p className="text-sm font-medium text-blue-800 dark:text-blue-300">Akses SuperAdmin</p>
+                    <p className="text-sm font-medium text-blue-800 dark:text-blue-300">
+                      Akses SuperAdmin
+                    </p>
                     <p className="mt-1 text-xs text-blue-700 dark:text-blue-400">
                       Anda memiliki akses penuh ke semua fitur sistem.
                     </p>
@@ -776,7 +871,13 @@ function formatCurrency(amount: number): string {
 }
 
 // Component: User List Item
-function UserListItem({ userData, onView }: { userData: UserData, onView: (id: number) => void }) {
+function UserListItem({
+  userData,
+  onView
+}: {
+  userData: UserData;
+  onView: (id: number) => void;
+}) {
   const getRoleColor = (role: string) => {
     switch (role) {
       case 'superadmin':
@@ -819,15 +920,23 @@ function UserListItem({ userData, onView }: { userData: UserData, onView: (id: n
               </div>
             )}
           </div>
-          
+
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h3 className="text-sm font-semibold text-slate-900 dark:text-white sm:text-base">{userData.name}</h3>
-              <span className={`rounded-full border px-2 py-0.5 text-xs font-medium ${getRoleColor(userData.role)}`}>
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-white sm:text-base">
+                {userData.name}
+              </h3>
+              <span
+                className={`rounded-full border px-2 py-0.5 text-xs font-medium ${getRoleColor(
+                  userData.role
+                )}`}
+              >
                 {getRoleLabel(userData.role)}
               </span>
             </div>
-            <p className="mt-0.5 text-xs text-slate-600 dark:text-slate-400 sm:text-sm">{userData.email}</p>
+            <p className="mt-0.5 text-xs text-slate-600 dark:text-slate-400 sm:text-sm">
+              {userData.email}
+            </p>
             <div className="mt-1 flex items-center gap-2">
               {userData.divisi && (
                 <span className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600 dark:bg-slate-700 dark:text-slate-400">
@@ -847,7 +956,7 @@ function UserListItem({ userData, onView }: { userData: UserData, onView: (id: n
             </div>
           </div>
         </div>
-        
+
         <div className="flex items-center gap-2">
           <button
             onClick={() => onView(userData.id)}
@@ -863,7 +972,15 @@ function UserListItem({ userData, onView }: { userData: UserData, onView: (id: n
 }
 
 // Component: Pagination Button
-function PaginationButton({ page, current_page, onClick }: { page: number, current_page: number, onClick: () => void }) {
+function PaginationButton({
+  page,
+  current_page,
+  onClick
+}: {
+  page: number;
+  current_page: number;
+  onClick: () => void;
+}) {
   return (
     <button
       onClick={onClick}
@@ -879,19 +996,27 @@ function PaginationButton({ page, current_page, onClick }: { page: number, curre
 }
 
 // Component: Quick Action Item
-function QuickActionItem({ title, description, href, icon, color }: any) {
+function QuickActionItem({
+  title,
+  description,
+  href,
+  icon,
+  color
+}: any) {
   return (
     <a
       href={href}
       className="group flex items-center justify-between rounded-lg p-3 transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/30 sm:p-4"
     >
       <div className="flex items-center gap-3">
-        <div className={`rounded-lg p-2 ${color}`}>
-          {icon}
-        </div>
+        <div className={`rounded-lg p-2 ${color}`}>{icon}</div>
         <div>
-          <p className="text-sm font-semibold text-slate-900 dark:text-white">{title}</p>
-          <p className="text-xs text-slate-600 dark:text-slate-400">{description}</p>
+          <p className="text-sm font-semibold text-slate-900 dark:text-white">
+            {title}
+          </p>
+          <p className="text-xs text-slate-600 dark:text-slate-400">
+            {description}
+          </p>
         </div>
       </div>
       <ChevronRight className="h-4 w-4 text-slate-400 transition-transform group-hover:translate-x-1 group-hover:text-blue-500" />
