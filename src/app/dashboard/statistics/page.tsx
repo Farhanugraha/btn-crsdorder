@@ -17,7 +17,8 @@ import {
   Package,
   BarChart3,
   PieChart as PieChartIcon,
-  LineChart as LineChartIcon
+  LineChart as LineChartIcon,
+  CreditCard
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -619,7 +620,7 @@ const StatisticsPage = () => {
           <StatCard
             title="Total Penerimaan"
             value={formatCurrency(statistics.totalRevenue)}
-            icon={DollarSign}
+            icon={CreditCard}
             bgColor="bg-emerald-100 dark:bg-emerald-900/30"
             iconColor="text-emerald-600 dark:text-emerald-400"
             subtext={`Rata-rata: ${formatCurrency(

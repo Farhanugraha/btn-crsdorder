@@ -17,7 +17,8 @@ import {
   TrendingUp,
   DollarSign,
   FileText,
-  MoreVertical
+  MoreVertical,
+  CreditCard
 } from 'lucide-react';
 
 interface Payment {
@@ -501,7 +502,7 @@ export default function PaymentsPage() {
                 </p>
               </div>
               <div className="rounded-lg bg-gradient-to-br from-purple-100 to-purple-200 p-2 dark:from-purple-900/30 dark:to-purple-800/30 lg:p-3">
-                <DollarSign className="h-4 w-4 text-purple-600 dark:text-purple-400 lg:h-6 lg:w-6" />
+                <CreditCard className="h-4 w-4 text-purple-600 dark:text-purple-400 lg:h-6 lg:w-6" />
               </div>
             </div>
             <div className="mt-2 text-[10px] text-gray-500 dark:text-gray-400 lg:mt-4 lg:text-xs">

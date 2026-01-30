@@ -436,7 +436,7 @@ export default function OrderDetailPage({
           <div className="flex items-center justify-between gap-2 sm:gap-4">
             <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
               <a
-                href="/dashboard/admin/orders"
+                href="/dashboard/orders"
                 className="flex flex-shrink-0 items-center justify-center rounded-lg p-2 transition-colors hover:bg-gray-100 dark:hover:bg-gray-700"
                 title="Kembali"
               >

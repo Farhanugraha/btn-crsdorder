@@ -2,7 +2,16 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, RefreshCw } from 'lucide-react';
+import {
+  Loader2,
+  RefreshCw,
+  BarChart3,
+  FileText,
+  TrendingUp,
+  Download,
+  Calendar,
+  Filter
+} from 'lucide-react';
 
 import { FilterCard } from '@/components/reports/FilterCard';
 import { Tabs } from '@/components/reports/Tabs';
@@ -352,7 +361,6 @@ const ReportsPage = () => {
       if (response.ok) {
         const data = await response.json();
         if (data.success && data.data) {
-          console.log('Orders Detail Data:', data.data);
           setOrdersDetailData(data.data);
         }
       } else {
@@ -470,110 +478,292 @@ const ReportsPage = () => {
     }
   };
 
+  // Loading screen
   if (isLoading) {
     return (
-      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white dark:bg-slate-900">
-      <div className="relative">
-        <Loader2 className="h-14 w-14 animate-spin text-blue-600 dark:text-blue-400" />
-        {/* Optional: Background circle */}
-        <div className="absolute inset-0 -z-10 rounded-full bg-blue-50 dark:bg-blue-900/10 blur-sm"></div>
+      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white dark:bg-gray-900">
+        <div className="relative">
+          <div className="h-12 w-12 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600 dark:border-blue-900 dark:border-t-blue-400"></div>
+        </div>
+        <div className="mt-4 text-center">
+          <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
+            Memuat laporan...
+          </p>
+        </div>
       </div>
-      <div className="mt-6 text-center">
-        <p className="text-lg font-medium text-slate-800 dark:text-slate-200">Memuat halaman</p>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Harap tunggu sebentar...</p>
-      </div>
-    </div>
     );
   }
 
   return (
-    <div className="min-h-screen w-full bg-slate-50 px-4 py-5 dark:bg-slate-900 sm:px-6 md:px-10 lg:px-16 xl:px-20">
-      <div className="w-full space-y-4 sm:space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-gray-800">
+      <main className="mx-auto max-w-7xl px-3 py-4 sm:px-4 sm:py-5 lg:px-6">
         {/* Header Section */}
-        <div className="w-full space-y-3 sm:flex sm:flex-row sm:items-start sm:justify-between sm:space-y-0">
-          <div className="flex-1">
-            <h1 className="text-xl font-bold text-blue-900 dark:text-white sm:text-2xl lg:text-3xl">
-              Laporan & Statistik
-            </h1>
-            <p className="mt-1 text-sm text-blue-600 dark:text-slate-400">
-              Kelola dan analisis data bisnis Anda
-            </p>
-            {activeFilterStartDate && activeFilterEndDate && (
-              <p className="mt-2 text-xs text-slate-500 dark:text-slate-500">
-                Filter aktif: {activeFilterStartDate} s/d{' '}
-                {activeFilterEndDate}
-              </p>
-            )}
+        <div className="mb-5 sm:mb-6">
+          <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+            <div>
+              <div className="flex items-center gap-2">
+                <div className="rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 p-2">
+                  <BarChart3 className="h-5 w-5 text-white sm:h-6 sm:w-6" />
+                </div>
+                <div>
+                  <h1 className="text-lg font-bold text-gray-900 dark:text-white sm:text-xl">
+                    Laporan & Analytics
+                  </h1>
+                  <p className="mt-0.5 text-xs text-gray-600 dark:text-gray-400 sm:text-sm">
+                    Analisis data dan statistik bisnis
+                  </p>
+                </div>
+              </div>
+
+              {activeFilterStartDate && activeFilterEndDate && (
+                <div className="mt-2 flex items-center gap-1.5">
+                  <Calendar className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
+                  <span className="text-xs text-gray-600 dark:text-gray-400">
+                    Periode: {activeFilterStartDate} -{' '}
+                    {activeFilterEndDate}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={() =>
+                  fetchAllData(
+                    activeFilterStartDate,
+                    activeFilterEndDate
+                  )
+                }
+                className="flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 sm:px-3.5 sm:py-2 sm:text-sm"
+              >
+                <RefreshCw
+                  className={`h-3.5 w-3.5 ${
+                    isLoading ? 'animate-spin' : ''
+                  } sm:h-4 sm:w-4`}
+                />
+                <span className="hidden sm:inline">Refresh</span>
+                <span className="inline sm:hidden">Refresh</span>
+              </button>
+            </div>
           </div>
-          <button
-            onClick={() =>
-              fetchAllData(activeFilterStartDate, activeFilterEndDate)
-            }
-            className="inline-flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-blue-600 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600 sm:w-auto sm:py-2"
-          >
-            <RefreshCw className="h-4 w-4" />
-            <span className="hidden sm:inline">Refresh</span>
-          </button>
         </div>
 
         {/* Alerts */}
-        {successMessage && (
-          <SuccessAlert
-            message={successMessage}
-            onClose={() => setSuccessMessage(null)}
-          />
-        )}
+        <div className="mb-4 space-y-2">
+          {successMessage && (
+            <SuccessAlert
+              message={successMessage}
+              onClose={() => setSuccessMessage(null)}
+            />
+          )}
 
-        {error && (
-          <ErrorAlert
-            message={error}
-            onClose={() => setError(null)}
-          />
-        )}
+          {error && (
+            <ErrorAlert
+              message={error}
+              onClose={() => setError(null)}
+            />
+          )}
+        </div>
 
-        {/* Filter Card */}
-        <FilterCard
-          startDate={startDate}
-          endDate={endDate}
-          exportFormat={exportFormat}
-          isExporting={isExporting}
-          onStartDateChange={setStartDate}
-          onEndDateChange={setEndDate}
-          onExportFormatChange={setExportFormat}
-          onApplyFilter={handleApplyFilter}
-          onExport={handleExport}
-          onRefresh={() =>
-            fetchAllData(activeFilterStartDate, activeFilterEndDate)
-          }
-        />
+        {/* Filter Card - Compact Version */}
+        <div className="mb-4 rounded-lg border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <Filter className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+              <span className="text-xs font-semibold text-gray-900 dark:text-white sm:text-sm">
+                Filter & Export
+              </span>
+            </div>
 
-        {/* Tabs */}
-        <Tabs activeTab={activeTab} onTabChange={setActiveTab} />
+            <div className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400">
+              <span className="hidden sm:inline">Format:</span>
+              <select
+                value={exportFormat}
+                onChange={(e) =>
+                  setExportFormat(e.target.value as ExportFormat)
+                }
+                className="rounded border border-gray-300 bg-white px-2 py-1 text-xs dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+              >
+                <option value="excel">Excel</option>
+                <option value="csv">CSV</option>
+                <option value="pdf">PDF</option>
+                <option value="txt">TXT</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
+                Tanggal Mulai
+              </label>
+              <div className="relative">
+                <Calendar className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 bg-white py-2 pl-9 pr-3 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-blue-400"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
+                Tanggal Akhir
+              </label>
+              <div className="relative">
+                <Calendar className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  max={new Date().toISOString().split('T')[0]}
+                  className="w-full rounded-lg border border-gray-300 bg-white py-2 pl-9 pr-3 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-blue-400"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-3 flex gap-2">
+            <button
+              onClick={handleApplyFilter}
+              disabled={isLoading}
+              className="flex-1 rounded-lg bg-blue-600 px-3 py-2 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50 sm:text-sm"
+            >
+              Terapkan Filter
+            </button>
+            <button
+              onClick={handleExport}
+              disabled={isExporting || !ordersDetailData}
+              className="flex items-center gap-1.5 rounded-lg border border-green-600 bg-green-600 px-3 py-2 text-xs font-medium text-white hover:bg-green-700 disabled:opacity-50 sm:text-sm"
+            >
+              <Download className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Export</span>
+            </button>
+          </div>
+
+          {isExporting && (
+            <div className="mt-2 flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              Sedang mengekspor data...
+            </div>
+          )}
+        </div>
+
+        {/* Tabs Navigation */}
+        <div className="mb-4">
+          <div className="flex overflow-x-auto border-b border-gray-200 dark:border-gray-700">
+            <button
+              onClick={() => setActiveTab('dashboard')}
+              className={`flex items-center gap-1.5 whitespace-nowrap border-b-2 px-3 py-2 text-xs font-medium sm:px-4 sm:text-sm ${
+                activeTab === 'dashboard'
+                  ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+              }`}
+            >
+              <BarChart3 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              Dashboard
+            </button>
+            <button
+              onClick={() => setActiveTab('basic')}
+              className={`flex items-center gap-1.5 whitespace-nowrap border-b-2 px-3 py-2 text-xs font-medium sm:px-4 sm:text-sm ${
+                activeTab === 'basic'
+                  ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+              }`}
+            >
+              <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              Laporan Dasar
+            </button>
+            <button
+              onClick={() => setActiveTab('statistics')}
+              className={`flex items-center gap-1.5 whitespace-nowrap border-b-2 px-3 py-2 text-xs font-medium sm:px-4 sm:text-sm ${
+                activeTab === 'statistics'
+                  ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+              }`}
+            >
+              <TrendingUp className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              Statistik Detail
+            </button>
+          </div>
+        </div>
 
         {/* Tab Content */}
-        {activeTab === 'dashboard' && dashboardData && (
-          <DashboardTab
-            data={dashboardData}
-            formatCurrency={formatCurrency}
-          />
-        )}
+        <div className="min-h-[400px]">
+          {activeTab === 'dashboard' && dashboardData ? (
+            <DashboardTab
+              data={dashboardData}
+              formatCurrency={formatCurrency}
+            />
+          ) : activeTab === 'dashboard' && !dashboardData ? (
+            <div className="flex h-64 items-center justify-center rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+              <div className="text-center">
+                <BarChart3 className="mx-auto mb-3 h-8 w-8 text-gray-400 dark:text-gray-600" />
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Data dashboard tidak tersedia
+                </p>
+              </div>
+            </div>
+          ) : null}
 
-        {activeTab === 'basic' && reportsData && (
-          <BasicTab
-            data={reportsData}
-            ordersDetail={ordersDetailData}
-            formatCurrency={formatCurrency}
-            isLoadingOrdersDetail={false}
-          />
-        )}
+          {activeTab === 'basic' && reportsData ? (
+            <BasicTab
+              data={reportsData}
+              ordersDetail={ordersDetailData}
+              formatCurrency={formatCurrency}
+              isLoadingOrdersDetail={false}
+            />
+          ) : activeTab === 'basic' && !reportsData ? (
+            <div className="flex h-64 items-center justify-center rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+              <div className="text-center">
+                <FileText className="mx-auto mb-3 h-8 w-8 text-gray-400 dark:text-gray-600" />
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Data laporan tidak tersedia
+                </p>
+              </div>
+            </div>
+          ) : null}
 
-        {activeTab === 'statistics' && statisticsData && (
-          <StatisticsTab
-            data={statisticsData}
-            formatCurrency={formatCurrency}
-          />
+          {activeTab === 'statistics' && statisticsData ? (
+            <StatisticsTab
+              data={statisticsData}
+              formatCurrency={formatCurrency}
+            />
+          ) : activeTab === 'statistics' && !statisticsData ? (
+            <div className="flex h-64 items-center justify-center rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+              <div className="text-center">
+                <TrendingUp className="mx-auto mb-3 h-8 w-8 text-gray-400 dark:text-gray-600" />
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Data statistik tidak tersedia
+                </p>
+              </div>
+            </div>
+          ) : null}
+        </div>
+
+        {/* Empty State - No Data at All */}
+        {!dashboardData && !reportsData && !statisticsData && (
+          <div className="rounded-lg border border-gray-200 bg-white p-8 text-center dark:border-gray-700 dark:bg-gray-800">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700">
+              <BarChart3 className="h-8 w-8 text-gray-400 dark:text-gray-500" />
+            </div>
+            <h3 className="mb-2 text-sm font-semibold text-gray-900 dark:text-white">
+              Belum ada data laporan
+            </h3>
+            <p className="text-xs text-gray-600 dark:text-gray-400">
+              Data akan muncul setelah ada aktivitas dalam sistem
+            </p>
+            <button
+              onClick={() => fetchAllData(startDate, endDate)}
+              className="mt-4 rounded-lg bg-blue-600 px-4 py-2 text-xs font-medium text-white hover:bg-blue-700"
+            >
+              Coba Muat Ulang
+            </button>
+          </div>
         )}
-      </div>
+      </main>
     </div>
   );
 };

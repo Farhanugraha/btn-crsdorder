@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Loader2,
   Eye,
@@ -14,9 +14,23 @@ import {
   XCircle,
   Calendar,
   MapPin,
-  Building2
+  Building2,
+  Download,
+  User,
+  Phone,
+  ChevronDown,
+  ChevronUp,
+  MoreVertical,
+  Copy,
+  Hash,
+  CalendarDays,
+  Clock as ClockIcon,
+  FileText,
+  ExternalLink
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
+// Interface definitions
 interface Area {
   id: number;
   name: string;
@@ -65,86 +79,301 @@ interface Order {
 }
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-console.log('API URL:', apiUrl);
 
+// StatusBadge component
 function StatusBadge({
   status,
-  type
+  type,
+  size = 'default'
 }: {
   status: string;
   type: 'order' | 'payment';
+  size?: 'small' | 'default';
 }) {
-  const base =
-    'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold uppercase whitespace-nowrap';
+  const base = `inline-flex items-center gap-1 rounded-full font-bold uppercase ${
+    size === 'small'
+      ? 'px-2 py-0.5 text-[10px]'
+      : 'px-2.5 py-1 text-xs'
+  }`;
 
   const orderStyles: Record<
     string,
-    { bg: string; text: string; icon: any }
+    { bg: string; text: string; icon: any; label: string }
   > = {
     processing: {
       bg: 'bg-blue-100 dark:bg-blue-900/30',
       text: 'text-blue-800 dark:text-blue-300',
-      icon: Clock
+      icon: Clock,
+      label: 'Menunggu'
     },
     completed: {
       bg: 'bg-green-100 dark:bg-green-900/30',
       text: 'text-green-800 dark:text-green-300',
-      icon: CheckCircle
+      icon: CheckCircle,
+      label: 'Selesai'
     },
     canceled: {
       bg: 'bg-red-100 dark:bg-red-900/30',
       text: 'text-red-800 dark:text-red-300',
-      icon: XCircle
+      icon: XCircle,
+      label: 'Dibatalkan'
+    },
+    pending: {
+      bg: 'bg-amber-100 dark:bg-amber-900/30',
+      text: 'text-amber-800 dark:text-amber-300',
+      icon: Clock,
+      label: 'Pending'
     }
   };
 
-  const paymentStyles: Record<string, { bg: string; text: string }> =
-    {
-      pending: {
-        bg: 'bg-amber-100 dark:bg-amber-900/30',
-        text: 'text-amber-800 dark:text-amber-300'
-      },
-      paid: {
-        bg: 'bg-green-100 dark:bg-green-900/30',
-        text: 'text-green-800 dark:text-green-300'
-      },
-      canceled: {
-        bg: 'bg-red-100 dark:bg-red-900/30',
-        text: 'text-red-800 dark:text-red-300'
-      }
-    };
+  const paymentStyles: Record<
+    string,
+    { bg: string; text: string; icon: any; label: string }
+  > = {
+    pending: {
+      bg: 'bg-amber-100 dark:bg-amber-900/30',
+      text: 'text-amber-800 dark:text-amber-300',
+      icon: Clock,
+      label: 'Pending'
+    },
+    paid: {
+      bg: 'bg-green-100 dark:bg-green-900/30',
+      text: 'text-green-800 dark:text-green-300',
+      icon: CheckCircle,
+      label: 'Dibayar'
+    },
+    canceled: {
+      bg: 'bg-red-100 dark:bg-red-900/30',
+      text: 'text-red-800 dark:text-red-300',
+      icon: XCircle,
+      label: 'Dibatalkan'
+    },
+    failed: {
+      bg: 'bg-red-100 dark:bg-red-900/30',
+      text: 'text-red-800 dark:text-red-300',
+      icon: XCircle,
+      label: 'Gagal'
+    }
+  };
 
-  const displayStatus =
-    status === 'processing'
-      ? 'Menunggu'
-      : status === 'completed'
-        ? 'Selesai'
-        : status === 'pending'
-          ? 'Pending'
-          : status === 'paid'
-            ? 'Dibayar'
-            : 'Dibatalkan';
+  const config =
+    type === 'order'
+      ? orderStyles[status] || orderStyles.canceled
+      : paymentStyles[status] || paymentStyles.canceled;
+  const Icon = config.icon;
 
-  if (type === 'order') {
-    const style = orderStyles[status] || orderStyles.canceled;
-    const Icon = style.icon;
-    return (
-      <span className={`${base} ${style.bg} ${style.text}`}>
-        <Icon className="h-3.5 w-3.5" />
-        {displayStatus}
-      </span>
-    );
-  }
-
-  const style = paymentStyles[status] || paymentStyles.canceled;
   return (
-    <span className={`${base} ${style.bg} ${style.text}`}>
-      {displayStatus}
+    <span className={`${base} ${config.bg} ${config.text}`}>
+      <Icon
+        className={size === 'small' ? 'h-2.5 w-2.5' : 'h-3 w-3'}
+      />
+      {config.label}
     </span>
   );
 }
 
-export default function OrdersPage() {
+// Loading component
+function LoadingScreen() {
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white dark:bg-slate-900">
+      <div className="relative">
+        <Loader2 className="h-14 w-14 animate-spin text-blue-600 dark:text-blue-400" />
+        <div className="absolute inset-0 -z-10 rounded-full bg-blue-50 blur-sm dark:bg-blue-900/10"></div>
+      </div>
+      <div className="mt-6 text-center">
+        <p className="text-lg font-medium text-slate-800 dark:text-slate-200">
+          Memuat halaman
+        </p>
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+          Harap tunggu sebentar...
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// Quick Action Menu component - Mobile & Desktop
+function QuickActions({
+  order,
+  isMobile = false
+}: {
+  order: Order;
+  isMobile?: boolean;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  const actions = [
+    {
+      label: 'Detail Pesanan',
+      icon: Eye,
+      action: () =>
+        window.open(`/dashboard/orders/${order.id}`, '_blank')
+    },
+    {
+      label: 'Salin Kode Order',
+      icon: Copy,
+      action: () => {
+        navigator.clipboard.writeText(order.order_code);
+        // Bisa tambahkan toast notification di sini
+        alert('Kode order disalin: ' + order.order_code);
+      }
+    },
+    {
+      label: 'Cetak Invoice',
+      icon: FileText,
+      action: () => {
+        const printWindow = window.open('', '_blank');
+        if (printWindow) {
+          printWindow.document.write(`
+            <html>
+              <head>
+                <title>Invoice ${order.order_code}</title>
+                <style>
+                  body { font-family: Arial, sans-serif; padding: 20px; }
+                  .invoice { max-width: 800px; margin: 0 auto; }
+                  .header { text-align: center; margin-bottom: 30px; }
+                  .info { margin-bottom: 20px; }
+                  table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+                  th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                  .total { text-align: right; font-weight: bold; }
+                </style>
+              </head>
+              <body>
+                <div class="invoice">
+                  <div class="header">
+                    <h2>Invoice Order #${order.order_code}</h2>
+                  </div>
+                  <div class="info">
+                    <p><strong>Pelanggan:</strong> ${
+                      order.user.name
+                    }</p>
+                    <p><strong>Email:</strong> ${order.user.email}</p>
+                    <p><strong>Telepon:</strong> ${
+                      order.user.phone
+                    }</p>
+                    <p><strong>Tanggal:</strong> ${new Date(
+                      order.created_at
+                    ).toLocaleString('id-ID')}</p>
+                  </div>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Item</th>
+                        <th>Qty</th>
+                        <th>Harga</th>
+                        <th>Subtotal</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${order.items
+                        .map(
+                          (item) => `
+                        <tr>
+                          <td>${item.menu.name}</td>
+                          <td>${item.quantity}</td>
+                          <td>Rp ${parseInt(
+                            item.price
+                          ).toLocaleString('id-ID')}</td>
+                          <td>Rp ${(
+                            parseInt(item.price) * item.quantity
+                          ).toLocaleString('id-ID')}</td>
+                        </tr>
+                      `
+                        )
+                        .join('')}
+                    </tbody>
+                  </table>
+                  <div class="total">
+                    <h3>Total: Rp ${parseInt(
+                      order.total_price
+                    ).toLocaleString('id-ID')}</h3>
+                  </div>
+                </div>
+              </body>
+            </html>
+          `);
+          printWindow.document.close();
+          printWindow.print();
+        }
+      }
+    }
+  ];
+
+  if (isMobile) {
+    return (
+      <div className="relative">
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className="flex items-center gap-1 rounded-lg bg-blue-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
+        >
+          <MoreVertical className="h-3.5 w-3.5" />
+          <span>Aksi</span>
+        </button>
+
+        {isOpen && (
+          <>
+            <div
+              className="fixed inset-0 z-40"
+              onClick={() => setIsOpen(false)}
+            />
+            <div className="absolute right-0 top-full z-50 mt-1 min-w-[140px] rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+              {actions.map((action, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => {
+                    action.action();
+                    setIsOpen(false);
+                  }}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-xs text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
+                >
+                  <action.icon className="h-3 w-3" />
+                  {action.label}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700"
+      >
+        <MoreVertical className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+      </button>
+
+      {isOpen && (
+        <>
+          <div
+            className="fixed inset-0 z-40"
+            onClick={() => setIsOpen(false)}
+          />
+          <div className="absolute right-0 top-full z-50 mt-1 w-44 rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+            {actions.map((action, idx) => (
+              <button
+                key={idx}
+                onClick={() => {
+                  action.action();
+                  setIsOpen(false);
+                }}
+                className="flex w-full items-center gap-2 px-3 py-2 text-xs text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
+              >
+                <action.icon className="h-3.5 w-3.5" />
+                {action.label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+export default function CompactOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [areas, setAreas] = useState<Area[]>([]);
   const [loading, setLoading] = useState(true);
@@ -158,6 +387,9 @@ export default function OrdersPage() {
   const [page, setPage] = useState(1);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [expandedOrder, setExpandedOrder] = useState<number | null>(
+    null
+  );
 
   const perPage = 10;
 
@@ -227,591 +459,802 @@ export default function OrdersPage() {
     setIsRefreshing(false);
   };
 
-  // Filter: search, status, area, dan date
-  const filtered = orders.filter((o) => {
-    const hasContent =
-      o.order_code.toLowerCase().includes(search.toLowerCase()) ||
-      o.user.name.toLowerCase().includes(search.toLowerCase()) ||
-      o.user.email.toLowerCase().includes(search.toLowerCase()) ||
-      o.items?.some(
-        (item) =>
-          item.menu?.restaurant?.name
-            .toLowerCase()
-            .includes(search.toLowerCase())
-      );
-
-    const matchesStatus =
-      statusFilter === 'all' || o.order_status === statusFilter;
-
-    // Filter berdasarkan area - cek apakah order punya item di area ini
-    const matchesArea =
-      areaFilter === 'all' ||
-      (o.areas &&
-        o.areas.some((area) => area.id.toString() === areaFilter));
-
-    const orderDate = new Date(o.created_at)
-      .toISOString()
-      .split('T')[0];
-    const matchesDate = orderDate === dateFilter;
-
-    return (
-      o.order_status !== null &&
-      hasContent &&
-      matchesStatus &&
-      matchesArea &&
-      matchesDate
+  const handleExportExcel = () => {
+    const worksheet = XLSX.utils.json_to_sheet(
+      filteredOrders.map((order) => ({
+        'Kode Order': order.order_code,
+        Pelanggan: order.user.name,
+        Email: order.user.email,
+        Telepon: order.user.phone,
+        Area: order.areas?.map((a) => a.name).join(', ') || '-',
+        'Status Order': order.order_status,
+        'Status Pembayaran': order.status,
+        Total: order.total_price,
+        Tanggal: new Date(order.created_at).toLocaleDateString(
+          'id-ID'
+        )
+      }))
     );
-  });
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Orders');
+    XLSX.writeFile(workbook, `orders_${dateFilter}.xlsx`);
+  };
 
-  const pages = Math.ceil(filtered.length / perPage);
-  const data = filtered.slice((page - 1) * perPage, page * perPage);
+  // Filter logic
+  const filteredOrders = useMemo(() => {
+    return orders.filter((o) => {
+      const hasContent =
+        o.order_code.toLowerCase().includes(search.toLowerCase()) ||
+        o.user.name.toLowerCase().includes(search.toLowerCase()) ||
+        o.user.email.toLowerCase().includes(search.toLowerCase()) ||
+        o.items?.some(
+          (item) =>
+            item.menu?.restaurant?.name
+              .toLowerCase()
+              .includes(search.toLowerCase())
+        );
+
+      const matchesStatus =
+        statusFilter === 'all' || o.order_status === statusFilter;
+
+      const matchesArea =
+        areaFilter === 'all' ||
+        (o.areas &&
+          o.areas.some((area) => area.id.toString() === areaFilter));
+
+      const orderDate = new Date(o.created_at)
+        .toISOString()
+        .split('T')[0];
+      const matchesDate = orderDate === dateFilter;
+
+      return (
+        o.order_status !== null &&
+        hasContent &&
+        matchesStatus &&
+        matchesArea &&
+        matchesDate
+      );
+    });
+  }, [orders, search, statusFilter, areaFilter, dateFilter]);
+
+  const pages = Math.ceil(filteredOrders.length / perPage);
+  const paginatedOrders = filteredOrders.slice(
+    (page - 1) * perPage,
+    page * perPage
+  );
 
   const statusOptions = [
     { value: 'processing', label: 'Menunggu', icon: Clock },
     { value: 'completed', label: 'Selesai', icon: CheckCircle },
     { value: 'canceled', label: 'Dibatalkan', icon: XCircle },
-    { value: 'all', label: 'Semua Status', icon: null }
+    { value: 'all', label: 'Semua', icon: Clock }
   ];
 
-  // Hitung jumlah order per area untuk badge
   const getAreaOrderCount = (areaId: number) => {
     return orders.filter(
       (o) =>
         o.areas &&
         o.areas.some((area) => area.id === areaId) &&
-        o.order_status === statusFilter &&
+        (statusFilter === 'all' || o.order_status === statusFilter) &&
         new Date(o.created_at).toISOString().split('T')[0] ===
           dateFilter
     ).length;
   };
 
   if (loading) {
-    return (
-      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white dark:bg-slate-900">
-        <div className="relative">
-          <Loader2 className="h-14 w-14 animate-spin text-blue-600 dark:text-blue-400" />
-          {/* Optional: Background circle */}
-          <div className="absolute inset-0 -z-10 rounded-full bg-blue-50 blur-sm dark:bg-blue-900/10"></div>
-        </div>
-        <div className="mt-6 text-center">
-          <p className="text-lg font-medium text-slate-800 dark:text-slate-200">
-            Memuat halaman
-          </p>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            Harap tunggu sebentar...
-          </p>
-        </div>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-        {/* PAGE TITLE */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-blue-900 dark:text-white">
-            Pesanan
-          </h1>
-          <p className="mt-2 text-gray-600 dark:text-gray-400">
-            Kelola dan pantau semua pesanan pelanggan
-          </p>
+      <main className="mx-auto max-w-7xl px-3 py-4 sm:px-4 sm:py-5 lg:px-6">
+        {/* HEADER SECTION */}
+        <div className="mb-5 sm:mb-6">
+          <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+            <div>
+              <h1 className="text-lg font-bold text-gray-900 dark:text-white sm:text-xl">
+                Pesanan
+              </h1>
+              <p className="mt-0.5 text-xs text-gray-600 dark:text-gray-400 sm:text-sm">
+                Kelola semua pesanan pelanggan
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={handleExportExcel}
+                className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-medium text-white hover:bg-blue-700 sm:px-3.5 sm:py-2 sm:text-sm"
+              >
+                <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Export Excel</span>
+                <span className="inline sm:hidden">Export</span>
+              </button>
+              <button
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                className="flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 sm:px-3.5 sm:py-2 sm:text-sm"
+              >
+                <RefreshCw
+                  className={`h-3.5 w-3.5 ${
+                    isRefreshing ? 'animate-spin' : ''
+                  } sm:h-4 sm:w-4`}
+                />
+                <span className="hidden sm:inline">Refresh</span>
+                <span className="inline sm:hidden">Refresh</span>
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* ERROR ALERT */}
         {error && (
-          <div className="mb-6 flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 p-4 text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400">
-            <AlertCircle className="h-5 w-5 shrink-0" />
-            <p className="flex-1 text-sm font-medium">{error}</p>
-            <button
-              onClick={() => setError(null)}
-              className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
-            >
-              <span className="text-xl">×</span>
-            </button>
+          <div className="animate-fade-in mb-4 rounded-lg border border-red-200 bg-red-50 p-2.5 dark:border-red-800 dark:bg-red-900/20 sm:p-3">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-3.5 w-3.5 shrink-0 text-red-600 dark:text-red-400 sm:h-4 sm:w-4" />
+              <p className="text-xs font-medium text-red-700 dark:text-red-300 sm:text-sm">
+                {error}
+              </p>
+              <button
+                onClick={() => setError(null)}
+                className="ml-auto text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+              >
+                ×
+              </button>
+            </div>
           </div>
         )}
 
-        {/* AREA FILTER CHIPS - PRIORITAS PERTAMA */}
-        <div className="mb-6">
-          <label className="mb-3 flex items-center gap-2 text-sm font-bold text-blue-900 dark:text-white">
-            <MapPin className="h-5 w-5 text-blue-600" />
-            Filter Berdasarkan Area
-          </label>
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => {
-                setAreaFilter('all');
-                setPage(1);
-              }}
-              className={`inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all ${
-                areaFilter === 'all'
-                  ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg'
-                  : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
-              }`}
-            >
-              <Building2 className="h-4 w-4" />
-              Semua Area
-              <span
-                className={`ml-1 rounded-full px-2 py-0.5 text-xs font-bold ${
-                  areaFilter === 'all'
-                    ? 'bg-white/20'
-                    : 'bg-gray-200 dark:bg-gray-600'
-                }`}
-              >
-                {
-                  orders.filter(
-                    (o) =>
-                      o.order_status === statusFilter &&
-                      new Date(o.created_at)
-                        .toISOString()
-                        .split('T')[0] === dateFilter
-                  ).length
-                }
+        {/* MAIN FILTERS SECTION */}
+        <div className="mb-4 space-y-4 rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800 sm:p-4">
+          {/* AREA FILTER CHIPS */}
+          <div>
+            <div className="mb-2 flex items-center gap-1.5">
+              <MapPin className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+              <span className="text-xs font-semibold text-gray-900 dark:text-white sm:text-sm">
+                Area
               </span>
-            </button>
-            {areas.map((area) => {
-              const count = getAreaOrderCount(area.id);
-              return (
-                <button
-                  key={area.id}
-                  onClick={() => {
-                    setAreaFilter(area.id.toString());
-                    setPage(1);
-                  }}
-                  className={`inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all ${
-                    areaFilter === area.id.toString()
-                      ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg'
-                      : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
-                  }`}
-                >
-                  <span className="text-base">
-                    {area.icon || '🏢'}
-                  </span>
-                  {area.name}
-                  {count > 0 && (
-                    <span
-                      className={`ml-1 rounded-full px-2 py-0.5 text-xs font-bold ${
-                        areaFilter === area.id.toString()
-                          ? 'bg-white/20'
-                          : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-                      }`}
-                    >
-                      {count}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* TOOLBAR - SEARCH & REFRESH */}
-        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="max-w-md flex-1">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
-              <input
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              <button
+                onClick={() => {
+                  setAreaFilter('all');
                   setPage(1);
                 }}
-                placeholder="Cari order, nama, email, restaurant..."
-                className="w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-4 text-sm text-gray-900 placeholder-gray-500 transition-all focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-400"
-              />
+                className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs transition-all ${
+                  areaFilter === 'all'
+                    ? 'bg-blue-600 text-white'
+                    : 'border border-gray-300 bg-gray-50 text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+                }`}
+              >
+                Semua
+                <span className="ml-0.5 rounded-full bg-white/20 px-1.5 py-0.5 text-[10px] font-bold">
+                  {
+                    orders.filter(
+                      (o) =>
+                        (statusFilter === 'all' ||
+                          o.order_status === statusFilter) &&
+                        new Date(o.created_at)
+                          .toISOString()
+                          .split('T')[0] === dateFilter
+                    ).length
+                  }
+                </span>
+              </button>
+
+              {areas.map((area) => {
+                const count = getAreaOrderCount(area.id);
+                return (
+                  <button
+                    key={area.id}
+                    onClick={() => {
+                      setAreaFilter(area.id.toString());
+                      setPage(1);
+                    }}
+                    className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs transition-all ${
+                      areaFilter === area.id.toString()
+                        ? 'bg-blue-600 text-white'
+                        : 'border border-gray-300 bg-gray-50 text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+                    }`}
+                  >
+                    <span className="text-sm">
+                      {area.icon || '🏢'}
+                    </span>
+                    <span className="max-w-[80px] truncate sm:max-w-none">
+                      {area.name}
+                    </span>
+                    {count > 0 && (
+                      <span
+                        className={`ml-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
+                          areaFilter === area.id.toString()
+                            ? 'bg-white/20'
+                            : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                        }`}
+                      >
+                        {count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </div>
-          <button
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-            className="flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition-all hover:bg-blue-700 disabled:opacity-50 dark:bg-blue-700 dark:hover:bg-blue-600"
-            title="Refresh"
-          >
-            <RefreshCw
-              className={`h-4 w-4 ${
-                isRefreshing ? 'animate-spin' : ''
-              }`}
-            />
-            <span>Refresh</span>
-          </button>
+
+          {/* SEARCH AND DATE FILTER */}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
+                Cari Pesanan
+              </label>
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
+                <input
+                  value={search}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setPage(1);
+                  }}
+                  placeholder="Cari kode/nama..."
+                  className="w-full rounded-lg border border-gray-300 bg-white py-2 pl-9 pr-3 text-sm text-gray-900 placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-400"
+                />
+                {search && (
+                  <button
+                    onClick={() => setSearch('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
+                Tanggal
+              </label>
+              <div className="relative">
+                <Calendar className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
+                <input
+                  type="date"
+                  value={dateFilter}
+                  onChange={(e) => {
+                    setDateFilter(e.target.value);
+                    setPage(1);
+                  }}
+                  max={new Date().toISOString().split('T')[0]}
+                  className="w-full rounded-lg border border-gray-300 bg-white py-2 pl-9 pr-3 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-blue-400"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* STATUS FILTER */}
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-gray-700 dark:text-gray-300">
+              Status
+            </label>
+            <div className="flex flex-wrap gap-1.5">
+              {statusOptions.map((option) => {
+                const Icon = option.icon;
+                return (
+                  <button
+                    key={option.value}
+                    onClick={() => {
+                      setStatusFilter(option.value);
+                      setPage(1);
+                    }}
+                    className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs transition-all ${
+                      statusFilter === option.value
+                        ? 'bg-blue-600 text-white'
+                        : 'border border-gray-300 bg-gray-50 text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+                    }`}
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
 
         {/* RESULTS INFO */}
-        <div className="mb-4 text-sm text-gray-600 dark:text-gray-400">
-          {filtered.length > 0 ? (
+        <div className="mb-3 px-1 text-xs text-gray-600 dark:text-gray-400 sm:px-0 sm:text-sm">
+          {filteredOrders.length > 0 ? (
             <>
-              Menampilkan {(page - 1) * perPage + 1} -
-              {Math.min(page * perPage, filtered.length)} dari{' '}
-              {filtered.length} pesanan
+              <span className="font-semibold text-blue-600 dark:text-blue-400">
+                {filteredOrders.length}
+              </span>{' '}
+              pesanan ditemukan
               {areaFilter !== 'all' && (
-                <span className="ml-1 font-semibold text-blue-600 dark:text-blue-400">
-                  di area{' '}
-                  {
-                    areas.find((a) => a.id.toString() === areaFilter)
-                      ?.name
-                  }
+                <span className="ml-2">
+                  di{' '}
+                  <span className="font-semibold text-blue-600 dark:text-blue-400">
+                    {
+                      areas.find(
+                        (a) => a.id.toString() === areaFilter
+                      )?.name
+                    }
+                  </span>
                 </span>
               )}
             </>
           ) : (
-            <>Tidak ada pesanan ditemukan</>
+            <span className="text-amber-600 dark:text-amber-400">
+              Tidak ada pesanan
+            </span>
           )}
         </div>
 
         {/* ORDERS TABLE - DESKTOP */}
-        {data.length > 0 ? (
+        {filteredOrders.length > 0 ? (
           <>
-            <div className="hidden overflow-x-auto rounded-lg border border-gray-200 shadow-sm dark:border-gray-700 md:block">
-              <table className="w-full divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">
-                <thead className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-gray-700 dark:to-gray-600">
+            <div className="hidden overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:block">
+              <table className="w-full divide-y divide-gray-200 text-sm dark:divide-gray-700">
+                <thead className="bg-gray-50 dark:bg-gray-700/50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-blue-900 dark:text-blue-300">
-                      Order Code
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300 sm:px-4">
+                      Order
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-blue-900 dark:text-blue-300">
-                      Restaurant / Area
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-blue-900 dark:text-blue-300">
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300 sm:px-4">
                       Pelanggan
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-blue-900 dark:text-blue-300">
-                      No Telepon
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300 sm:px-4">
+                      Area
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-blue-900 dark:text-blue-300">
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300 sm:px-4">
                       Tanggal
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-blue-900 dark:text-blue-300">
-                      Status Order
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300 sm:px-4">
+                      Status
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-blue-900 dark:text-blue-300">
-                      Status Pembayaran
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-blue-900 dark:text-blue-300">
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300 sm:px-4">
                       Total
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-blue-900 dark:text-blue-300">
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300 sm:px-4">
                       Aksi
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {data.map((order) => (
-                    <tr
-                      key={order.id}
-                      className="transition-colors hover:bg-blue-50 dark:hover:bg-gray-700"
-                    >
-                      <td className="whitespace-nowrap px-6 py-4 font-mono text-sm font-bold text-blue-600 dark:text-blue-400">
-                        #{order.order_code}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div>
-                          {order.areas && order.areas.length > 0 ? (
-                            <div className="flex items-center gap-1">
-                              <MapPin className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-                              <p className="text-sm font-medium text-gray-900 dark:text-white">
-                                {order.areas
-                                  .map((a) => a.name)
-                                  .join(', ')}
+                <tbody className="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">
+                  {paginatedOrders.map((order) => (
+                    <>
+                      <tr
+                        key={order.id}
+                        className="hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                      >
+                        <td className="px-3 py-3 sm:px-4">
+                          <div className="flex items-center gap-2">
+                            <Hash className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
+                            <div>
+                              <p className="font-mono text-xs font-bold text-blue-600 dark:text-blue-400">
+                                #{order.order_code}
                               </p>
+                              <p className="mt-0.5 text-[10px] text-gray-500 dark:text-gray-400">
+                                {order.items.length} item
+                              </p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 sm:px-4">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-1.5">
+                              <User className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
+                              <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                {order.user.name}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400">
+                              <Phone className="h-3 w-3" />
+                              {order.user.phone}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 sm:px-4">
+                          {order.areas && order.areas.length > 0 ? (
+                            <div className="flex items-center gap-1.5">
+                              <MapPin className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
+                              <span className="text-sm text-gray-900 dark:text-white">
+                                {order.areas[0].name}
+                                {order.areas.length > 1 &&
+                                  ` +${order.areas.length - 1}`}
+                              </span>
                             </div>
                           ) : (
                             <p className="text-sm text-gray-400">-</p>
                           )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div>
-                          <p className="text-sm font-medium text-gray-900 dark:text-white">
-                            {order.user.name}
+                        </td>
+                        <td className="px-3 py-3 sm:px-4">
+                          <div className="space-y-0.5">
+                            <div className="flex items-center gap-1.5">
+                              <CalendarDays className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
+                              <span className="text-sm text-gray-900 dark:text-white">
+                                {new Date(
+                                  order.created_at
+                                ).toLocaleDateString('id-ID')}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400">
+                              <ClockIcon className="h-3 w-3" />
+                              {new Date(
+                                order.created_at
+                              ).toLocaleTimeString('id-ID', {
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 sm:px-4">
+                          <div className="space-y-1.5">
+                            <StatusBadge
+                              status={order.order_status}
+                              type="order"
+                            />
+                            <StatusBadge
+                              status={order.status}
+                              type="payment"
+                            />
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 sm:px-4">
+                          <p className="text-sm font-bold text-gray-900 dark:text-white">
+                            Rp{' '}
+                            {parseInt(
+                              order.total_price
+                            ).toLocaleString('id-ID')}
                           </p>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">
-                            {order.user.email}
-                          </p>
-                        </div>
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
-                        {order.user.phone}
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
-                        {new Date(
-                          order.created_at
-                        ).toLocaleDateString('id-ID')}
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-4">
-                        <StatusBadge
-                          status={order.order_status}
-                          type="order"
-                        />
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-4">
-                        <StatusBadge
-                          status={order.status}
-                          type="payment"
-                        />
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm font-bold text-gray-900 dark:text-white">
-                        Rp{' '}
-                        {parseInt(order.total_price).toLocaleString(
-                          'id-ID'
-                        )}
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-4">
-                        <a
-                          href={`/dashboard/orders/${order.id}`}
-                          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600"
-                        >
-                          <Eye className="h-4 w-4" />
-                          Detail
-                        </a>
-                      </td>
-                    </tr>
+                        </td>
+                        <td className="px-3 py-3 sm:px-4">
+                          <div className="flex items-center gap-1.5">
+                            <a
+                              href={`/dashboard/orders/${order.id}`}
+                              className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-2 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
+                            >
+                              <Eye className="h-3.5 w-3.5" />
+                              Detail
+                            </a>
+                            <button
+                              onClick={() =>
+                                setExpandedOrder(
+                                  expandedOrder === order.id
+                                    ? null
+                                    : order.id
+                                )
+                              }
+                              className="rounded-lg p-1 hover:bg-gray-100 dark:hover:bg-gray-700"
+                            >
+                              {expandedOrder === order.id ? (
+                                <ChevronUp className="h-3.5 w-3.5 text-gray-600 dark:text-gray-400" />
+                              ) : (
+                                <ChevronDown className="h-3.5 w-3.5 text-gray-600 dark:text-gray-400" />
+                              )}
+                            </button>
+                            <QuickActions order={order} />
+                          </div>
+                        </td>
+                      </tr>
+
+                      {/* Expanded Detail Row */}
+                      {expandedOrder === order.id && (
+                        <tr className="bg-gray-50/50 dark:bg-gray-800/50">
+                          <td
+                            colSpan={7}
+                            className="px-3 py-3 sm:px-4"
+                          >
+                            <div className="rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800">
+                              <div className="mb-2 flex items-center justify-between">
+                                <h4 className="text-xs font-semibold text-gray-900 dark:text-white">
+                                  Detail Items
+                                </h4>
+                                <button
+                                  onClick={() =>
+                                    setExpandedOrder(null)
+                                  }
+                                  className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                                >
+                                  Tutup
+                                </button>
+                              </div>
+                              <div className="space-y-2">
+                                {order.items.map((item) => (
+                                  <div
+                                    key={item.id}
+                                    className="flex items-center justify-between rounded border border-gray-100 p-2 dark:border-gray-700"
+                                  >
+                                    <div className="flex-1">
+                                      <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                        {item.menu.name}
+                                      </p>
+                                      <p className="text-xs text-gray-600 dark:text-gray-400">
+                                        {item.menu.restaurant?.name ||
+                                          '-'}
+                                      </p>
+                                      {item.notes && (
+                                        <p className="mt-0.5 text-xs text-amber-600 dark:text-amber-400">
+                                          📝 {item.notes}
+                                        </p>
+                                      )}
+                                    </div>
+                                    <div className="text-right">
+                                      <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                        Rp{' '}
+                                        {parseInt(
+                                          item.price
+                                        ).toLocaleString('id-ID')}
+                                      </p>
+                                      <p className="text-xs text-gray-600 dark:text-gray-400">
+                                        {item.quantity} × Rp{' '}
+                                        {parseInt(
+                                          item.price
+                                        ).toLocaleString('id-ID')}
+                                      </p>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                              {order.notes && (
+                                <div className="mt-3 rounded border border-amber-200 bg-amber-50 p-2 dark:border-amber-800 dark:bg-amber-900/20">
+                                  <p className="text-xs font-medium text-amber-800 dark:text-amber-300">
+                                    Catatan Pesanan:
+                                  </p>
+                                  <p className="mt-0.5 text-xs text-amber-700 dark:text-amber-400">
+                                    {order.notes}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </>
                   ))}
                 </tbody>
               </table>
             </div>
 
             {/* ORDERS CARDS - MOBILE */}
-            <div className="space-y-3 md:hidden">
-              {data.map((order) => (
+            <div className="space-y-2.5 sm:hidden">
+              {paginatedOrders.map((order) => (
                 <div
                   key={order.id}
-                  className="rounded-lg border border-blue-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md dark:border-gray-700 dark:bg-gray-800"
+                  className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-800"
                 >
-                  {/* Order Code */}
-                  <div className="mb-3 flex items-center justify-between gap-2 border-b border-blue-200 pb-3 dark:border-gray-700">
-                    <span className="truncate font-mono text-sm font-bold text-blue-600 dark:text-blue-400">
-                      #{order.order_code}
-                    </span>
-                    <StatusBadge
-                      status={order.order_status}
-                      type="order"
-                    />
-                  </div>
-
-                  {/* Area */}
-                  <div className="mb-3 rounded-lg bg-blue-50 p-3 dark:bg-blue-900/20">
-                    {order.areas && order.areas.length > 0 ? (
-                      <div className="flex items-center gap-2">
-                        <MapPin className="h-4 w-4 flex-shrink-0 text-blue-600 dark:text-blue-400" />
-                        <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                          {order.areas.map((a) => a.name).join(', ')}
+                  {/* Header with Order Code and Status */}
+                  <div className="mb-3 flex items-start justify-between">
+                    <div>
+                      <div className="mb-1 flex items-center gap-1.5">
+                        <Hash className="h-3.5 w-3.5 text-blue-500" />
+                        <p className="font-mono text-sm font-bold text-blue-600 dark:text-blue-400">
+                          #{order.order_code}
                         </p>
                       </div>
-                    ) : (
-                      <p className="text-sm text-gray-400">-</p>
-                    )}
+                      <div className="flex flex-wrap gap-1">
+                        <StatusBadge
+                          status={order.order_status}
+                          type="order"
+                          size="small"
+                        />
+                        <StatusBadge
+                          status={order.status}
+                          type="payment"
+                          size="small"
+                        />
+                      </div>
+                    </div>
+                    <button
+                      onClick={() =>
+                        setExpandedOrder(
+                          expandedOrder === order.id ? null : order.id
+                        )
+                      }
+                      className="rounded-lg p-1 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    >
+                      {expandedOrder === order.id ? (
+                        <ChevronUp className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+                      )}
+                    </button>
                   </div>
 
                   {/* Customer Info */}
-                  <div className="mb-3">
-                    <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                      {order.user.name}
-                    </p>
-                    <p className="truncate text-xs text-gray-600 dark:text-gray-400">
-                      {order.user.email}
-                    </p>
-                    <p className="text-xs text-gray-600 dark:text-gray-400">
-                      {order.user.phone}
-                    </p>
-                  </div>
-
-                  {/* Date & Payment */}
-                  <div className="mb-3 space-y-2 text-sm">
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">
-                        Tanggal:
-                      </span>
-                      <span className="font-medium text-gray-900 dark:text-white">
-                        {new Date(
-                          order.created_at
-                        ).toLocaleDateString('id-ID')}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">
-                        Order:
-                      </span>
-                      <StatusBadge
-                        status={order.order_status}
-                        type="order"
-                      />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">
-                        Pembayaran:
-                      </span>
-                      <StatusBadge
-                        status={order.status}
-                        type="payment"
-                      />
+                  <div className="mb-2">
+                    <div className="flex items-center gap-2">
+                      <div className="rounded-full bg-blue-100 p-1 dark:bg-blue-900/30">
+                        <User className="h-3 w-3 text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900 dark:text-white">
+                          {order.user.name}
+                        </p>
+                        <p className="text-xs text-gray-600 dark:text-gray-400">
+                          {order.user.phone}
+                        </p>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Bottom Row */}
-                  <div className="flex items-center justify-between gap-3 border-t border-blue-200 pt-3 dark:border-gray-700">
-                    <p className="text-base font-bold text-gray-900 dark:text-white">
-                      Rp{' '}
-                      {parseInt(order.total_price).toLocaleString(
-                        'id-ID'
+                  {/* Quick Info Grid */}
+                  <div className="mb-3 grid grid-cols-2 gap-2">
+                    <div className="flex items-center gap-1.5 rounded-lg bg-gray-50 p-2 dark:bg-gray-700/50">
+                      <MapPin className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
+                      <div>
+                        <p className="text-[10px] text-gray-500 dark:text-gray-400">
+                          Area
+                        </p>
+                        <p className="text-xs font-medium text-gray-900 dark:text-white">
+                          {order.areas?.[0]?.name || '-'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 rounded-lg bg-gray-50 p-2 dark:bg-gray-700/50">
+                      <CalendarDays className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
+                      <div>
+                        <p className="text-[10px] text-gray-500 dark:text-gray-400">
+                          Tanggal
+                        </p>
+                        <p className="text-xs font-medium text-gray-900 dark:text-white">
+                          {new Date(
+                            order.created_at
+                          ).toLocaleDateString('id-ID')}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Total and Actions */}
+                  <div className="flex items-center justify-between border-t border-gray-200 pt-2 dark:border-gray-700">
+                    <div>
+                      <p className="text-[10px] text-gray-500 dark:text-gray-400">
+                        Total
+                      </p>
+                      <p className="text-sm font-bold text-gray-900 dark:text-white">
+                        Rp{' '}
+                        {parseInt(order.total_price).toLocaleString(
+                          'id-ID'
+                        )}
+                      </p>
+                    </div>
+                    <div className="flex gap-1.5">
+                      <a
+                        href={`/dashboard/orders/${order.id}`}
+                        className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
+                      >
+                        <Eye className="h-3.5 w-3.5" />
+                        Detail
+                      </a>
+                      <QuickActions order={order} isMobile={true} />
+                    </div>
+                  </div>
+
+                  {/* Expanded Details - Mobile */}
+                  {expandedOrder === order.id && (
+                    <div className="mt-3 border-t border-gray-200 pt-3 dark:border-gray-700">
+                      <div className="space-y-2">
+                        {order.items.slice(0, 3).map((item) => (
+                          <div
+                            key={item.id}
+                            className="flex items-center justify-between rounded border border-gray-100 p-2 dark:border-gray-700"
+                          >
+                            <div>
+                              <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                {item.menu.name}
+                              </p>
+                              <p className="text-xs text-gray-600 dark:text-gray-400">
+                                {item.menu.restaurant?.name || '-'}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                Rp{' '}
+                                {parseInt(item.price).toLocaleString(
+                                  'id-ID'
+                                )}
+                              </p>
+                              <p className="text-xs text-gray-600 dark:text-gray-400">
+                                {item.quantity} × Rp{' '}
+                                {parseInt(item.price).toLocaleString(
+                                  'id-ID'
+                                )}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                        {order.items.length > 3 && (
+                          <p className="text-center text-xs text-gray-500 dark:text-gray-400">
+                            +{order.items.length - 3} item lainnya
+                          </p>
+                        )}
+                      </div>
+                      {order.notes && (
+                        <div className="mt-2 rounded border border-amber-200 bg-amber-50 p-2 dark:border-amber-800 dark:bg-amber-900/20">
+                          <p className="text-xs font-medium text-amber-800 dark:text-amber-300">
+                            Catatan:
+                          </p>
+                          <p className="mt-0.5 text-xs text-amber-700 dark:text-amber-400">
+                            {order.notes}
+                          </p>
+                        </div>
                       )}
-                    </p>
-                    <a
-                      href={`/dashboard/orders/${order.id}`}
-                      className="inline-flex items-center gap-2 whitespace-nowrap rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600"
-                    >
-                      <Eye className="h-4 w-4" />
-                      Lihat
-                    </a>
-                  </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
           </>
         ) : (
-          <div className="rounded-lg border border-gray-200 bg-white p-12 text-center dark:border-gray-700 dark:bg-gray-800">
-            <AlertCircle className="mx-auto mb-4 h-12 w-12 text-gray-300 dark:text-gray-600" />
-            <p className="text-lg font-semibold text-gray-900 dark:text-white">
-              Tidak ada pesanan ditemukan
+          <div className="rounded-lg border border-gray-200 bg-white p-6 text-center dark:border-gray-700 dark:bg-gray-800">
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700">
+              <AlertCircle className="h-6 w-6 text-gray-400 dark:text-gray-500" />
+            </div>
+            <p className="text-sm font-semibold text-gray-900 dark:text-white">
+              Tidak ada pesanan
             </p>
-            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-              {areaFilter !== 'all'
-                ? `Tidak ada pesanan di area ${areas.find(
-                    (a) => a.id.toString() === areaFilter
-                  )?.name} untuk tanggal ini`
-                : 'Coba ubah pencarian atau filter'}
+            <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
+              Coba ubah filter atau tanggal
             </p>
           </div>
         )}
+
         {/* PAGINATION */}
         {pages > 1 && (
-          <div className="mt-8 flex flex-col items-center justify-center gap-4">
-            <div className="flex flex-wrap items-center justify-center gap-2">
-              <button
-                disabled={page === 1}
-                onClick={() => setPage((p) => p - 1)}
-                className="flex items-center justify-center rounded-lg border border-gray-300 bg-white p-2 text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-30 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
-                title="Previous page"
-              >
-                <ChevronLeft className="h-5 w-5" />
-              </button>
-
-              <div className="flex flex-wrap items-center justify-center gap-1">
-                {pages <= 5 ? (
-                  Array.from({ length: pages }, (_, i) => i + 1).map(
-                    (p) => (
-                      <button
-                        key={p}
-                        onClick={() => setPage(p)}
-                        className={`h-10 w-10 rounded-lg text-sm font-semibold transition-colors ${
-                          page === p
-                            ? 'bg-blue-600 text-white dark:bg-blue-700'
-                            : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
-                        }`}
-                      >
-                        {p}
-                      </button>
-                    )
-                  )
-                ) : (
-                  <>
-                    {[1, page, pages]
-                      .filter((p, i, arr) => arr.indexOf(p) === i)
-                      .map((p, i, arr) => (
-                        <div key={p}>
-                          {i > 0 && arr[i - 1] + 1 < p && (
-                            <span className="px-2 text-gray-400 dark:text-gray-600">
-                              ...
-                            </span>
-                          )}
-                          <button
-                            onClick={() => setPage(p)}
-                            className={`h-10 w-10 rounded-lg text-sm font-semibold transition-colors ${
-                              page === p
-                                ? 'bg-blue-600 text-white dark:bg-blue-700'
-                                : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
-                            }`}
-                          >
-                            {p}
-                          </button>
-                        </div>
-                      ))}
-                  </>
-                )}
+          <div className="mt-5 sm:mt-6">
+            <div className="flex flex-col items-center justify-between gap-3 sm:flex-row">
+              <div className="text-xs text-gray-600 dark:text-gray-400">
+                Halaman <span className="font-semibold">{page}</span>{' '}
+                dari <span className="font-semibold">{pages}</span>
               </div>
+              <div className="flex items-center gap-1">
+                <button
+                  disabled={page === 1}
+                  onClick={() => setPage((p) => p - 1)}
+                  className="flex items-center justify-center rounded-lg border border-gray-300 bg-white p-2 text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-30 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                </button>
 
-              <button
-                disabled={page === pages}
-                onClick={() => setPage((p) => p + 1)}
-                className="flex items-center justify-center rounded-lg border border-gray-300 bg-white p-2 text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-30 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
-                title="Next page"
-              >
-                <ChevronRight className="h-5 w-5" />
-              </button>
-            </div>
+                <div className="flex items-center gap-0.5">
+                  {Array.from(
+                    { length: Math.min(5, pages) },
+                    (_, i) => {
+                      let pageNum;
+                      if (pages <= 5) {
+                        pageNum = i + 1;
+                      } else if (page <= 3) {
+                        pageNum = i + 1;
+                      } else if (page >= pages - 2) {
+                        pageNum = pages - 4 + i;
+                      } else {
+                        pageNum = page - 2 + i;
+                      }
 
-            <div className="text-sm font-medium text-gray-600 dark:text-gray-400">
-              Halaman {page} dari {pages}
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => setPage(pageNum)}
+                          className={`h-7 w-7 rounded-lg text-xs font-semibold sm:h-8 sm:w-8 sm:text-sm ${
+                            page === pageNum
+                              ? 'bg-blue-600 text-white'
+                              : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    }
+                  )}
+                </div>
+
+                <button
+                  disabled={page === pages}
+                  onClick={() => setPage((p) => p + 1)}
+                  className="flex items-center justify-center rounded-lg border border-gray-300 bg-white p-2 text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-30 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+                >
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </button>
+              </div>
             </div>
           </div>
         )}
-
-        {/* FILTER SECTION - DI AKHIR */}
-        <div className="mt-12 border-t-2 border-gray-200 pt-8 dark:border-gray-700">
-          <h3 className="mb-6 text-lg font-bold text-blue-900  dark:text-white">
-            Filter Pesanan
-          </h3>
-          <div className="space-y-6 rounded-lg border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-            {/* Date Filter */}
-            <div>
-              <label className="mb-3 block text-sm font-semibold text-gray-900 dark:text-white">
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-5 w-5 text-gray-400 dark:text-gray-500" />
-                  Filter Tanggal
-                </div>
-              </label>
-              <input
-                type="date"
-                value={dateFilter}
-                onChange={(e) => {
-                  setDateFilter(e.target.value);
-                  setPage(1);
-                }}
-                max={new Date().toISOString().split('T')[0]}
-                className="rounded-lg border border-gray-300 px-4 py-2.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-blue-400"
-              />
-            </div>
-
-            {/* Status Filter */}
-            <div>
-              <label className="mb-4 block text-sm font-semibold text-gray-900 dark:text-white">
-                Filter Status Pesanan
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {statusOptions.map((option) => {
-                  const Icon = option.icon;
-                  return (
-                    <button
-                      key={option.value}
-                      onClick={() => {
-                        setStatusFilter(option.value);
-                        setPage(1);
-                      }}
-                      className={`inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all ${
-                        statusFilter === option.value
-                          ? 'bg-blue-600 text-white shadow-md dark:bg-blue-700'
-                          : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
-                      }`}
-                    >
-                      {Icon && <Icon className="h-4 w-4" />}
-                      {option.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        </div>
       </main>
     </div>
   );
