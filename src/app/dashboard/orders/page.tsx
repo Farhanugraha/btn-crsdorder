@@ -26,7 +26,8 @@ import {
   CalendarDays,
   Clock as ClockIcon,
   FileText,
-  ExternalLink
+  ExternalLink,
+  Filter
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
@@ -76,6 +77,7 @@ interface Order {
   };
   items: OrderItem[];
   areas: Area[];
+  crsd_type?: 'crsd1' | 'crsd2'; // Tambahkan field untuk CRSD type
 }
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL;
@@ -214,7 +216,6 @@ function QuickActions({
       icon: Copy,
       action: () => {
         navigator.clipboard.writeText(order.order_code);
-        // Bisa tambahkan toast notification di sini
         alert('Kode order disalin: ' + order.order_code);
       }
     },
@@ -373,6 +374,33 @@ function QuickActions({
   );
 }
 
+// CRSD Badge Component
+function CRSDBadge({ type }: { type: 'crsd1' | 'crsd2' | string }) {
+  const styles = {
+    crsd1: {
+      bg: 'bg-purple-100 dark:bg-purple-900/30',
+      text: 'text-purple-800 dark:text-purple-300',
+      label: 'CRSD 1'
+    },
+    crsd2: {
+      bg: 'bg-indigo-100 dark:bg-indigo-900/30',
+      text: 'text-indigo-800 dark:text-indigo-300',
+      label: 'CRSD 2'
+    }
+  };
+
+  const style = styles[type as keyof typeof styles] || styles.crsd1;
+
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold uppercase ${style.bg} ${style.text}`}
+    >
+      <Building2 className="h-3 w-3" />
+      {style.label}
+    </span>
+  );
+}
+
 export default function CompactOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [areas, setAreas] = useState<Area[]>([]);
@@ -390,12 +418,28 @@ export default function CompactOrdersPage() {
   const [expandedOrder, setExpandedOrder] = useState<number | null>(
     null
   );
+  const [crsdFilter, setCrsdFilter] = useState<string>('all'); // all, crsd1, crsd2
+  const [userRole, setUserRole] = useState<string>(''); // admin, superadmin
 
   const perPage = 10;
 
   useEffect(() => {
+    fetchUserInfo();
     fetchInitialData();
   }, []);
+
+  // Fetch user info to determine role
+  const fetchUserInfo = () => {
+    try {
+      const userData = localStorage.getItem('user');
+      if (userData) {
+        const user = JSON.parse(userData);
+        setUserRole(user.role || '');
+      }
+    } catch (err) {
+      console.error('Error fetching user info:', err);
+    }
+  };
 
   const fetchInitialData = async () => {
     await Promise.all([fetchOrders(), fetchAreas()]);
@@ -415,6 +459,30 @@ export default function CompactOrdersPage() {
     }
   };
 
+  // Determine which endpoint to fetch based on user role and CRSD filter
+  const getOrdersEndpoint = () => {
+    // Superadmin can see all orders
+    if (userRole === 'superadmin') {
+      if (crsdFilter === 'crsd1') {
+        return `${apiUrl}/api/admin/crsd1/orders`;
+      } else if (crsdFilter === 'crsd2') {
+        return `${apiUrl}/api/admin/crsd2/orders`;
+      } else {
+        return `${apiUrl}/api/admin/orders`;
+      }
+    }
+
+    // Regular admin - based on CRSD filter
+    if (crsdFilter === 'crsd1') {
+      return `${apiUrl}/api/admin/crsd1/orders`;
+    } else if (crsdFilter === 'crsd2') {
+      return `${apiUrl}/api/admin/crsd2/orders`;
+    } else {
+      // Default untuk admin biasa (mungkin harus memilih CRSD dulu)
+      return `${apiUrl}/api/admin/orders`;
+    }
+  };
+
   const fetchOrders = async () => {
     setLoading(true);
     setError(null);
@@ -431,7 +499,8 @@ export default function CompactOrdersPage() {
         return;
       }
 
-      const res = await fetch(`${apiUrl}/api/admin/orders`, {
+      const endpoint = getOrdersEndpoint();
+      const res = await fetch(endpoint, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -442,7 +511,16 @@ export default function CompactOrdersPage() {
 
       const data = await res.json();
       if (data.success && data.data) {
-        setOrders(data.data);
+        // Add CRSD type based on endpoint or response
+        const ordersWithCRSD = data.data.map((order: Order) => {
+          if (endpoint.includes('crsd1')) {
+            return { ...order, crsd_type: 'crsd1' };
+          } else if (endpoint.includes('crsd2')) {
+            return { ...order, crsd_type: 'crsd2' };
+          }
+          return order;
+        });
+        setOrders(ordersWithCRSD);
       }
       setPage(1);
     } catch (err) {
@@ -467,6 +545,7 @@ export default function CompactOrdersPage() {
         Email: order.user.email,
         Telepon: order.user.phone,
         Area: order.areas?.map((a) => a.name).join(', ') || '-',
+        CRSD: order.crsd_type ? order.crsd_type.toUpperCase() : '-',
         'Status Order': order.order_status,
         'Status Pembayaran': order.status,
         Total: order.total_price,
@@ -477,7 +556,10 @@ export default function CompactOrdersPage() {
     );
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Orders');
-    XLSX.writeFile(workbook, `orders_${dateFilter}.xlsx`);
+    XLSX.writeFile(
+      workbook,
+      `orders_${dateFilter}_${crsdFilter}.xlsx`
+    );
   };
 
   // Filter logic
@@ -507,15 +589,26 @@ export default function CompactOrdersPage() {
         .split('T')[0];
       const matchesDate = orderDate === dateFilter;
 
+      const matchesCRSD =
+        crsdFilter === 'all' || o.crsd_type === crsdFilter;
+
       return (
         o.order_status !== null &&
         hasContent &&
         matchesStatus &&
         matchesArea &&
-        matchesDate
+        matchesDate &&
+        matchesCRSD
       );
     });
-  }, [orders, search, statusFilter, areaFilter, dateFilter]);
+  }, [
+    orders,
+    search,
+    statusFilter,
+    areaFilter,
+    dateFilter,
+    crsdFilter
+  ]);
 
   const pages = Math.ceil(filteredOrders.length / perPage);
   const paginatedOrders = filteredOrders.slice(
@@ -530,12 +623,19 @@ export default function CompactOrdersPage() {
     { value: 'all', label: 'Semua', icon: Clock }
   ];
 
+  const crsdOptions = [
+    { value: 'all', label: 'Semua CRSD', icon: Filter },
+    { value: 'crsd1', label: 'CRSD 1', icon: Building2 },
+    { value: 'crsd2', label: 'CRSD 2', icon: Building2 }
+  ];
+
   const getAreaOrderCount = (areaId: number) => {
     return orders.filter(
       (o) =>
         o.areas &&
         o.areas.some((area) => area.id === areaId) &&
         (statusFilter === 'all' || o.order_status === statusFilter) &&
+        (crsdFilter === 'all' || o.crsd_type === crsdFilter) &&
         new Date(o.created_at).toISOString().split('T')[0] ===
           dateFilter
     ).length;
@@ -553,10 +653,13 @@ export default function CompactOrdersPage() {
           <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
             <div>
               <h1 className="text-lg font-bold text-gray-900 dark:text-white sm:text-xl">
-                Pesanan
+                Pesanan{' '}
+                {crsdFilter !== 'all' &&
+                  `CRSD ${crsdFilter.slice(4).toUpperCase()}`}
               </h1>
               <p className="mt-0.5 text-xs text-gray-600 dark:text-gray-400 sm:text-sm">
                 Kelola semua pesanan pelanggan
+                {userRole === 'superadmin' && ' - Superadmin Mode'}
               </p>
             </div>
             <div className="flex gap-2">
@@ -605,6 +708,45 @@ export default function CompactOrdersPage() {
 
         {/* MAIN FILTERS SECTION */}
         <div className="mb-4 space-y-4 rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800 sm:p-4">
+          {/* CRSD FILTER - Only for Superadmin or when needed */}
+          {(userRole === 'superadmin' || userRole === 'admin') && (
+            <div>
+              <div className="mb-2 flex items-center gap-1.5">
+                <Filter className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
+                <span className="text-xs font-semibold text-gray-900 dark:text-white sm:text-sm">
+                  Filter CRSD
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {crsdOptions.map((option) => {
+                  const Icon = option.icon;
+                  return (
+                    <button
+                      key={option.value}
+                      onClick={() => {
+                        setCrsdFilter(option.value);
+                        setPage(1);
+                        setTimeout(() => fetchOrders(), 100); // Refetch data dengan filter baru
+                      }}
+                      className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs transition-all ${
+                        crsdFilter === option.value
+                          ? option.value === 'crsd1'
+                            ? 'bg-purple-600 text-white'
+                            : option.value === 'crsd2'
+                              ? 'bg-indigo-600 text-white'
+                              : 'bg-blue-600 text-white'
+                          : 'border border-gray-300 bg-gray-50 text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+                      }`}
+                    >
+                      <Icon className="h-3.5 w-3.5" />
+                      {option.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* AREA FILTER CHIPS */}
           <div>
             <div className="mb-2 flex items-center gap-1.5">
@@ -632,6 +774,8 @@ export default function CompactOrdersPage() {
                       (o) =>
                         (statusFilter === 'all' ||
                           o.order_status === statusFilter) &&
+                        (crsdFilter === 'all' ||
+                          o.crsd_type === crsdFilter) &&
                         new Date(o.created_at)
                           .toISOString()
                           .split('T')[0] === dateFilter
@@ -764,6 +908,14 @@ export default function CompactOrdersPage() {
                 {filteredOrders.length}
               </span>{' '}
               pesanan ditemukan
+              {crsdFilter !== 'all' && (
+                <span className="ml-2">
+                  di{' '}
+                  <span className="font-semibold text-purple-600 dark:text-purple-400">
+                    CRSD {crsdFilter.slice(4).toUpperCase()}
+                  </span>
+                </span>
+              )}
               {areaFilter !== 'all' && (
                 <span className="ml-2">
                   di{' '}
@@ -822,16 +974,21 @@ export default function CompactOrdersPage() {
                         className="hover:bg-gray-50 dark:hover:bg-gray-700/50"
                       >
                         <td className="px-3 py-3 sm:px-4">
-                          <div className="flex items-center gap-2">
-                            <Hash className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
-                            <div>
-                              <p className="font-mono text-xs font-bold text-blue-600 dark:text-blue-400">
-                                #{order.order_code}
-                              </p>
-                              <p className="mt-0.5 text-[10px] text-gray-500 dark:text-gray-400">
-                                {order.items.length} item
-                              </p>
+                          <div className="flex flex-col gap-2">
+                            <div className="flex items-center gap-2">
+                              <Hash className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
+                              <div>
+                                <p className="font-mono text-xs font-bold text-blue-600 dark:text-blue-400">
+                                  #{order.order_code}
+                                </p>
+                                <p className="mt-0.5 text-[10px] text-gray-500 dark:text-gray-400">
+                                  {order.items.length} item
+                                </p>
+                              </div>
                             </div>
+                            {order.crsd_type && (
+                              <CRSDBadge type={order.crsd_type} />
+                            )}
                           </div>
                         </td>
                         <td className="px-3 py-3 sm:px-4">
@@ -942,9 +1099,16 @@ export default function CompactOrdersPage() {
                           >
                             <div className="rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800">
                               <div className="mb-2 flex items-center justify-between">
-                                <h4 className="text-xs font-semibold text-gray-900 dark:text-white">
-                                  Detail Items
-                                </h4>
+                                <div className="flex items-center gap-2">
+                                  <h4 className="text-xs font-semibold text-gray-900 dark:text-white">
+                                    Detail Items
+                                  </h4>
+                                  {order.crsd_type && (
+                                    <CRSDBadge
+                                      type={order.crsd_type}
+                                    />
+                                  )}
+                                </div>
                                 <button
                                   onClick={() =>
                                     setExpandedOrder(null)
@@ -1038,6 +1202,9 @@ export default function CompactOrdersPage() {
                           type="payment"
                           size="small"
                         />
+                        {order.crsd_type && (
+                          <CRSDBadge type={order.crsd_type} />
+                        )}
                       </div>
                     </div>
                     <button
@@ -1192,6 +1359,17 @@ export default function CompactOrdersPage() {
             <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
               Coba ubah filter atau tanggal
             </p>
+            {crsdFilter !== 'all' && (
+              <button
+                onClick={() => {
+                  setCrsdFilter('all');
+                  fetchOrders();
+                }}
+                className="mt-3 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
+              >
+                Tampilkan Semua CRSD
+              </button>
+            )}
           </div>
         )}
 

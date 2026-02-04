@@ -369,21 +369,13 @@ const Navbar = () => {
                 <div className="relative h-10 w-10 overflow-hidden rounded-xl border-2 border-primary/20 bg-gradient-to-br from-primary/10 to-primary/5 p-1.5">
                   <Image
                     src={logo}
-                    alt="BTN Food Order"
+                    alt="CRSD OBAMA"
                     width={40}
                     height={40}
                     placeholder="blur"
                     priority
                     className="h-full w-full object-contain"
                   />
-                </div>
-                <div className="hidden lg:block">
-                  <h1 className="text-lg font-bold tracking-tight text-blue-900 dark:text-white">
-                    OBAMA
-                  </h1>
-                  <p className="text-xs text-muted-foreground">
-                    Order By Bang Ahmad
-                  </p>
                 </div>
               </Link>
             </div>
