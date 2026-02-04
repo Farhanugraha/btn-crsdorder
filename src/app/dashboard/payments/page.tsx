@@ -327,18 +327,22 @@ export default function PaymentsPage() {
   // Loading State
   if (loading) {
     return (
-      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white dark:bg-slate-900">
-        <div className="relative">
-          <Loader2 className="h-14 w-14 animate-spin text-blue-600 dark:text-blue-400" />
-          <div className="absolute inset-0 -z-10 rounded-full bg-blue-50 blur-sm dark:bg-blue-900/10"></div>
-        </div>
-        <div className="mt-6 text-center">
-          <p className="text-lg font-medium text-slate-800 dark:text-slate-200">
-            Memuat halaman
-          </p>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            Harap tunggu sebentar...
-          </p>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-sm dark:bg-gray-900/80">
+        <div className="flex flex-col items-center">
+          <div className="relative">
+            <div className="h-16 w-16 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600 dark:border-blue-900 dark:border-t-blue-400"></div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <CreditCard className="h-8 w-8 animate-pulse text-blue-600 dark:text-blue-400" />
+            </div>
+          </div>
+          <div className="mt-6 text-center">
+            <p className="text-lg font-semibold text-gray-800 dark:text-gray-200">
+              Memuat Pembayaran
+            </p>
+            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+              Sedang mengambil data pembayaran...
+            </p>
+          </div>
         </div>
       </div>
     );

@@ -34,8 +34,22 @@ interface FormData {
 }
 
 const EMOJI_PRESETS = [
-  '🏢', '🍽️', '☕', '🍔', '🥗', '🍜', '🎂', '🥤',
-  '🎪', '🛒', '🎮', '🎯', '🎨', '🎭', '🎼', '🏖️'
+  '🏢',
+  '🍽️',
+  '☕',
+  '🍔',
+  '🥗',
+  '🍜',
+  '🎂',
+  '🥤',
+  '🎪',
+  '🛒',
+  '🎮',
+  '🎯',
+  '🎨',
+  '🎭',
+  '🎼',
+  '🏖️'
 ];
 
 const AreasPage = () => {
@@ -56,7 +70,9 @@ const AreasPage = () => {
     type: 'success' | 'error';
     text: string;
   } | null>(null);
-  const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<number | null>(
+    null
+  );
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
@@ -98,7 +114,9 @@ const AreasPage = () => {
 
       const data = await response.json();
       if (data.success && Array.isArray(data.data)) {
-        const sortedAreas = data.data.sort((a: Area, b: Area) => a.order - b.order);
+        const sortedAreas = data.data.sort(
+          (a: Area, b: Area) => a.order - b.order
+        );
         setAreas(sortedAreas);
       }
     } catch (error) {
@@ -143,12 +161,17 @@ const AreasPage = () => {
       if (result.success) {
         showMessage(
           'success',
-          editingId ? 'Area berhasil diperbarui' : 'Area berhasil ditambahkan'
+          editingId
+            ? 'Area berhasil diperbarui'
+            : 'Area berhasil ditambahkan'
         );
         resetForm();
         fetchAreas();
       } else {
-        showMessage('error', result.message || 'Gagal menyimpan area');
+        showMessage(
+          'error',
+          result.message || 'Gagal menyimpan area'
+        );
       }
     } catch (error) {
       console.error('Error submitting:', error);
@@ -208,14 +231,22 @@ const AreasPage = () => {
 
   if (isLoading) {
     return (
-      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white dark:bg-slate-900">
-        <div className="relative">
-          <Loader2 className="h-14 w-14 animate-spin text-blue-600 dark:text-blue-400" />
-          <div className="absolute inset-0 -z-10 rounded-full bg-blue-50 dark:bg-blue-900/10 blur-sm"></div>
-        </div>
-        <div className="mt-6 text-center">
-          <p className="text-lg font-medium text-slate-800 dark:text-slate-200">Memuat halaman</p>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Harap tunggu sebentar...</p>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-sm dark:bg-gray-900/80">
+        <div className="flex flex-col items-center">
+          <div className="relative">
+            <div className="h-16 w-16 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600 dark:border-blue-900 dark:border-t-blue-400"></div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <MapPin className="h-8 w-8 animate-pulse text-blue-600 dark:text-blue-400" />
+            </div>
+          </div>
+          <div className="mt-6 text-center">
+            <p className="text-lg font-semibold text-gray-800 dark:text-gray-200">
+              Memuat Area
+            </p>
+            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+              Sedang mengambil data area...
+            </p>
+          </div>
         </div>
       </div>
     );
@@ -271,14 +302,16 @@ const AreasPage = () => {
                   </button>
                 </div>
               )}
-              
+
               {!showForm && (
                 <button
                   onClick={() => setShowForm(true)}
                   className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 transition-all hover:from-blue-700 hover:to-blue-800 hover:shadow-xl hover:shadow-blue-500/30 active:scale-95"
                 >
                   <Plus className="h-4 w-4" />
-                  <span className="hidden sm:inline">Tambah Area</span>
+                  <span className="hidden sm:inline">
+                    Tambah Area
+                  </span>
                 </button>
               )}
             </div>
@@ -290,7 +323,7 @@ const AreasPage = () => {
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         {/* Message Alert */}
         {message && (
-          <div className="mb-6 animate-in fade-in slide-in-from-top-4 duration-300">
+          <div className="mb-6 duration-300 animate-in fade-in slide-in-from-top-4">
             <div
               className={`flex items-center gap-3 rounded-xl border p-4 shadow-sm ${
                 message.type === 'success'
@@ -360,7 +393,9 @@ const AreasPage = () => {
                         <button
                           key={emoji}
                           type="button"
-                          onClick={() => setFormData({ ...formData, icon: emoji })}
+                          onClick={() =>
+                            setFormData({ ...formData, icon: emoji })
+                          }
                           className={`flex h-12 w-12 items-center justify-center rounded-xl border-2 text-2xl transition-all hover:scale-105 ${
                             formData.icon === emoji
                               ? 'border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-900/30'
@@ -376,7 +411,12 @@ const AreasPage = () => {
                         type="text"
                         maxLength={2}
                         value={formData.icon}
-                        onChange={(e) => setFormData({ ...formData, icon: e.target.value })}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            icon: e.target.value
+                          })
+                        }
                         placeholder="Masukkan emoji kustom..."
                         className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-center text-2xl focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
                       />
@@ -393,7 +433,12 @@ const AreasPage = () => {
                       type="text"
                       placeholder="Contoh: Kantin Utama, Area Meeting, dll."
                       value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          name: e.target.value
+                        })
+                      }
                       className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
                     />
                   </div>
@@ -408,7 +453,12 @@ const AreasPage = () => {
                       rows={4}
                       placeholder="Jelaskan detail area, fasilitas, atau spesifikasi lainnya..."
                       value={formData.description}
-                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          description: e.target.value
+                        })
+                      }
                       className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
                     />
                   </div>
@@ -421,7 +471,9 @@ const AreasPage = () => {
                         <span className="font-bold text-blue-900 dark:text-white">
                           #{nextOrder}
                         </span>
-                        <span className="ml-auto text-xs">Otomatis</span>
+                        <span className="ml-auto text-xs">
+                          Otomatis
+                        </span>
                       </div>
                     </div>
                   )}
@@ -438,7 +490,11 @@ const AreasPage = () => {
                   </button>
                   <button
                     onClick={handleSubmit}
-                    disabled={isSubmitting || !formData.name.trim() || !formData.description.trim()}
+                    disabled={
+                      isSubmitting ||
+                      !formData.name.trim() ||
+                      !formData.description.trim()
+                    }
                     className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-3 text-sm font-medium text-white shadow-lg shadow-blue-500/25 transition-all hover:from-blue-700 hover:to-blue-800 hover:shadow-xl hover:shadow-blue-500/30 disabled:opacity-50"
                   >
                     {isSubmitting ? (
@@ -476,10 +532,13 @@ const AreasPage = () => {
                       </p>
                     </div>
                   </div>
-                  
+
                   {areas.length > 0 && !showForm && (
                     <div className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                      <span className="text-blue-600 dark:text-blue-400">{areas.length}</span> total area
+                      <span className="text-blue-600 dark:text-blue-400">
+                        {areas.length}
+                      </span>{' '}
+                      total area
                     </div>
                   )}
                 </div>
@@ -520,7 +579,9 @@ const AreasPage = () => {
 
                             <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-4 dark:border-slate-700">
                               <div className="text-xs">
-                                <span className="font-medium text-slate-500 dark:text-slate-400">ID:</span>
+                                <span className="font-medium text-slate-500 dark:text-slate-400">
+                                  ID:
+                                </span>
                                 <span className="ml-2 font-mono text-blue-600 dark:text-blue-400">
                                   {area.slug}
                                 </span>
@@ -534,7 +595,9 @@ const AreasPage = () => {
                                   <Edit2 className="h-4 w-4" />
                                 </button>
                                 <button
-                                  onClick={() => setDeleteConfirm(area.id)}
+                                  onClick={() =>
+                                    setDeleteConfirm(area.id)
+                                  }
                                   className="rounded-lg p-2 text-red-600 transition-colors hover:bg-red-50 dark:hover:bg-red-900/30"
                                   title="Hapus area"
                                 >
@@ -552,8 +615,10 @@ const AreasPage = () => {
                             key={area.id}
                             className="group flex items-center gap-4 rounded-xl border border-slate-200 bg-white p-4 transition-all hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800/50 dark:hover:bg-slate-700/30"
                           >
-                            <div className="text-3xl">{area.icon}</div>
-                            <div className="flex-1 min-w-0">
+                            <div className="text-3xl">
+                              {area.icon}
+                            </div>
+                            <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-3">
                                 <h3 className="text-sm font-bold text-slate-900 dark:text-white">
                                   {area.name}
@@ -574,7 +639,9 @@ const AreasPage = () => {
                                 <Edit2 className="h-4 w-4" />
                               </button>
                               <button
-                                onClick={() => setDeleteConfirm(area.id)}
+                                onClick={() =>
+                                  setDeleteConfirm(area.id)
+                                }
                                 className="rounded-lg border border-slate-200 bg-white p-2 text-red-600 hover:border-red-300 hover:bg-red-50 dark:border-slate-600 dark:bg-slate-800 dark:hover:border-red-700"
                               >
                                 <Trash2 className="h-4 w-4" />
@@ -594,7 +661,8 @@ const AreasPage = () => {
                       Belum ada area
                     </h3>
                     <p className="mb-6 text-center text-slate-600 dark:text-slate-400">
-                      Mulai dengan menambahkan area pertama Anda untuk mengelola lokasi bisnis
+                      Mulai dengan menambahkan area pertama Anda untuk
+                      mengelola lokasi bisnis
                     </p>
                     <button
                       onClick={() => setShowForm(true)}
@@ -614,7 +682,7 @@ const AreasPage = () => {
       {/* Delete Confirmation Modal */}
       {deleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-sm animate-in fade-in zoom-in-95 duration-300 rounded-xl bg-white shadow-2xl dark:bg-slate-800">
+          <div className="w-full max-w-sm rounded-xl bg-white shadow-2xl duration-300 animate-in fade-in zoom-in-95 dark:bg-slate-800">
             <div className="p-6">
               <div className="mb-4 flex items-center gap-3">
                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
@@ -631,7 +699,8 @@ const AreasPage = () => {
               </div>
 
               <p className="mb-6 text-sm text-slate-700 dark:text-slate-300">
-                Apakah Anda yakin ingin menghapus area ini? Semua data terkait akan dihapus secara permanen.
+                Apakah Anda yakin ingin menghapus area ini? Semua data
+                terkait akan dihapus secara permanen.
               </p>
 
               <div className="flex gap-3">

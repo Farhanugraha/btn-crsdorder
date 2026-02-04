@@ -10,8 +10,7 @@ import {
   Check,
   MapPin,
   Clock,
-  DollarSign,
-  Package,
+  PackageOpen,
   CheckCircle2,
   Circle,
   PrinterIcon,
@@ -318,12 +317,22 @@ export default function OrderDetailPage({
 
   if (isLoading) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-white dark:bg-gray-900">
-        <div className="text-center">
-          <Loader2 className="mx-auto mb-3 h-8 w-8 animate-spin text-blue-600" />
-          <p className="text-sm text-gray-700 dark:text-gray-400">
-            Memuat detail pesanan...
-          </p>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-sm dark:bg-gray-900/80">
+        <div className="flex flex-col items-center">
+          <div className="relative">
+            <div className="h-16 w-16 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600 dark:border-blue-900 dark:border-t-blue-400"></div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <PackageOpen className="h-8 w-8 animate-pulse text-blue-600 dark:text-blue-400" />
+            </div>
+          </div>
+          <div className="mt-6 text-center">
+            <p className="text-lg font-semibold text-gray-800 dark:text-gray-200">
+              Memuat Detail Pesanan
+            </p>
+            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+              Sedang mengambil detail pesanan...
+            </p>
+          </div>
         </div>
       </div>
     );

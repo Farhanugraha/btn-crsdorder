@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   TrendingUp,
@@ -11,14 +11,17 @@ import {
   XCircle,
   RefreshCw,
   AlertCircle,
-  Loader2,
   Calendar,
   Users,
   Package,
   BarChart3,
   PieChart as PieChartIcon,
   LineChart as LineChartIcon,
-  CreditCard
+  CreditCard,
+  ChevronDown,
+  ChevronUp,
+  Download,
+  Info
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -27,7 +30,7 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
+  Tooltip as RechartsTooltip,
   Legend,
   ResponsiveContainer,
   PieChart,
@@ -53,7 +56,7 @@ interface StatisticsData {
   }>;
 }
 
-type FilterType = 'today' | 'week' | 'month' | 'custom';
+type FilterType = 'hari-ini' | 'minggu-ini' | 'bulan-ini' | 'kustom';
 
 const StatisticsPage = () => {
   const router = useRouter();
@@ -66,311 +69,477 @@ const StatisticsPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [filterType, setFilterType] = useState<FilterType>('month');
+  const [filterType, setFilterType] =
+    useState<FilterType>('bulan-ini');
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
+  const [expandedSections, setExpandedSections] = useState({
+    ringkasan: true,
+    grafik: true,
+    status: true,
+    performa: true
+  });
+  const [isExporting, setIsExporting] = useState(false);
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchStatistics({}, false);
-    }, 300);
+  // Fungsi untuk mendapatkan tanggal awal berdasarkan filter
+  const getStartDateByFilter = useCallback(
+    (filter: FilterType): string => {
+      const today = new Date();
+      const todayStr = today.toISOString().split('T')[0];
 
-    return () => clearTimeout(timer);
+      switch (filter) {
+        case 'hari-ini':
+          return todayStr;
+        case 'minggu-ini':
+          const weekAgo = new Date(today);
+          weekAgo.setDate(weekAgo.getDate() - 6);
+          return weekAgo.toISOString().split('T')[0];
+        case 'bulan-ini':
+          const monthAgo = new Date(today);
+          monthAgo.setDate(1);
+          return monthAgo.toISOString().split('T')[0];
+        case 'kustom':
+          return customStartDate || todayStr;
+        default:
+          return todayStr;
+      }
+    },
+    [customStartDate]
+  );
+
+  const getEndDateByFilter = useCallback((): string => {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
   }, []);
 
-  const fetchStatistics = async (
-    dateRange?: { startDate?: string; endDate?: string },
-    showError = true
-  ) => {
-    try {
-      const isInitialLoad = !statistics;
-      if (isInitialLoad) {
-        setIsLoading(true);
-      } else {
-        setIsRefreshing(true);
-      }
+  const fetchStatistics = useCallback(
+    async (
+      startDate?: string,
+      endDate?: string,
+      showError = true
+    ) => {
+      try {
+        if (!statistics) {
+          setIsLoading(true);
+        } else {
+          setIsRefreshing(true);
+        }
 
-      setError(null);
+        setError(null);
 
-      if (!apiUrl) {
-        const errorMsg = 'API tidak terkonfigurasi';
-        if (showError) setError(errorMsg);
-        setIsLoading(false);
-        setIsRefreshing(false);
-        return;
-      }
+        const token = localStorage.getItem('auth_token');
+        if (!token) {
+          router.push('/auth/login');
+          return;
+        }
 
-      const token = localStorage.getItem('auth_token');
+        const finalStartDate =
+          startDate || getStartDateByFilter(filterType);
+        const finalEndDate = endDate || getEndDateByFilter();
 
-      if (!token) {
-        router.push('/auth/login');
-        return;
-      }
+        const params = new URLSearchParams({
+          start_date: finalStartDate,
+          end_date: finalEndDate
+        });
 
-      let url = `${apiUrl}/api/admin/statistics`;
-      const params = new URLSearchParams();
+        const url = `${apiUrl}/api/admin/statistics?${params.toString()}`;
 
-      if (dateRange?.startDate)
-        params.append('start_date', dateRange.startDate);
-      if (dateRange?.endDate)
-        params.append('end_date', dateRange.endDate);
+        const response = await fetch(url, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Cache-Control': 'no-cache'
+          }
+        });
 
-      if (params.toString()) {
-        url += `?${params.toString()}`;
-      }
-
-      const response = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: 'application/json',
-          'Content-Type': 'application/json'
-        },
-        cache: 'no-cache'
-      });
-
-      if (!response.ok) {
         if (response.status === 401) {
           router.push('/auth/login');
           return;
         }
-        if (showError) {
-          setError('Gagal memuat data statistik. Silakan coba lagi.');
+
+        if (!response.ok) {
+          throw new Error('Gagal mengambil data');
         }
+
+        const data = await response.json();
+
+        if (data.success && data.data) {
+          setStatistics(data.data);
+          setChartData(data.data.chartData || []);
+          setError(null);
+        } else {
+          throw new Error(data.message || 'Gagal memuat data');
+        }
+      } catch (err) {
+        if (showError) {
+          setError(
+            err instanceof Error
+              ? err.message
+              : 'Terjadi kesalahan saat mengambil data'
+          );
+        }
+      } finally {
         setIsLoading(false);
         setIsRefreshing(false);
-        return;
       }
+    },
+    [
+      apiUrl,
+      router,
+      statistics,
+      filterType,
+      getStartDateByFilter,
+      getEndDateByFilter
+    ]
+  );
 
-      const data = await response.json();
-
-      if (data.success && data.data) {
-        setStatistics(data.data);
-
-        if (
-          data.data.chartData &&
-          Array.isArray(data.data.chartData) &&
-          data.data.chartData.length > 0
-        ) {
-          setChartData(data.data.chartData);
-        } else {
-          // Jika tidak ada data chart, buat array kosong
-          setChartData([]);
-        }
-        setError(null);
-      } else {
-        if (showError) {
-          setError(data.message || 'Data statistik tidak tersedia');
-        }
-      }
-    } catch (err) {
-      console.error('Error fetching statistics:', err);
-      if (showError) {
-        setError('Gagal memuat data statistik. Silakan coba lagi.');
-      }
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  };
-
-  const handleFilterChange = (type: FilterType) => {
-    setFilterType(type);
-
+  // Inisialisasi tanggal kustom dengan bulan ini
+  useEffect(() => {
     const today = new Date();
-    let startDate = '';
-    let endDate = today.toISOString().split('T')[0];
+    const firstDayOfMonth = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      1
+    );
 
-    switch (type) {
-      case 'today':
-        startDate = endDate;
-        break;
-      case 'week':
-        const weekAgoDate = new Date(today);
-        weekAgoDate.setDate(weekAgoDate.getDate() - 7);
-        startDate = weekAgoDate.toISOString().split('T')[0];
-        break;
-      case 'month':
-        const monthAgoDate = new Date(today);
-        monthAgoDate.setMonth(monthAgoDate.getMonth() - 1);
-        startDate = monthAgoDate.toISOString().split('T')[0];
-        break;
-      case 'custom':
-        return;
+    setCustomStartDate(firstDayOfMonth.toISOString().split('T')[0]);
+    setCustomEndDate(today.toISOString().split('T')[0]);
+
+    // Load data awal
+    fetchStatistics(
+      firstDayOfMonth.toISOString().split('T')[0],
+      today.toISOString().split('T')[0],
+      false
+    );
+  }, []);
+
+  // Load data saat filter berubah
+  useEffect(() => {
+    if (filterType !== 'kustom') {
+      const startDate = getStartDateByFilter(filterType);
+      const endDate = getEndDateByFilter();
+      fetchStatistics(startDate, endDate, false);
+    }
+  }, [filterType]);
+
+  // Hitung data pie chart
+  const { pieChartData, pieColors, percentages } = useMemo(() => {
+    if (!statistics) {
+      return {
+        pieChartData: [],
+        pieColors: [],
+        percentages: { completed: 0, processing: 0, canceled: 0 }
+      };
     }
 
-    fetchStatistics({ startDate, endDate });
-  };
+    const total =
+      statistics.completedOrders +
+      statistics.processingOrders +
+      statistics.canceledOrders;
 
-  const handleCustomDateFilter = () => {
+    const data = [
+      {
+        name: 'Selesai',
+        value: statistics.completedOrders,
+        color: '#10b981',
+        percentage:
+          total > 0 ? (statistics.completedOrders / total) * 100 : 0
+      },
+      {
+        name: 'Diproses',
+        value: statistics.processingOrders,
+        color: '#f59e0b',
+        percentage:
+          total > 0 ? (statistics.processingOrders / total) * 100 : 0
+      },
+      {
+        name: 'Dibatalkan',
+        value: statistics.canceledOrders,
+        color: '#ef4444',
+        percentage:
+          total > 0 ? (statistics.canceledOrders / total) * 100 : 0
+      }
+    ].filter((item) => item.value > 0);
+
+    const colors = data.map((item) => item.color);
+
+    return {
+      pieChartData: data,
+      pieColors: colors,
+      percentages: {
+        completed:
+          total > 0 ? (statistics.completedOrders / total) * 100 : 0,
+        processing:
+          total > 0 ? (statistics.processingOrders / total) * 100 : 0,
+        canceled:
+          total > 0 ? (statistics.canceledOrders / total) * 100 : 0
+      }
+    };
+  }, [statistics]);
+
+  // Format currency dan number
+  const formatters = useMemo(
+    () => ({
+      currency: (value: number) => {
+        return new Intl.NumberFormat('id-ID', {
+          style: 'currency',
+          currency: 'IDR',
+          minimumFractionDigits: 0
+        }).format(value);
+      },
+      number: (value: number) => {
+        return new Intl.NumberFormat('id-ID').format(value);
+      }
+    }),
+    []
+  );
+
+  const handleFilterChange = useCallback((type: FilterType) => {
+    setFilterType(type);
+    setError(null);
+  }, []);
+
+  const handleCustomDateFilter = useCallback(() => {
     if (!customStartDate || !customEndDate) {
-      setError('Silakan pilih tanggal awal dan akhir');
+      setError('Silakan pilih tanggal mulai dan tanggal selesai');
       return;
     }
-
     if (new Date(customStartDate) > new Date(customEndDate)) {
-      setError('Tanggal awal harus lebih kecil dari tanggal akhir');
+      setError('Tanggal mulai harus lebih awal dari tanggal selesai');
       return;
     }
+    fetchStatistics(customStartDate, customEndDate);
+  }, [customStartDate, customEndDate, fetchStatistics]);
 
-    fetchStatistics({
-      startDate: customStartDate,
-      endDate: customEndDate
-    });
+  const handleExportData = async () => {
+    if (!statistics) return;
+
+    setIsExporting(true);
+    try {
+      const exportData = {
+        ...statistics,
+        periode: {
+          filter: filterType,
+          tanggal: {
+            mulai: getStartDateByFilter(filterType),
+            selesai: getEndDateByFilter()
+          },
+          diekspor: new Date().toISOString()
+        }
+      };
+
+      const dataStr = JSON.stringify(exportData, null, 2);
+      const dataBlob = new Blob([dataStr], {
+        type: 'application/json'
+      });
+      const url = URL.createObjectURL(dataBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `statistik-${
+        new Date().toISOString().split('T')[0]
+      }.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError('Gagal mengekspor data');
+    } finally {
+      setIsExporting(false);
+    }
   };
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(value);
-  };
-
-  const formatNumber = (value: number) => {
-    return new Intl.NumberFormat('id-ID').format(value);
-  };
-
-  const StatCard = ({
-    title,
-    value,
-    icon: Icon,
-    bgColor,
-    iconColor,
-    subtext,
-    growth
-  }: {
-    title: string;
-    value: string | number;
-    icon: React.ElementType;
-    bgColor: string;
-    iconColor: string;
-    subtext?: string;
-    growth?: number;
-  }) => (
-    <div className="group relative overflow-hidden rounded-xl border border-slate-200 bg-white p-5 transition-all duration-300 hover:shadow-lg dark:border-slate-700 dark:bg-slate-800 dark:hover:shadow-slate-900/30">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex-1">
-          <p className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
-            {title}
-          </p>
-          <p className="mt-2 text-2xl font-bold text-slate-900 dark:text-white sm:text-3xl">
-            {value}
-          </p>
-          {subtext && (
-            <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-              {subtext}
-            </p>
-          )}
-          {growth !== undefined && (
-            <div className="mt-3 flex items-center gap-2">
-              <div
-                className={`rounded-full p-1 ${
-                  growth >= 0
-                    ? 'bg-emerald-100 dark:bg-emerald-900/30'
-                    : 'bg-red-100 dark:bg-red-900/30'
-                }`}
-              >
-                <TrendingUp
-                  className={`h-3 w-3 ${
-                    growth >= 0
-                      ? 'text-emerald-600 dark:text-emerald-400'
-                      : 'text-red-600 dark:text-red-400'
-                  }`}
-                />
-              </div>
-              <span
-                className={`text-xs font-semibold ${
-                  growth >= 0
-                    ? 'text-emerald-600 dark:text-emerald-400'
-                    : 'text-red-600 dark:text-red-400'
-                }`}
-              >
-                {growth >= 0 ? '+' : ''}
-                {growth.toFixed(1)}% dari periode sebelumnya
-              </span>
-            </div>
-          )}
-        </div>
-        <div
-          className={`rounded-xl ${bgColor} flex-shrink-0 p-3 transition-transform duration-300 group-hover:scale-110`}
-        >
-          <Icon className={`h-6 w-6 ${iconColor}`} />
-        </div>
-      </div>
-    </div>
+  const toggleSection = useCallback(
+    (section: keyof typeof expandedSections) => {
+      setExpandedSections((prev) => ({
+        ...prev,
+        [section]: !prev[section]
+      }));
+    },
+    []
   );
 
-  const OrderStatusCard = ({
-    title,
-    count,
-    icon: Icon,
-    bgColor,
-    textColor,
-    percentage
-  }: {
-    title: string;
-    count: number;
-    icon: React.ElementType;
-    bgColor: string;
-    textColor: string;
-    percentage: number;
-  }) => (
-    <div className="rounded-xl border border-slate-200 bg-white p-5 transition-all duration-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-800 dark:hover:shadow-slate-900/30">
-      <div className="mb-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className={`rounded-lg ${bgColor} p-2.5`}>
-            <Icon className={`h-5 w-5 ${textColor}`} />
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-slate-600 dark:text-slate-400">
-              {title}
-            </p>
-            <p
-              className={`mt-1 text-2xl font-bold sm:text-3xl ${textColor}`}
+  // Komponen pie chart
+  const OptimizedPieChart = useMemo(() => {
+    if (pieChartData.length === 0) {
+      return (
+        <div className="flex h-[250px] items-center justify-center">
+          <p className="text-gray-500 dark:text-gray-400">
+            Tidak ada data status tersedia
+          </p>
+        </div>
+      );
+    }
+
+    return (
+      <>
+        <ResponsiveContainer width="100%" height={250}>
+          <PieChart>
+            <Pie
+              data={pieChartData}
+              cx="50%"
+              cy="50%"
+              innerRadius={60}
+              outerRadius={90}
+              paddingAngle={2}
+              dataKey="value"
+              label={(entry) =>
+                `${entry.name}: ${formatters.number(entry.value)}`
+              }
+              isAnimationActive={true}
+              animationBegin={0}
+              animationDuration={500}
             >
-              {formatNumber(count)}
+              {pieChartData.map((entry, index) => (
+                <Cell
+                  key={`cell-${index}`}
+                  fill={pieColors[index]}
+                  stroke="white"
+                  strokeWidth={2}
+                />
+              ))}
+            </Pie>
+            <RechartsTooltip
+              formatter={(value: unknown) => [
+                formatters.number(Number(value) || 0),
+                'Jumlah'
+              ]}
+            />
+          </PieChart>
+        </ResponsiveContainer>
+        <div className="mt-6 grid grid-cols-3 gap-2">
+          {pieChartData.map((item, index) => (
+            <div key={item.name} className="text-center">
+              <div className="inline-flex items-center gap-2">
+                <div
+                  className="h-3 w-3 rounded-full"
+                  style={{ backgroundColor: pieColors[index] }}
+                />
+                <span className="text-sm font-medium">
+                  {item.name}
+                </span>
+              </div>
+              <p
+                className="mt-1 text-xl font-bold"
+                style={{ color: pieColors[index] }}
+              >
+                {formatters.number(item.value)}
+              </p>
+              <p className="text-xs text-gray-500">
+                {item.percentage.toFixed(1)}% dari total
+              </p>
+            </div>
+          ))}
+        </div>
+      </>
+    );
+  }, [pieChartData, pieColors, formatters]);
+
+  // Komponen line chart
+  const OptimizedLineChart = useMemo(() => {
+    if (chartData.length === 0) {
+      return (
+        <div className="flex h-[300px] items-center justify-center">
+          <p className="text-gray-500 dark:text-gray-400">
+            Tidak ada data grafik tersedia
+          </p>
+        </div>
+      );
+    }
+
+    const CustomTooltip = ({ active, payload, label }: any) => {
+      if (active && payload && payload.length) {
+        return (
+          <div className="rounded-lg bg-white p-3 shadow-lg dark:bg-gray-800">
+            <p className="mb-2 font-medium text-gray-900 dark:text-white">
+              Tanggal: {label}
             </p>
+            {payload.map((entry: any, index: number) => (
+              <p
+                key={index}
+                className="text-sm"
+                style={{ color: entry.color }}
+              >
+                {entry.name}:{' '}
+                {entry.name === 'Pendapatan'
+                  ? formatters.currency(entry.value)
+                  : formatters.number(entry.value)}
+              </p>
+            ))}
           </div>
-        </div>
-      </div>
-      <div className="space-y-2">
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-slate-600 dark:text-slate-400">
-            Persentase
-          </span>
-          <span className={`font-semibold ${textColor}`}>
-            {percentage.toFixed(1)}%
-          </span>
-        </div>
-        <div className="h-2 w-full rounded-full bg-slate-100 dark:bg-slate-700">
-          <div
-            className={`h-2 rounded-full transition-all duration-500 ${textColor.replace(
-              'text-',
-              'bg-'
-            )}`}
-            style={{ width: `${percentage}%` }}
-          ></div>
-        </div>
-      </div>
-    </div>
-  );
+        );
+      }
+      return null;
+    };
+
+    return (
+      <ResponsiveContainer width="100%" height={300}>
+        <LineChart
+          data={chartData}
+          margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+        >
+          <CartesianGrid
+            strokeDasharray="3 3"
+            stroke="#e2e8f0"
+            vertical={false}
+          />
+          <XAxis
+            dataKey="date"
+            stroke="#94a3b8"
+            fontSize={12}
+            tickLine={false}
+          />
+          <YAxis
+            stroke="#94a3b8"
+            fontSize={12}
+            tickFormatter={formatters.number}
+            tickLine={false}
+          />
+          <RechartsTooltip content={<CustomTooltip />} />
+          <Legend />
+          <Line
+            type="monotone"
+            dataKey="orders"
+            stroke="#3b82f6"
+            strokeWidth={2}
+            dot={chartData.length <= 30}
+            name="Pesanan"
+            isAnimationActive={true}
+            animationDuration={500}
+          />
+          <Line
+            type="monotone"
+            dataKey="revenue"
+            stroke="#10b981"
+            strokeWidth={2}
+            dot={chartData.length <= 30}
+            name="Pendapatan"
+            isAnimationActive={true}
+            animationDuration={500}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    );
+  }, [chartData, formatters]);
 
   if (isLoading) {
     return (
-      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white dark:bg-slate-900">
-        <div className="relative">
-          <Loader2 className="h-14 w-14 animate-spin text-blue-600 dark:text-blue-400" />
-          <div className="absolute inset-0 -z-10 rounded-full bg-blue-50 blur-sm dark:bg-blue-900/10"></div>
-        </div>
-        <div className="mt-6 text-center">
-          <p className="text-lg font-medium text-slate-800 dark:text-slate-200">
-            Memuat Dashboard
-          </p>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            Menyiapkan data statistik...
-          </p>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-sm dark:bg-gray-900/80">
+        <div className="flex flex-col items-center">
+          <div className="relative">
+            <div className="h-16 w-16 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600 dark:border-blue-900 dark:border-t-blue-400"></div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <BarChart3 className="h-8 w-8 animate-pulse text-blue-600 dark:text-blue-400" />
+            </div>
+          </div>
+          <div className="mt-6 text-center">
+            <p className="text-lg font-semibold text-gray-800 dark:text-gray-200">
+              Memuat Statistik
+            </p>
+            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+              Sedang mengambil data statistik...
+            </p>
+          </div>
         </div>
       </div>
     );
@@ -378,21 +547,22 @@ const StatisticsPage = () => {
 
   if (!statistics) {
     return (
-      <div className="min-h-screen bg-slate-50 px-4 py-8 dark:bg-slate-900 sm:px-6 sm:py-12">
+      <div className="min-h-screen bg-slate-50 p-4 dark:bg-gray-900 md:p-8">
         <div className="mx-auto max-w-7xl">
           <div className="rounded-xl border border-red-200 bg-red-50 p-6 dark:border-red-800 dark:bg-red-900/20">
             <div className="flex items-start gap-4">
               <AlertCircle className="mt-1 h-6 w-6 flex-shrink-0 text-red-600 dark:text-red-400" />
-              <div className="flex-1">
+              <div>
                 <h2 className="text-lg font-bold text-red-900 dark:text-red-300">
-                  Tidak Dapat Memuat Data
+                  Gagal Memuat Data
                 </h2>
                 <p className="mt-1 text-sm text-red-800 dark:text-red-400">
-                  {error ||
-                    'Terjadi kesalahan saat memuat data statistik'}
+                  {error || 'Tidak dapat memuat data statistik'}
                 </p>
                 <Button
-                  onClick={() => fetchStatistics({}, true)}
+                  onClick={() =>
+                    fetchStatistics(undefined, undefined, true)
+                  }
                   className="mt-4 bg-red-600 text-white hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-600"
                 >
                   Coba Lagi
@@ -405,545 +575,454 @@ const StatisticsPage = () => {
     );
   }
 
-  // Hitung total dan persentase status
-  const totalStatusCount =
-    statistics.completedOrders +
-    statistics.processingOrders +
-    statistics.canceledOrders;
-
-  const completedPercentage =
-    totalStatusCount > 0
-      ? (statistics.completedOrders / totalStatusCount) * 100
-      : 0;
-  const processingPercentage =
-    totalStatusCount > 0
-      ? (statistics.processingOrders / totalStatusCount) * 100
-      : 0;
-  const canceledPercentage =
-    totalStatusCount > 0
-      ? (statistics.canceledOrders / totalStatusCount) * 100
-      : 0;
-
-  // Data untuk PieChart
-  const pieData = [
-    {
-      name: 'Selesai',
-      value: statistics.completedOrders,
-      fill: '#10b981',
-      color: 'text-emerald-600 dark:text-emerald-400',
-      bgColor: 'bg-emerald-100 dark:bg-emerald-900/30'
-    },
-    {
-      name: 'Diproses',
-      value: statistics.processingOrders,
-      fill: '#f59e0b',
-      color: 'text-amber-600 dark:text-amber-400',
-      bgColor: 'bg-amber-100 dark:bg-amber-900/30'
-    },
-    {
-      name: 'Dibatalkan',
-      value: statistics.canceledOrders,
-      fill: '#ef4444',
-      color: 'text-red-600 dark:text-red-400',
-      bgColor: 'bg-red-100 dark:bg-red-900/30'
-    }
-  ];
-
-  const COLORS = ['#10b981', '#f59e0b', '#ef4444'];
-
-  // Filter data untuk PieChart (hanya yang value > 0)
-  const filteredPieData = pieData.filter((item) => item.value > 0);
-  const hasPieData = filteredPieData.length > 0;
-
-  // Cek apakah ada data untuk chart
-  const hasChartData = chartData.length > 0;
-
   return (
-    <div className="min-h-screen bg-slate-50 px-4 py-6 dark:bg-slate-900 sm:px-6 sm:py-8">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-4 dark:from-gray-900 dark:to-blue-950/20 md:p-6">
       <div className="mx-auto max-w-7xl">
         {/* Header */}
-        <div className="mb-8 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-          <div>
-            <div className="flex items-center gap-3">
-              <div className="rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 p-2.5 shadow-lg">
-                <BarChart3 className="h-6 w-6 text-white sm:h-7 sm:w-7" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-slate-900 dark:text-white sm:text-3xl">
-                  Dashboard Analitik
-                </h1>
-                <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-                  Pantau performa dan statistik pemesanan online Anda
-                </p>
-              </div>
+        <div className="mb-8 rounded-2xl bg-gradient-to-r from-blue-600 to-purple-600 p-6 text-white shadow-lg">
+          <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+            <div>
+              <h1 className="text-2xl font-bold md:text-3xl">
+                Dashboard Statistik
+              </h1>
+              <p className="mt-2 opacity-90">
+                Pantau performa dan analisis pesanan Anda
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                onClick={() =>
+                  fetchStatistics(undefined, undefined, true)
+                }
+                disabled={isRefreshing}
+                variant="outline"
+                className="bg-white/10 text-white hover:bg-white/20"
+              >
+                <RefreshCw
+                  className={`h-4 w-4 ${
+                    isRefreshing ? 'animate-spin' : ''
+                  }`}
+                />
+                <span className="ml-2">Segarkan</span>
+              </Button>
+              <Button
+                onClick={handleExportData}
+                disabled={isExporting}
+                variant="outline"
+                className="bg-white/10 text-white hover:bg-white/20"
+              >
+                <Download className="h-4 w-4" />
+                <span className="ml-2">Ekspor</span>
+              </Button>
             </div>
           </div>
-          <Button
-            onClick={() => fetchStatistics({}, true)}
-            disabled={isRefreshing}
-            variant="outline"
-            className="flex items-center gap-2 border-slate-300 text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
-          >
-            <RefreshCw
-              className={`h-4 w-4 ${
-                isRefreshing ? 'animate-spin' : ''
-              }`}
-            />
-            <span className="hidden sm:inline">Refresh Data</span>
-            <span className="sm:hidden">Refresh</span>
-          </Button>
         </div>
 
-        {/* Error Alert */}
         {error && (
           <div className="animate-fade-in mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-900/20">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-600 dark:text-amber-400" />
-              <div className="flex-1">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
                 <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">
                   {error}
                 </p>
               </div>
               <button
                 onClick={() => setError(null)}
-                className="text-amber-600 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-300"
+                className="text-amber-600 hover:text-amber-800 dark:text-amber-400"
               >
-                <span className="text-xl">×</span>
+                ×
               </button>
             </div>
           </div>
         )}
 
-        {/* Filter Section */}
-        <div className="mb-8 rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-800 sm:p-6">
-          <h2 className="mb-4 flex items-center gap-2 text-lg font-bold text-slate-900 dark:text-white">
-            <Calendar className="h-5 w-5 text-slate-600 dark:text-slate-400" />
-            Filter Periode Waktu
-          </h2>
-
-          <div className="space-y-4">
-            {/* Quick Filters */}
-            <div className="flex flex-wrap gap-2">
-              <Button
-                onClick={() => handleFilterChange('today')}
-                variant={
-                  filterType === 'today' ? 'default' : 'outline'
-                }
-                className="text-sm"
-              >
-                Hari Ini
-              </Button>
-              <Button
-                onClick={() => handleFilterChange('week')}
-                variant={
-                  filterType === 'week' ? 'default' : 'outline'
-                }
-                className="text-sm"
-              >
-                7 Hari Terakhir
-              </Button>
-              <Button
-                onClick={() => handleFilterChange('month')}
-                variant={
-                  filterType === 'month' ? 'default' : 'outline'
-                }
-                className="text-sm"
-              >
-                30 Hari Terakhir
-              </Button>
-              <Button
-                onClick={() => setFilterType('custom')}
-                variant={
-                  filterType === 'custom' ? 'default' : 'outline'
-                }
-                className="text-sm"
-              >
-                Periode Kustom
-              </Button>
+        {/* Statistik Utama */}
+        <div className="mb-8">
+          <div
+            className="mb-4 flex cursor-pointer items-center justify-between rounded-xl bg-white p-4 dark:bg-gray-800"
+            onClick={() => toggleSection('ringkasan')}
+          >
+            <div className="flex items-center gap-3">
+              <BarChart3 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Ringkasan Statistik
+              </h3>
             </div>
-
-            {/* Custom Date Range */}
-            {filterType === 'custom' && (
-              <div className="mt-4 space-y-4 rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/50">
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div>
-                    <label className="mb-2 block text-xs font-semibold text-slate-700 dark:text-slate-300">
-                      Tanggal Mulai
-                    </label>
-                    <input
-                      type="date"
-                      value={customStartDate}
-                      onChange={(e) =>
-                        setCustomStartDate(e.target.value)
-                      }
-                      max={new Date().toISOString().split('T')[0]}
-                      className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-900 transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-blue-400"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-2 block text-xs font-semibold text-slate-700 dark:text-slate-300">
-                      Tanggal Selesai
-                    </label>
-                    <input
-                      type="date"
-                      value={customEndDate}
-                      onChange={(e) =>
-                        setCustomEndDate(e.target.value)
-                      }
-                      max={new Date().toISOString().split('T')[0]}
-                      className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-900 transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-blue-400"
-                    />
-                  </div>
-                </div>
-                <Button
-                  onClick={handleCustomDateFilter}
-                  className="w-full bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600 sm:w-auto"
-                >
-                  Terapkan Filter
-                </Button>
-              </div>
+            {expandedSections.ringkasan ? (
+              <ChevronUp className="h-5 w-5" />
+            ) : (
+              <ChevronDown className="h-5 w-5" />
             )}
           </div>
-        </div>
 
-        {/* Key Metrics Grid */}
-        <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard
-            title="Total Pesanan"
-            value={formatNumber(statistics.totalOrders)}
-            icon={ShoppingCart}
-            bgColor="bg-blue-100 dark:bg-blue-900/30"
-            iconColor="text-blue-600 dark:text-blue-400"
-            subtext="Jumlah total pesanan"
-            growth={statistics.orderGrowth}
-          />
-          <StatCard
-            title="Total Penerimaan"
-            value={formatCurrency(statistics.totalRevenue)}
-            icon={CreditCard}
-            bgColor="bg-emerald-100 dark:bg-emerald-900/30"
-            iconColor="text-emerald-600 dark:text-emerald-400"
-            subtext={`Rata-rata: ${formatCurrency(
-              statistics.averageOrderValue
-            )}`}
-            growth={statistics.revenueGrowth}
-          />
-          <StatCard
-            title="Pesanan Hari Ini"
-            value={formatNumber(statistics.todayOrders)}
-            icon={Package}
-            bgColor="bg-purple-100 dark:bg-purple-900/30"
-            iconColor="text-purple-600 dark:text-purple-400"
-            subtext={`Penerimaan: ${formatCurrency(
-              statistics.todayRevenue
-            )}`}
-          />
-          <StatCard
-            title="Rata-rata Pesanan"
-            value={formatCurrency(statistics.averageOrderValue)}
-            icon={TrendingUp}
-            bgColor="bg-amber-100 dark:bg-amber-900/30"
-            iconColor="text-amber-600 dark:text-amber-400"
-            subtext="Nilai per transaksi"
-          />
-        </div>
-
-        {/* Charts Section */}
-        <div className="mb-8 grid gap-6 lg:grid-cols-2">
-          {/* Line Chart - Revenue & Orders Trend */}
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
-            <div className="border-b border-slate-200 bg-slate-50 px-5 py-4 dark:border-slate-700 dark:bg-slate-800/50">
-              <div className="flex items-center gap-3">
-                <LineChartIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                <h3 className="font-bold text-slate-900 dark:text-white">
-                  Tren Pesanan & Penerimaan
-                </h3>
-              </div>
-              <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
-                {filterType === 'today'
-                  ? 'Hari ini'
-                  : filterType === 'week'
-                    ? '7 hari terakhir'
-                    : filterType === 'month'
-                      ? '30 hari terakhir'
-                      : filterType === 'custom' && customStartDate
-                        ? `${customStartDate} s/d ${customEndDate}`
-                        : '30 hari terakhir'}
-              </p>
-            </div>
-            <div className="p-4 sm:p-6">
-              {hasChartData ? (
-                <ResponsiveContainer width="100%" height={300}>
-                  <LineChart
-                    data={chartData}
-                    margin={{
-                      top: 5,
-                      right: 30,
-                      left: 20,
-                      bottom: 5
-                    }}
-                  >
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      stroke="#e2e8f0"
-                      strokeOpacity={0.6}
-                    />
-                    <XAxis
-                      dataKey="date"
-                      stroke="#94a3b8"
-                      style={{ fontSize: '12px' }}
-                      tick={{ fill: '#64748b' }}
-                    />
-                    <YAxis
-                      stroke="#94a3b8"
-                      style={{ fontSize: '12px' }}
-                      tick={{ fill: '#64748b' }}
-                      tickFormatter={(value) => formatNumber(value)}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: 'white',
-                        border: '1px solid #e2e8f0',
-                        borderRadius: '8px',
-                        color: '#1e293b',
-                        fontSize: '12px',
-                        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
-                      }}
-                      formatter={(value: any, name: any) => {
-                        const numericValue =
-                          typeof value === 'number'
-                            ? value
-                            : Number(value) || 0;
-                        if (name === 'Penerimaan') {
-                          return [formatCurrency(numericValue), name];
-                        }
-                        return [formatNumber(numericValue), name];
-                      }}
-                      labelFormatter={(label: string) =>
-                        `Tanggal: ${label}`
-                      }
-                    />
-                    <Legend
-                      wrapperStyle={{
-                        fontSize: '12px',
-                        paddingTop: '10px'
-                      }}
-                      iconType="circle"
-                      iconSize={8}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="orders"
-                      stroke="#3b82f6"
-                      name="Jumlah Pesanan"
-                      strokeWidth={2}
-                      dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }}
-                      activeDot={{ r: 6, strokeWidth: 0 }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="revenue"
-                      stroke="#10b981"
-                      name="Penerimaan"
-                      strokeWidth={2}
-                      dot={{ fill: '#10b981', strokeWidth: 2, r: 4 }}
-                      activeDot={{ r: 6, strokeWidth: 0 }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="flex h-[300px] flex-col items-center justify-center">
-                  <AlertCircle className="h-16 w-16 text-slate-300 dark:text-slate-600" />
-                  <p className="mt-4 text-sm font-medium text-slate-500 dark:text-slate-400">
-                    Tidak ada data tren untuk periode ini
-                  </p>
-                  <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
-                    Coba pilih periode waktu yang berbeda
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Pie Chart - Status Distribution */}
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
-            <div className="border-b border-slate-200 bg-slate-50 px-5 py-4 dark:border-slate-700 dark:bg-slate-800/50">
-              <div className="flex items-center gap-3">
-                <PieChartIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                <h3 className="font-bold text-slate-900 dark:text-white">
-                  Distribusi Status Pesanan
-                </h3>
-              </div>
-              <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
-                Total: {formatNumber(totalStatusCount)} pesanan
-              </p>
-            </div>
-            <div className="p-4 sm:p-6">
-              {hasPieData ? (
-                <>
-                  <ResponsiveContainer width="100%" height={250}>
-                    <PieChart>
-                      <Pie
-                        data={filteredPieData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={60}
-                        outerRadius={90}
-                        paddingAngle={2}
-                        dataKey="value"
-                        label={(entry) =>
-                          `${entry.name}: ${formatNumber(
-                            entry.value
-                          )}`
-                        }
-                        labelLine={false}
-                      >
-                        {filteredPieData.map((entry, index) => (
-                          <Cell
-                            key={`cell-${index}`}
-                            fill={COLORS[index % COLORS.length]}
-                            stroke="white"
-                            strokeWidth={2}
-                          />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        formatter={(value: unknown) => [
-                          formatNumber(Number(value) || 0),
-                          'Jumlah'
-                        ]}
-                        labelFormatter={(name: string) =>
-                          `Status: ${name}`
-                        }
-                        contentStyle={{
-                          backgroundColor: 'white',
-                          border: '1px solid #e2e8f0',
-                          borderRadius: '8px',
-                          color: '#1e293b',
-                          fontSize: '12px',
-                          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
-                        }}
+          {expandedSections.ringkasan && (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded-xl bg-white p-5 shadow-sm transition-all hover:shadow-md dark:bg-gray-800">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                      Total Pendapatan
+                    </p>
+                    <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">
+                      {formatters.currency(statistics.totalRevenue)}
+                    </p>
+                    <div className="mt-2 flex items-center gap-2">
+                      <TrendingUp
+                        className={`h-4 w-4 ${
+                          statistics.revenueGrowth >= 0
+                            ? 'text-emerald-500'
+                            : 'text-red-500'
+                        }`}
                       />
-                    </PieChart>
-                  </ResponsiveContainer>
-
-                  {/* Legend */}
-                  <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
-                    {pieData.map((item, index) => (
-                      <div
-                        key={item.name}
-                        className={`flex flex-col items-center rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/50 ${
-                          item.value === 0 ? 'opacity-60' : ''
+                      <span
+                        className={`text-sm ${
+                          statistics.revenueGrowth >= 0
+                            ? 'text-emerald-600'
+                            : 'text-red-600'
                         }`}
                       >
-                        <div className="flex items-center gap-2">
-                          <div
-                            className="h-3 w-3 rounded-full"
-                            style={{ backgroundColor: COLORS[index] }}
-                          ></div>
-                          <span className="text-sm font-semibold text-slate-900 dark:text-white">
-                            {item.name}
-                          </span>
-                        </div>
-                        <p
-                          className="mt-2 text-2xl font-bold"
-                          style={{ color: COLORS[index] }}
-                        >
-                          {formatNumber(item.value)}
-                        </p>
-                        <p className="text-xs text-slate-600 dark:text-slate-400">
-                          {totalStatusCount > 0
-                            ? (
-                                (item.value / totalStatusCount) *
-                                100
-                              ).toFixed(1)
-                            : 0}
-                          %
-                        </p>
-                      </div>
-                    ))}
+                        {statistics.revenueGrowth >= 0 ? '+' : ''}
+                        {statistics.revenueGrowth.toFixed(1)}%
+                      </span>
+                    </div>
                   </div>
-                </>
-              ) : (
-                <div className="flex h-[300px] flex-col items-center justify-center">
-                  <div className="relative">
-                    <PieChartIcon className="h-16 w-16 text-slate-300 dark:text-slate-600" />
-                    <AlertCircle className="absolute -right-2 -top-2 h-8 w-8 text-amber-500" />
+                  <div className="rounded-lg bg-blue-100 p-3 dark:bg-blue-900/30">
+                    <CreditCard className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                   </div>
-                  <p className="mt-4 text-sm font-medium text-slate-500 dark:text-slate-400">
-                    Tidak ada data status pesanan
-                  </p>
-                  <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
-                    Belum ada pesanan yang tercatat
-                  </p>
                 </div>
-              )}
+              </div>
+
+              <div className="rounded-xl bg-white p-5 shadow-sm transition-all hover:shadow-md dark:bg-gray-800">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                      Total Pesanan
+                    </p>
+                    <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">
+                      {formatters.number(statistics.totalOrders)}
+                    </p>
+                    <div className="mt-2 flex items-center gap-2">
+                      <TrendingUp
+                        className={`h-4 w-4 ${
+                          statistics.orderGrowth >= 0
+                            ? 'text-emerald-500'
+                            : 'text-red-500'
+                        }`}
+                      />
+                      <span
+                        className={`text-sm ${
+                          statistics.orderGrowth >= 0
+                            ? 'text-emerald-600'
+                            : 'text-red-600'
+                        }`}
+                      >
+                        {statistics.orderGrowth >= 0 ? '+' : ''}
+                        {statistics.orderGrowth.toFixed(1)}%
+                      </span>
+                    </div>
+                  </div>
+                  <div className="rounded-lg bg-purple-100 p-3 dark:bg-purple-900/30">
+                    <ShoppingCart className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-xl bg-white p-5 shadow-sm transition-all hover:shadow-md dark:bg-gray-800">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                      Pesanan Hari Ini
+                    </p>
+                    <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">
+                      {formatters.number(statistics.todayOrders)}
+                    </p>
+                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                      {formatters.currency(statistics.todayRevenue)}{' '}
+                      pendapatan
+                    </p>
+                  </div>
+                  <div className="rounded-lg bg-emerald-100 p-3 dark:bg-emerald-900/30">
+                    <Package className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-xl bg-white p-5 shadow-sm transition-all hover:shadow-md dark:bg-gray-800">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                      Rata-rata Nilai Pesanan
+                    </p>
+                    <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">
+                      {formatters.currency(
+                        statistics.averageOrderValue
+                      )}
+                    </p>
+                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                      Per transaksi
+                    </p>
+                  </div>
+                  <div className="rounded-lg bg-amber-100 p-3 dark:bg-amber-900/30">
+                    <TrendingUp className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
-        {/* Order Status Summary */}
-        <div className="mb-8 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
-          <div className="border-b border-slate-200 bg-slate-50 px-5 py-4 dark:border-slate-700 dark:bg-slate-800/50">
+        {/* Filter Section */}
+        <div className="mb-8">
+          <div className="flex flex-col justify-between gap-4 rounded-xl bg-white p-4 dark:bg-gray-800 sm:flex-row sm:items-center">
+            <div className="flex items-center gap-3">
+              <Calendar className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+              <h3 className="font-semibold text-gray-900 dark:text-white">
+                Filter Periode
+              </h3>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { key: 'hari-ini' as FilterType, label: 'Hari Ini' },
+                {
+                  key: 'minggu-ini' as FilterType,
+                  label: 'Minggu Ini'
+                },
+                {
+                  key: 'bulan-ini' as FilterType,
+                  label: 'Bulan Ini'
+                },
+                { key: 'kustom' as FilterType, label: 'Kustom' }
+              ].map(({ key, label }) => (
+                <Button
+                  key={key}
+                  onClick={() => handleFilterChange(key)}
+                  variant={filterType === key ? 'default' : 'outline'}
+                  size="sm"
+                >
+                  {label}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          {filterType === 'kustom' && (
+            <div className="mt-4 rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Tanggal Mulai
+                  </label>
+                  <input
+                    type="date"
+                    value={customStartDate}
+                    onChange={(e) =>
+                      setCustomStartDate(e.target.value)
+                    }
+                    max={new Date().toISOString().split('T')[0]}
+                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700"
+                  />
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Tanggal Selesai
+                  </label>
+                  <input
+                    type="date"
+                    value={customEndDate}
+                    onChange={(e) => setCustomEndDate(e.target.value)}
+                    max={new Date().toISOString().split('T')[0]}
+                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700"
+                  />
+                </div>
+                <div className="flex items-end">
+                  <Button
+                    onClick={handleCustomDateFilter}
+                    className="w-full bg-blue-600 hover:bg-blue-700"
+                  >
+                    Terapkan Filter
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Grafik Section */}
+        <div className="mb-8">
+          <div
+            className="mb-4 flex cursor-pointer items-center justify-between rounded-xl bg-white p-4 dark:bg-gray-800"
+            onClick={() => toggleSection('grafik')}
+          >
+            <div className="flex items-center gap-3">
+              <BarChart3 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Analisis Grafik
+              </h3>
+            </div>
+            {expandedSections.grafik ? (
+              <ChevronUp className="h-5 w-5" />
+            ) : (
+              <ChevronDown className="h-5 w-5" />
+            )}
+          </div>
+
+          {expandedSections.grafik && (
+            <div className="grid gap-6 lg:grid-cols-2">
+              {/* Grafik Trend */}
+              <div className="rounded-xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                <div className="mb-4 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <LineChartIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                    <h4 className="font-semibold text-gray-900 dark:text-white">
+                      Tren Pesanan & Pendapatan
+                    </h4>
+                  </div>
+                  <Info className="h-4 w-4 text-gray-400" />
+                </div>
+                {OptimizedLineChart}
+              </div>
+
+              {/* Grafik Status */}
+              <div className="rounded-xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                <div className="mb-4 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <PieChartIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                    <h4 className="font-semibold text-gray-900 dark:text-white">
+                      Distribusi Status Pesanan
+                    </h4>
+                  </div>
+                  <Info className="h-4 w-4 text-gray-400" />
+                </div>
+                {OptimizedPieChart}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Status Pesanan Section */}
+        <div className="mb-8">
+          <div
+            className="mb-4 flex cursor-pointer items-center justify-between rounded-xl bg-white p-4 dark:bg-gray-800"
+            onClick={() => toggleSection('status')}
+          >
             <div className="flex items-center gap-3">
               <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-                Status Pesanan Saat Ini
-              </h2>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Status Pesanan
+              </h3>
             </div>
-            <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
-              Update terbaru:{' '}
-              {new Date().toLocaleDateString('id-ID', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-              })}
-            </p>
+            {expandedSections.status ? (
+              <ChevronUp className="h-5 w-5" />
+            ) : (
+              <ChevronDown className="h-5 w-5" />
+            )}
           </div>
 
-          <div className="grid gap-4 p-4 sm:grid-cols-3 sm:p-6">
-            <OrderStatusCard
-              title="Sedang Diproses"
-              count={statistics.processingOrders}
-              icon={Clock}
-              bgColor="bg-amber-100 dark:bg-amber-900/30"
-              textColor="text-amber-600 dark:text-amber-400"
-              percentage={processingPercentage}
-            />
-            <OrderStatusCard
-              title="Sudah Selesai"
-              count={statistics.completedOrders}
-              icon={CheckCircle}
-              bgColor="bg-emerald-100 dark:bg-emerald-900/30"
-              textColor="text-emerald-600 dark:text-emerald-400"
-              percentage={completedPercentage}
-            />
-            <OrderStatusCard
-              title="Pesanan Batal"
-              count={statistics.canceledOrders}
-              icon={XCircle}
-              bgColor="bg-red-100 dark:bg-red-900/30"
-              textColor="text-red-600 dark:text-red-400"
-              percentage={canceledPercentage}
-            />
-          </div>
+          {expandedSections.status && (
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="rounded-xl border-l-4 border-amber-500 bg-white p-5 dark:bg-gray-800">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-lg bg-amber-100 p-2 dark:bg-amber-900/30">
+                    <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                      Sedang Diproses
+                    </p>
+                    <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">
+                      {formatters.number(statistics.processingOrders)}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <div className="h-2 w-full rounded-full bg-gray-100 dark:bg-gray-700">
+                    <div
+                      className="h-2 rounded-full bg-amber-500 transition-all duration-500"
+                      style={{ width: `${percentages.processing}%` }}
+                    />
+                  </div>
+                  <p className="mt-2 text-sm text-gray-500">
+                    {percentages.processing.toFixed(1)}% dari total
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-xl border-l-4 border-emerald-500 bg-white p-5 dark:bg-gray-800">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-lg bg-emerald-100 p-2 dark:bg-emerald-900/30">
+                    <CheckCircle className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                      Selesai
+                    </p>
+                    <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">
+                      {formatters.number(statistics.completedOrders)}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <div className="h-2 w-full rounded-full bg-gray-100 dark:bg-gray-700">
+                    <div
+                      className="h-2 rounded-full bg-emerald-500 transition-all duration-500"
+                      style={{ width: `${percentages.completed}%` }}
+                    />
+                  </div>
+                  <p className="mt-2 text-sm text-gray-500">
+                    {percentages.completed.toFixed(1)}% dari total
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-xl border-l-4 border-red-500 bg-white p-5 dark:bg-gray-800">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-lg bg-red-100 p-2 dark:bg-red-900/30">
+                    <XCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                      Dibatalkan
+                    </p>
+                    <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">
+                      {formatters.number(statistics.canceledOrders)}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <div className="h-2 w-full rounded-full bg-gray-100 dark:bg-gray-700">
+                    <div
+                      className="h-2 rounded-full bg-red-500 transition-all duration-500"
+                      style={{ width: `${percentages.canceled}%` }}
+                    />
+                  </div>
+                  <p className="mt-2 text-sm text-gray-500">
+                    {percentages.canceled.toFixed(1)}% dari total
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Summary Info */}
-        <div className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-800 sm:p-6">
-          <h3 className="mb-4 text-sm font-bold uppercase tracking-wider text-slate-900 dark:text-white">
-            Ringkasan Performa
-          </h3>
-          <div className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
-            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/50">
-              <div className="flex items-center gap-2">
-                <div className="h-2 w-2 rounded-full bg-emerald-500"></div>
-                <p className="text-slate-600 dark:text-slate-400">
-                  Pesanan Selesai
-                </p>
-              </div>
-              <p className="mt-2 text-xl font-bold text-emerald-600 dark:text-emerald-400">
+        {/* Metrik Performa */}
+        <div className="rounded-xl bg-white p-6 dark:bg-gray-800">
+          <div className="mb-6 flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+              Metrik Performa
+            </h3>
+            <span className="text-sm text-gray-500">
+              Terakhir diperbarui:{' '}
+              {new Date().toLocaleDateString('id-ID')}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+            <div className="text-center">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Tingkat Penyelesaian
+              </p>
+              <p className="mt-2 text-2xl font-bold text-emerald-600">
                 {statistics.totalOrders > 0
                   ? (
                       (statistics.completedOrders /
@@ -953,19 +1032,17 @@ const StatisticsPage = () => {
                   : 0}
                 %
               </p>
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-500">
-                {formatNumber(statistics.completedOrders)} dari{' '}
-                {formatNumber(statistics.totalOrders)}
+              <p className="text-xs text-gray-500">
+                {formatters.number(statistics.completedOrders)} dari{' '}
+                {formatters.number(statistics.totalOrders)} pesanan
               </p>
             </div>
-            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/50">
-              <div className="flex items-center gap-2">
-                <div className="h-2 w-2 rounded-full bg-amber-500"></div>
-                <p className="text-slate-600 dark:text-slate-400">
-                  Pesanan Diproses
-                </p>
-              </div>
-              <p className="mt-2 text-xl font-bold text-amber-600 dark:text-amber-400">
+
+            <div className="text-center">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Tingkat Pengerjaan
+              </p>
+              <p className="mt-2 text-2xl font-bold text-amber-600">
                 {statistics.totalOrders > 0
                   ? (
                       (statistics.processingOrders /
@@ -975,19 +1052,17 @@ const StatisticsPage = () => {
                   : 0}
                 %
               </p>
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-500">
-                {formatNumber(statistics.processingOrders)} dari{' '}
-                {formatNumber(statistics.totalOrders)}
+              <p className="text-xs text-gray-500">
+                {formatters.number(statistics.processingOrders)} dari{' '}
+                {formatters.number(statistics.totalOrders)} pesanan
               </p>
             </div>
-            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/50">
-              <div className="flex items-center gap-2">
-                <div className="h-2 w-2 rounded-full bg-red-500"></div>
-                <p className="text-slate-600 dark:text-slate-400">
-                  Pesanan Batal
-                </p>
-              </div>
-              <p className="mt-2 text-xl font-bold text-red-600 dark:text-red-400">
+
+            <div className="text-center">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Tingkat Pembatalan
+              </p>
+              <p className="mt-2 text-2xl font-bold text-red-600">
                 {statistics.totalOrders > 0
                   ? (
                       (statistics.canceledOrders /
@@ -997,49 +1072,29 @@ const StatisticsPage = () => {
                   : 0}
                 %
               </p>
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-500">
-                {formatNumber(statistics.canceledOrders)} dari{' '}
-                {formatNumber(statistics.totalOrders)}
+              <p className="text-xs text-gray-500">
+                {formatters.number(statistics.canceledOrders)} dari{' '}
+                {formatters.number(statistics.totalOrders)} pesanan
               </p>
             </div>
-            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/50">
-              <div className="flex items-center gap-2">
-                <div className="h-2 w-2 rounded-full bg-blue-500"></div>
-                <p className="text-slate-600 dark:text-slate-400">
-                  Rata-rata Pesanan
-                </p>
-              </div>
-              <p className="mt-2 text-xl font-bold text-blue-600 dark:text-blue-400">
-                {formatCurrency(statistics.averageOrderValue)}
-              </p>
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-500">
-                Nilai per transaksi
-              </p>
-            </div>
-          </div>
-        </div>
 
-        {/* Info Box */}
-        <div className="mt-8 rounded-xl border border-blue-200 bg-blue-50 p-5 dark:border-blue-800 dark:bg-blue-900/20">
-          <div className="flex items-start gap-4">
-            <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-blue-600 dark:text-blue-400" />
-            <div>
-              <p className="text-sm font-medium text-blue-900 dark:text-blue-300">
-                <span className="font-bold">Tips:</span> Untuk
-                mendapatkan data yang lebih akurat, pastikan:
+            <div className="text-center">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Pertumbuhan Pendapatan
               </p>
-              <ul className="mt-2 list-inside list-disc text-xs text-blue-800 dark:text-blue-400">
-                <li>
-                  Semua pesanan telah dimasukkan dengan status yang
-                  benar
-                </li>
-                <li>
-                  Pilih periode waktu yang sesuai untuk analisis
-                </li>
-                <li>
-                  Refresh data secara berkala untuk update terbaru
-                </li>
-              </ul>
+              <p
+                className={`mt-2 text-2xl font-bold ${
+                  statistics.revenueGrowth >= 0
+                    ? 'text-emerald-600'
+                    : 'text-red-600'
+                }`}
+              >
+                {statistics.revenueGrowth >= 0 ? '+' : ''}
+                {statistics.revenueGrowth.toFixed(1)}%
+              </p>
+              <p className="text-xs text-gray-500">
+                Dibandingkan periode sebelumnya
+              </p>
             </div>
           </div>
         </div>

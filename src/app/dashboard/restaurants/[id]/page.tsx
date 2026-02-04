@@ -545,12 +545,22 @@ export default function RestaurantDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
-        <div className="text-center">
-          <Loader2 className="mx-auto mb-4 h-12 w-12 animate-spin text-blue-600 dark:text-blue-400" />
-          <p className="text-sm font-medium text-slate-600 dark:text-slate-400">
-            Memuat detail restoran...
-          </p>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-sm dark:bg-gray-900/80">
+        <div className="flex flex-col items-center">
+          <div className="relative">
+            <div className="h-16 w-16 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600 dark:border-blue-900 dark:border-t-blue-400"></div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <ChefHat className="h-8 w-8 animate-pulse text-blue-600 dark:text-blue-400" />
+            </div>
+          </div>
+          <div className="mt-6 text-center">
+            <p className="text-lg font-semibold text-gray-800 dark:text-gray-200">
+              Memuat Detail Restoran
+            </p>
+            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+              Sedang mengambil detail restoran...
+            </p>
+          </div>
         </div>
       </div>
     );
