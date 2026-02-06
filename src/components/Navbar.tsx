@@ -62,7 +62,7 @@ import {
   BadgeCheck,
   X
 } from 'lucide-react';
-import logo from '../../public/logobtn.png';
+import logo from '../../public/logo.png';
 import { cn } from '@/lib/utils';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -360,26 +360,43 @@ const Navbar = () => {
       <nav className="sticky top-0 z-50 border-b border-border/50 bg-background/95 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60">
         <div className="px-4">
           <div className="flex h-16 items-center justify-between">
-            {/* Logo Section */}
+            {/* Logo Section  */}
             <div className="flex items-center gap-3">
               <Link
                 href={getDashboardLink()}
-                className="flex items-center gap-3 transition-opacity hover:opacity-90"
+                className="group flex items-center gap-3 transition-all hover:opacity-90"
               >
-                <div className="relative h-10 w-10 overflow-hidden rounded-xl border-2 border-primary/20 bg-gradient-to-br from-primary/10 to-primary/5 p-1.5">
+                <div className="  relative h-10 w-20 overflow-hidden rounded-xl bg-gradient-to-br from-primary/5 to-primary/10 p-1.5 shadow-sm transition-all duration-300 group-hover:from-primary/10 group-hover:to-primary/15 group-hover:shadow-md">
+                  {/* Background subtle pattern */}
+                  <div className="absolute inset-0 opacity-10">
+                    <div className="h-full w-full bg-[linear-gradient(45deg,transparent_25%,rgba(255,255,255,0.1)_50%,transparent_75%,transparent_100%)] bg-[length:10px_10px]" />
+                  </div>
+
+                  {/* Main logo */}
                   <Image
                     src={logo}
                     alt="CRSD OBAMA"
-                    width={40}
-                    height={40}
+                    width={64}
+                    height={44}
                     placeholder="blur"
                     priority
-                    className="h-full w-full object-contain"
+                    className="relative h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
                   />
+
+                  {/* Glow effect on hover */}
+                  <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-primary/0 via-primary/0 to-primary/0 transition-all duration-300 group-hover:from-primary/10 group-hover:via-primary/5 group-hover:to-primary/10" />
+
+                  {/* Border accent */}
+                  <div className="absolute inset-0 rounded-xl border border-primary/10 transition-all duration-300 group-hover:border-primary/20" />
+
+                  {/* Corner accents */}
+                  <div className="absolute left-0 top-0 h-2 w-2 rounded-tl-xl border-l border-t border-primary/20" />
+                  <div className="absolute right-0 top-0 h-2 w-2 rounded-tr-xl border-r border-t border-primary/20" />
+                  <div className="absolute bottom-0 left-0 h-2 w-2 rounded-bl-xl border-b border-l border-primary/20" />
+                  <div className="absolute bottom-0 right-0 h-2 w-2 rounded-br-xl border-b border-r border-primary/20" />
                 </div>
               </Link>
             </div>
-
             {/* Desktop Navigation Menu */}
             <div className="hidden items-center gap-1 md:flex">
               <Link
@@ -584,15 +601,6 @@ const Navbar = () => {
                         >
                           <Mail className="h-4 w-4" />
                           Contact
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link
-                          href="/support"
-                          className="flex cursor-pointer items-center gap-2"
-                        >
-                          <HelpCircle className="h-4 w-4" />
-                          Support
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
@@ -967,14 +975,6 @@ const Navbar = () => {
                   >
                     <Mail className="h-4 w-4" />
                     Contact
-                  </Link>
-                  <Link
-                    href="/support"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
-                  >
-                    <HelpCircle className="h-4 w-4" />
-                    Support
                   </Link>
                   <Link
                     href="/about"

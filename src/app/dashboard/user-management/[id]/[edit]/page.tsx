@@ -15,7 +15,10 @@ import {
   AlertTriangle,
   CheckCircle,
   Eye,
-  EyeOff
+  EyeOff,
+  CheckSquare,
+  Square,
+  Globe
 } from 'lucide-react';
 
 interface UserDetail {
@@ -26,6 +29,7 @@ interface UserDetail {
   role: 'user' | 'admin' | 'superadmin';
   divisi: string | null;
   unit_kerja: string | null;
+  data_access: string | null; // JSON string for admin divisi access
   email_verified_at: string | null;
   created_at: string;
   updated_at: string;
@@ -48,6 +52,14 @@ interface UpdateUserData {
   role: 'user' | 'admin' | 'superadmin';
   divisi: string;
   unit_kerja: string;
+  data_access?: string; // For admin divisi access
+}
+
+interface DivisionOption {
+  code: string;
+  name: string;
+  description: string;
+  isAllOption?: boolean;
 }
 
 export default function EditUserPage() {
@@ -76,10 +88,38 @@ export default function EditUserPage() {
     unit_kerja: ''
   });
 
+  const [selectedDivisions, setSelectedDivisions] = useState<
+    string[]
+  >([]);
+  const [showDivisionSelector, setShowDivisionSelector] =
+    useState(false);
+
   const [passwordData, setPasswordData] = useState({
     password: '',
     password_confirmation: ''
   });
+
+  // Divisi options - hanya CRSD1, CRSD2, dan Semua
+  const divisionOptions: DivisionOption[] = [
+    {
+      code: 'all',
+      name: 'Semua Divisi',
+      description: 'Admin dapat mengakses semua divisi CRSD',
+      isAllOption: true
+    },
+    {
+      code: 'crsd1',
+      name: 'CRSD 1',
+      description:
+        'Consumer Collection, Recovery and Asset Sales Division 1'
+    },
+    {
+      code: 'crsd2',
+      name: 'CRSD 2',
+      description:
+        'Consumer Collection, Recovery and Asset Sales Division 2'
+    }
+  ];
 
   const getAuthToken = (): string | null => {
     try {
@@ -105,6 +145,83 @@ export default function EditUserPage() {
     return 'http://localhost:8000/api';
   };
 
+  // Helper function untuk mengubah data_access menjadi selected divisions
+  const parseDataAccessToSelectedDivisions = (
+    dataAccess: any // Bisa string, array, atau null
+  ): string[] => {
+    if (!dataAccess) return [];
+
+    console.log(
+      'Parsing data_access:',
+      dataAccess,
+      'Type:',
+      typeof dataAccess
+    );
+
+    // Jika sudah array, langsung proses
+    if (Array.isArray(dataAccess)) {
+      // Filter hanya crsd1 dan crsd2
+      const validCodes = dataAccess.filter(
+        (code: string) => code === 'crsd1' || code === 'crsd2'
+      );
+
+      // Tambahkan 'all' jika ada crsd1 dan crsd2
+      if (
+        validCodes.includes('crsd1') &&
+        validCodes.includes('crsd2')
+      ) {
+        return ['all', ...validCodes];
+      }
+
+      return validCodes;
+    }
+
+    // Jika string, coba parse sebagai JSON
+    if (typeof dataAccess === 'string') {
+      try {
+        // Coba parse JSON
+        const parsed = JSON.parse(dataAccess);
+
+        if (Array.isArray(parsed)) {
+          // Filter hanya crsd1 dan crsd2
+          const validCodes = parsed.filter(
+            (code: string) => code === 'crsd1' || code === 'crsd2'
+          );
+
+          // Tambahkan 'all' jika ada crsd1 dan crsd2
+          if (
+            validCodes.includes('crsd1') &&
+            validCodes.includes('crsd2')
+          ) {
+            return ['all', ...validCodes];
+          }
+
+          return validCodes;
+        }
+      } catch (error) {
+        console.error('Error parsing data_access as JSON:', error);
+
+        // Jika bukan JSON, coba cek apakah string langsung berisi crsd1 atau crsd2
+        if (
+          dataAccess.includes('crsd1') ||
+          dataAccess.includes('crsd2')
+        ) {
+          const codes = [];
+          if (dataAccess.includes('crsd1')) codes.push('crsd1');
+          if (dataAccess.includes('crsd2')) codes.push('crsd2');
+
+          if (codes.includes('crsd1') && codes.includes('crsd2')) {
+            return ['all', ...codes];
+          }
+
+          return codes;
+        }
+      }
+    }
+
+    return [];
+  };
+
   useEffect(() => {
     setMounted(true);
     checkAuthentication();
@@ -115,6 +232,16 @@ export default function EditUserPage() {
       fetchUserDetail();
     }
   }, [isAuthenticated, userId]);
+
+  useEffect(() => {
+    // Show/hide division selector based on role
+    setShowDivisionSelector(formData.role === 'admin');
+
+    // If role is not admin, clear selected divisions
+    if (formData.role !== 'admin') {
+      setSelectedDivisions([]);
+    }
+  }, [formData.role]);
 
   const checkAuthentication = () => {
     try {
@@ -220,6 +347,22 @@ export default function EditUserPage() {
         divisi: userData.divisi || '',
         unit_kerja: userData.unit_kerja || ''
       });
+
+      // Parse and set selected divisions from data_access
+      if (userData.data_access) {
+        const divisions = parseDataAccessToSelectedDivisions(
+          userData.data_access
+        );
+        setSelectedDivisions(divisions);
+        console.log(
+          'Loaded divisions:',
+          divisions,
+          'from data_access:',
+          userData.data_access
+        );
+      } else {
+        setSelectedDivisions([]);
+      }
     } catch (err) {
       console.error('Fetch user detail error:', err);
       const errorMsg =
@@ -236,10 +379,25 @@ export default function EditUserPage() {
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
+    const newFormData = {
+      ...formData,
       [name]: value
-    }));
+    };
+
+    setFormData(newFormData);
+
+    // Jika role berubah dari admin ke non-admin, clear selected divisions
+    if (name === 'role' && value !== 'admin') {
+      setSelectedDivisions([]);
+    }
+
+    // Jika role berubah ke admin dan user sudah ada data_access, load ulang divisions
+    if (name === 'role' && value === 'admin' && user?.data_access) {
+      const divisions = parseDataAccessToSelectedDivisions(
+        user.data_access
+      );
+      setSelectedDivisions(divisions);
+    }
   };
 
   const handlePasswordChange = (
@@ -252,12 +410,93 @@ export default function EditUserPage() {
     }));
   };
 
+  const handleDivisionToggle = (
+    divisionCode: string,
+    isAllOption: boolean = false
+  ) => {
+    setSelectedDivisions((prev) => {
+      // Jika memilih "Semua Divisi"
+      if (divisionCode === 'all') {
+        if (prev.includes('all')) {
+          // Jika sudah dipilih, hapus semua
+          return [];
+        } else {
+          // Jika belum dipilih, pilih semua (crsd1 dan crsd2)
+          return ['all', 'crsd1', 'crsd2'];
+        }
+      }
+
+      // Jika memilih crsd1 atau crsd2
+      if (prev.includes(divisionCode)) {
+        // Hapus divisi yang dipilih
+        const newSelection = prev.filter(
+          (code) => code !== divisionCode
+        );
+
+        // Jika sudah tidak ada crsd1 dan crsd2, hapus juga 'all' jika ada
+        if (
+          !newSelection.includes('crsd1') &&
+          !newSelection.includes('crsd2') &&
+          newSelection.includes('all')
+        ) {
+          return newSelection.filter((code) => code !== 'all');
+        }
+
+        return newSelection;
+      } else {
+        // Tambahkan divisi yang dipilih
+        const newSelection = [...prev, divisionCode];
+
+        // Jika sudah memilih crsd1 dan crsd2, tambahkan juga 'all'
+        if (
+          (divisionCode === 'crsd1' &&
+            newSelection.includes('crsd2')) ||
+          (divisionCode === 'crsd2' && newSelection.includes('crsd1'))
+        ) {
+          if (!newSelection.includes('all')) {
+            newSelection.push('all');
+          }
+        }
+
+        return newSelection;
+      }
+    });
+  };
+
+  const handleSelectAllDivisions = () => {
+    // Pilih semua (crsd1, crsd2, dan all)
+    setSelectedDivisions(['all', 'crsd1', 'crsd2']);
+  };
+
+  const handleClearAllDivisions = () => {
+    setSelectedDivisions([]);
+  };
+
+  const getDisplayDivisions = () => {
+    if (selectedDivisions.includes('all')) {
+      return ['Semua Divisi (CRSD 1 & CRSD 2)'];
+    }
+
+    return selectedDivisions.map((code) => {
+      const division = divisionOptions.find((d) => d.code === code);
+      return division?.name || code;
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     // Validation
     if (!formData.name || !formData.email) {
       setError('Nama dan email wajib diisi');
+      return;
+    }
+
+    // Additional validation for admin role
+    if (formData.role === 'admin' && selectedDivisions.length === 0) {
+      setError(
+        'Admin harus memiliki setidaknya satu divisi yang dapat diakses'
+      );
       return;
     }
 
@@ -277,14 +516,44 @@ export default function EditUserPage() {
       const apiUrl = getApiUrl();
       const url = `${apiUrl}/superadmin/users/${userId}`;
 
-      const payload = {
-        name: formData.name,
-        email: formData.email,
-        phone: formData.phone || null,
-        role: formData.role,
-        divisi: formData.divisi || null,
-        unit_kerja: formData.unit_kerja || null
+      // Prepare payload - PERBAIKAN: Gunakan trim untuk semua string
+      const payload: any = {
+        name: formData.name.trim(),
+        email: formData.email.trim().toLowerCase(),
+        role: formData.role
       };
+
+      // Tambahkan optional fields hanya jika ada nilai
+      if (formData.phone && formData.phone.trim()) {
+        payload.phone = formData.phone.trim();
+      }
+
+      if (formData.divisi && formData.divisi.trim()) {
+        payload.divisi = formData.divisi.trim();
+      }
+
+      if (formData.unit_kerja && formData.unit_kerja.trim()) {
+        payload.unit_kerja = formData.unit_kerja.trim();
+      }
+
+      // Handle data_access for admin role
+      if (formData.role === 'admin') {
+        // Simpan semua code yang dipilih kecuali 'all' untuk kemudahan parsing
+        const accessCodes = selectedDivisions.filter(
+          (code) => code !== 'all'
+        );
+
+        if (accessCodes.length > 0) {
+          payload.data_access = JSON.stringify(accessCodes);
+        } else {
+          payload.data_access = '[]'; // Empty array JSON string
+        }
+      } else {
+        // Untuk non-admin, kirim string kosong
+        payload.data_access = '';
+      }
+
+      console.log('Payload yang dikirim:', payload);
 
       const response = await fetch(url, {
         method: 'PUT',
@@ -297,13 +566,14 @@ export default function EditUserPage() {
       });
 
       const data = await response.json();
+      console.log('Response:', data);
 
       if (!response.ok) {
         if (data.errors) {
           const errorMessages = Object.values(data.errors)
             .flat()
             .join(', ');
-          throw new Error(errorMessages);
+          throw new Error(`Validasi gagal: ${errorMessages}`);
         }
         throw new Error(data.message || 'Gagal memperbarui pengguna');
       }
@@ -418,10 +688,18 @@ export default function EditUserPage() {
         divisi: user.divisi || '',
         unit_kerja: user.unit_kerja || ''
       });
+
+      // Reset selected divisions menggunakan helper function yang sama
+      const divisions = parseDataAccessToSelectedDivisions(
+        user.data_access
+      );
+      setSelectedDivisions(divisions);
     }
     setError(null);
     setSuccessMessage(null);
   };
+
+  // Rest of the component remains the same until the return statement...
 
   if (!mounted) {
     return (
@@ -738,6 +1016,149 @@ export default function EditUserPage() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Divisi Selection for Admin */}
+                  {showDivisionSelector && (
+                    <div className="mt-4 border-t border-slate-200 pt-4 dark:border-slate-700">
+                      <div className="mb-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                              Akses Divisi CRSD *
+                            </label>
+                            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                              Pilih divisi yang dapat diakses oleh
+                              admin ini
+                            </p>
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={handleSelectAllDivisions}
+                              className="text-xs font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                            >
+                              Pilih Semua
+                            </button>
+                            <span className="text-slate-300 dark:text-slate-600">
+                              |
+                            </span>
+                            <button
+                              type="button"
+                              onClick={handleClearAllDivisions}
+                              className="text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
+                            >
+                              Hapus Semua
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        {divisionOptions.map((division) => {
+                          const isSelected =
+                            selectedDivisions.includes(division.code);
+                          return (
+                            <div
+                              key={division.code}
+                              className={`relative flex cursor-pointer items-start space-x-3 rounded-lg border p-4 transition-all duration-200 ${
+                                isSelected
+                                  ? division.isAllOption
+                                    ? 'border-purple-300 bg-purple-50 dark:border-purple-700 dark:bg-purple-900/20'
+                                    : 'border-blue-300 bg-blue-50 dark:border-blue-700 dark:bg-blue-900/20'
+                                  : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-slate-600 dark:hover:bg-slate-700/50'
+                              }`}
+                              onClick={() =>
+                                handleDivisionToggle(
+                                  division.code,
+                                  division.isAllOption
+                                )
+                              }
+                            >
+                              <div className="mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center">
+                                {isSelected ? (
+                                  <CheckSquare
+                                    className={`h-5 w-5 ${
+                                      division.isAllOption
+                                        ? 'text-purple-600 dark:text-purple-400'
+                                        : 'text-blue-600 dark:text-blue-400'
+                                    }`}
+                                  />
+                                ) : (
+                                  <Square className="h-5 w-5 text-slate-400 dark:text-slate-500" />
+                                )}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <label
+                                      htmlFor={`division-${division.code}`}
+                                      className="block text-sm font-medium text-slate-900 dark:text-white"
+                                    >
+                                      {division.name}
+                                    </label>
+                                    {division.isAllOption && (
+                                      <span className="inline-flex items-center gap-1 rounded-md bg-purple-100 px-2 py-1 text-xs font-medium text-purple-800 dark:bg-purple-900/40 dark:text-purple-300">
+                                        <Globe className="h-3 w-3" />
+                                        Semua
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                                  {division.description}
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Selected divisions summary */}
+                      {selectedDivisions.length > 0 && (
+                        <div
+                          className={`mt-4 rounded-lg p-3 ${
+                            selectedDivisions.includes('all')
+                              ? 'bg-purple-50 dark:bg-purple-900/20'
+                              : 'bg-emerald-50 dark:bg-emerald-900/20'
+                          }`}
+                        >
+                          <div className="flex items-center">
+                            <CheckCircle
+                              className={`mr-2 h-4 w-4 ${
+                                selectedDivisions.includes('all')
+                                  ? 'text-purple-600 dark:text-purple-400'
+                                  : 'text-emerald-600 dark:text-emerald-400'
+                              }`}
+                            />
+                            <span
+                              className={`text-sm font-medium ${
+                                selectedDivisions.includes('all')
+                                  ? 'text-purple-800 dark:text-purple-300'
+                                  : 'text-emerald-800 dark:text-emerald-300'
+                              }`}
+                            >
+                              {selectedDivisions.includes('all')
+                                ? 'Admin dapat mengakses Semua Divisi CRSD (CRSD 1 & CRSD 2)'
+                                : `Admin dapat mengakses: ${getDisplayDivisions().join(
+                                    ', '
+                                  )}`}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
+                      {selectedDivisions.length === 0 && (
+                        <div className="mt-4 rounded-lg bg-amber-50 p-3 dark:bg-amber-900/20">
+                          <div className="flex items-center">
+                            <AlertTriangle className="mr-2 h-4 w-4 text-amber-600 dark:text-amber-400" />
+                            <span className="text-sm font-medium text-amber-800 dark:text-amber-300">
+                              Pilih setidaknya satu divisi untuk admin
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1075,6 +1496,60 @@ export default function EditUserPage() {
                       )}
                     </span>
                   </div>
+
+                  {/* Show divisi access if admin */}
+                  {user.role === 'admin' && (
+                    <div className="border-t border-slate-200 pt-3 dark:border-slate-700">
+                      <div className="mb-2 flex items-center justify-between">
+                        <span className="text-sm text-slate-600 dark:text-slate-400">
+                          Akses Divisi CRSD
+                        </span>
+                        <span
+                          className={`text-sm font-medium ${
+                            selectedDivisions.includes('all')
+                              ? 'text-purple-600 dark:text-purple-400'
+                              : 'text-blue-600 dark:text-blue-400'
+                          }`}
+                        >
+                          {selectedDivisions.includes('all')
+                            ? 'Semua Divisi'
+                            : `${selectedDivisions.length} divisi`}
+                        </span>
+                      </div>
+                      {selectedDivisions.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          {selectedDivisions.includes('all') ? (
+                            <span className="rounded-full bg-gradient-to-r from-purple-100 to-blue-100 px-3 py-1 text-xs font-medium text-purple-800 dark:from-purple-900/40 dark:to-blue-900/40 dark:text-purple-300">
+                              Semua Divisi CRSD
+                            </span>
+                          ) : (
+                            selectedDivisions
+                              .map((code) => {
+                                const division = divisionOptions.find(
+                                  (d) => d.code === code
+                                );
+                                if (!division) return null;
+
+                                return (
+                                  <span
+                                    key={code}
+                                    className="rounded-full bg-blue-100 px-2 py-1 text-xs font-medium text-blue-800 dark:bg-blue-900/30 dark:text-blue-300"
+                                  >
+                                    {division.name}
+                                  </span>
+                                );
+                              })
+                              .filter(Boolean)
+                          )}
+                        </div>
+                      )}
+                      {user.data_access && (
+                        <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                          Data saat ini: {user.data_access}
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             )}

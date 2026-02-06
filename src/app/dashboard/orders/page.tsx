@@ -1237,7 +1237,6 @@ export default function CompactOrdersPage() {
                               <div className="flex items-center gap-1.5">
                                 <a
                                   href={`/dashboard/orders/${order.id}`}
-                                  target="_blank"
                                   className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
                                 >
                                   <Eye className="h-3.5 w-3.5" />
@@ -1473,11 +1472,10 @@ export default function CompactOrdersPage() {
                         </div>
                       </div>
 
-                      {/* Actions - DIKECILKAN */}
+                      {/* Actions*/}
                       <div className="flex items-center justify-between border-t border-gray-200 pt-2 dark:border-gray-700">
                         <a
                           href={`/dashboard/orders/${order.id}`}
-                          target="_blank"
                           className="flex items-center gap-1 rounded-lg bg-blue-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
                         >
                           <Eye className="h-3.5 w-3.5" />
@@ -1489,7 +1487,7 @@ export default function CompactOrdersPage() {
                       </div>
                     </div>
 
-                    {/* Expanded Content - DIKECILKAN */}
+                    {/* Expanded Content */}
                     {expandedOrder === order.id && (
                       <div className="border-t border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-700/50">
                         <div className="mb-2">
