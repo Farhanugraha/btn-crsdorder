@@ -115,12 +115,10 @@ function StatusBadge({
     status === 'pending'
       ? 'Menunggu'
       : status === 'completed'
-        ? 'Terverifikasi'
+        ? 'Dibayar'
         : status === 'rejected'
           ? 'Ditolak'
-          : status === 'paid'
-            ? 'Dibayar'
-            : status;
+          : status;
 
   const styles = type === 'payment' ? paymentStyles : orderStyles;
   const style = styles[status] || paymentStyles.pending;
@@ -303,7 +301,7 @@ export default function PaymentsPage() {
     },
     {
       value: 'completed',
-      label: 'Terverifikasi',
+      label: 'Dibayar',
       shortLabel: 'Verified',
       icon: CheckCircle,
       color: 'text-green-600'
@@ -456,7 +454,7 @@ export default function PaymentsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-medium text-gray-600 dark:text-gray-400 lg:text-sm">
-                  Menunggu Verifikasi
+                  Menunggu
                 </p>
                 <p className="mt-1 text-xl font-bold text-gray-900 dark:text-white lg:mt-2 lg:text-3xl">
                   {stats.pending}
@@ -476,7 +474,7 @@ export default function PaymentsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-medium text-gray-600 dark:text-gray-400 lg:text-sm">
-                  Terverifikasi
+                  Selesai
                 </p>
                 <p className="mt-1 text-xl font-bold text-gray-900 dark:text-white lg:mt-2 lg:text-3xl">
                   {stats.completed}

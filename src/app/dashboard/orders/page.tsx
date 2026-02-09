@@ -44,7 +44,7 @@ import {
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
-// Interface definitions
+// Interface definitions (tetap sama)
 interface Area {
   id: number;
   name: string;
@@ -118,7 +118,7 @@ interface Order {
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
-// Loading Screen
+// Loading Screen (tetap sama)
 function LoadingScreen() {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/90 backdrop-blur-sm dark:bg-gray-900/90">
@@ -142,7 +142,7 @@ function LoadingScreen() {
   );
 }
 
-// Empty State Component
+// Empty State Component (tetap sama)
 function EmptyState({
   message,
   submessage,
@@ -172,7 +172,7 @@ function EmptyState({
   );
 }
 
-// StatusBadge component dengan warna yang lebih vibrant
+// StatusBadge component (tetap sama)
 function StatusBadge({
   status,
   type,
@@ -238,7 +238,7 @@ function StatusBadge({
   );
 }
 
-// Helper functions
+// Helper functions (tetap sama)
 const getOrderAreas = (order: Order): Area[] => {
   if (order.all_areas && order.all_areas.length > 0) {
     return order.all_areas;
@@ -273,7 +273,7 @@ const getOrderRestaurants = (order: Order): Restaurant[] => {
   return Array.from(restaurants.values());
 };
 
-// Improved Restaurant & Area Badge Component dengan ikon Tailwind
+// Improved Restaurant & Area Badge Component (tetap sama)
 function RestaurantAreaBadge({ order }: { order: Order }) {
   const areas = getOrderAreas(order);
   const restaurants = getOrderRestaurants(order);
@@ -376,7 +376,7 @@ function RestaurantAreaBadge({ order }: { order: Order }) {
   );
 }
 
-// Quick Actions Component
+// Quick Actions Component (tetap sama)
 function QuickActions({ order }: { order: Order }) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -501,8 +501,8 @@ function QuickActions({ order }: { order: Order }) {
                         <table>
                           <thead>
                             <tr>
-                              <th>Item</th>
-                              <th>Qty</th>
+                              <th>Pesanan</th>
+                              <th>Jumlah</th>
                               <th class="text-right">Harga</th>
                               <th class="text-right">Subtotal</th>
                             </tr>
@@ -592,7 +592,7 @@ function QuickActions({ order }: { order: Order }) {
   );
 }
 
-// Enhanced CRSD Badge Component
+// Enhanced CRSD Badge Component (tetap sama)
 function CRSDBadge({ type }: { type: 'crsd1' | 'crsd2' | string }) {
   const styles = {
     crsd1: {
@@ -622,34 +622,7 @@ function CRSDBadge({ type }: { type: 'crsd1' | 'crsd2' | string }) {
   );
 }
 
-// Enhanced Filter Chip Component yang lebih sederhana
-function FilterChip({
-  label,
-  isActive,
-  onClick,
-  icon: Icon
-}: {
-  label: string;
-  isActive: boolean;
-  onClick: () => void;
-  icon?: any;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all ${
-        isActive
-          ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow'
-          : 'bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
-      }`}
-    >
-      {Icon && <Icon className="h-3.5 w-3.5" />}
-      {label}
-    </button>
-  );
-}
-
-// Enhanced Stats Card Component yang lebih sederhana
+// Enhanced Stats Card Component yang lebih sederhana (tambahkan formatCurrency)
 function StatsCard({
   title,
   value,
@@ -699,6 +672,18 @@ function StatsCard({
   );
 }
 
+// Format currency function
+const formatCurrency = (amount: number): string => {
+  if (amount === 0) return 'Rp 0';
+
+  const formatter = new Intl.NumberFormat('id-ID', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  });
+
+  return `Rp ${formatter.format(amount)}`;
+};
+
 export default function CompactOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [areas, setAreas] = useState<Area[]>([]);
@@ -722,7 +707,7 @@ export default function CompactOrdersPage() {
 
   const perPage = 10;
 
-  // Fetch orders function
+  // Fetch orders function (tetap sama)
   const fetchOrders = async () => {
     setLoading(true);
     setError(null);
@@ -915,30 +900,101 @@ export default function CompactOrdersPage() {
     }
   };
 
-  // Calculate today's statistics for processing orders only
-  const todaysStats = useMemo(() => {
-    const today = new Date().toISOString().split('T')[0];
-    const todaysOrders = orders.filter(
-      (order) =>
-        new Date(order.created_at).toISOString().split('T')[0] ===
-          today &&
-        order.status === 'paid' &&
-        order.order_status === 'processing'
-    );
+  // PERBAIKAN DI SINI: Hitung statistik berdasarkan filter yang aktif
+  const getFilteredStats = useMemo(() => {
+    // Filter berdasarkan status pembayaran (harus paid)
+    let filtered = orders.filter((order) => order.status === 'paid');
 
-    const totalOrdersToday = todaysOrders.length;
-    const totalRevenueToday = todaysOrders.reduce(
+    // Filter berdasarkan status order
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(
+        (order) => order.order_status === statusFilter
+      );
+    }
+
+    // Filter berdasarkan tanggal
+    if (dateFilter !== 'all') {
+      const today = new Date();
+      const yesterday = new Date(today);
+      yesterday.setDate(today.getDate() - 1);
+
+      filtered = filtered.filter((order) => {
+        const orderDate = new Date(order.created_at);
+
+        if (dateFilter === 'today') {
+          return orderDate.toDateString() === today.toDateString();
+        } else if (dateFilter === 'yesterday') {
+          return (
+            orderDate.toDateString() === yesterday.toDateString()
+          );
+        } else if (dateFilter === 'thisWeek') {
+          // Hitung awal minggu (Senin)
+          const startOfWeek = new Date(today);
+          const day = today.getDay();
+          const diff = today.getDate() - day + (day === 0 ? -6 : 1);
+          startOfWeek.setDate(diff);
+          startOfWeek.setHours(0, 0, 0, 0);
+
+          return orderDate >= startOfWeek;
+        }
+        return true;
+      });
+    }
+
+    // Filter CRSD jika ada
+    if (crsdFilter !== 'all') {
+      filtered = filtered.filter(
+        (order) => order.crsd_type === crsdFilter
+      );
+    }
+
+    // Hitung total orders dan revenue
+    const totalOrders = filtered.length;
+    const totalRevenue = filtered.reduce(
       (sum, order) => sum + order.total_price,
       0
     );
 
     return {
-      totalOrdersToday,
-      totalRevenueToday
+      totalOrders,
+      totalRevenue
     };
+  }, [orders, statusFilter, dateFilter, crsdFilter]);
+
+  // Hitung pendapatan per minggu (Senin-Minggu)
+  const getWeeklyRevenue = useMemo(() => {
+    const today = new Date();
+    const day = today.getDay();
+
+    // Hitung tanggal Senin dalam minggu ini
+    const startOfWeek = new Date(today);
+    const diff = today.getDate() - day + (day === 0 ? -6 : 1); // Adjust untuk Senin
+    startOfWeek.setDate(diff);
+    startOfWeek.setHours(0, 0, 0, 0);
+
+    // Hitung tanggal Minggu dalam minggu ini
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 6);
+    endOfWeek.setHours(23, 59, 59, 999);
+
+    // Filter pesanan dalam rentang minggu ini yang sudah dibayar
+    const weeklyOrders = orders.filter((order) => {
+      const orderDate = new Date(order.created_at);
+      return (
+        orderDate >= startOfWeek &&
+        orderDate <= endOfWeek &&
+        order.status === 'paid'
+      );
+    });
+
+    // Hitung total revenue
+    return weeklyOrders.reduce(
+      (sum, order) => sum + order.total_price,
+      0
+    );
   }, [orders]);
 
-  // Filter logic - ONLY show paid orders
+  // Filter logic - ONLY show paid orders (tetap sama)
   const filteredOrders = useMemo(() => {
     return orders.filter((order) => {
       // Filter 1: Hanya pesanan dengan status pembayaran 'paid'
@@ -1052,7 +1108,7 @@ export default function CompactOrdersPage() {
     crsdFilter
   ]);
 
-  // Calculate counts for filters - ONLY processing orders
+  // Calculate counts for filters - ONLY processing orders (tetap sama)
   const getProcessingOrderCountByStatus = (status: string) => {
     return orders.filter(
       (order) =>
@@ -1120,30 +1176,17 @@ export default function CompactOrdersPage() {
     page * perPage
   );
 
-  // Get date display text
+  // Get date display text yang lebih baik
   const getDateDisplayText = () => {
-    const today = new Date();
-    const yesterday = new Date(Date.now() - 86400000);
-
     switch (dateFilter) {
       case 'today':
-        return today.toLocaleDateString('id-ID', {
-          weekday: 'long',
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric'
-        });
+        return 'Hari Ini';
       case 'yesterday':
-        return yesterday.toLocaleDateString('id-ID', {
-          weekday: 'long',
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric'
-        });
+        return 'Kemarin';
       case 'thisWeek':
         return 'Minggu Ini';
       default:
-        return 'Semua Tanggal';
+        return 'Semua Waktu';
     }
   };
 
@@ -1546,35 +1589,41 @@ export default function CompactOrdersPage() {
           </div>
         </div>
 
-        {/* Today's Summary Stats - Dipindahkan ke bawah filter */}
+        {/* PERBAIKAN DI SINI: Summary Stats yang benar berdasarkan filter */}
         <div className="mb-6">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-gray-900 dark:text-white">
-              Ringkasan Hari Ini
+              Ringkasan {getDateDisplayText()}
             </h2>
             <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
               <Calendar className="h-3.5 w-3.5" />
-              {new Date().toLocaleDateString('id-ID', {
-                day: 'numeric',
-                month: 'short',
-                year: 'numeric'
-              })}
+              {getDateDisplayText()}
             </div>
           </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <StatsCard
-              title="Pesanan Diproses"
-              value={todaysStats.totalOrdersToday}
+              title={
+                statusFilter === 'processing'
+                  ? 'Pesanan Diproses'
+                  : statusFilter === 'completed'
+                    ? 'Pesanan Selesai'
+                    : 'Total Pesanan'
+              }
+              value={getFilteredStats.totalOrders}
               icon={ShoppingCart}
               color="blue"
             />
             <StatsCard
               title="Total Pendapatan"
-              value={`Rp ${todaysStats.totalRevenueToday.toLocaleString(
-                'id-ID'
-              )}`}
+              value={formatCurrency(getFilteredStats.totalRevenue)}
               icon={CreditCard}
               color="green"
+            />
+            <StatsCard
+              title="Pendapatan/Minggu"
+              value={formatCurrency(getWeeklyRevenue)}
+              icon={CreditCard}
+              color="purple"
             />
           </div>
         </div>
@@ -1636,7 +1685,7 @@ export default function CompactOrdersPage() {
           )}
         </div>
 
-        {/* Orders Table */}
+        {/* Orders Table (sisa kode tetap sama) */}
         {filteredOrders.length > 0 ? (
           <>
             {/* Desktop Table */}
@@ -2156,7 +2205,7 @@ export default function CompactOrdersPage() {
                                       )}
                                       <div className="mt-1.5 flex items-center gap-1.5 pl-8">
                                         <span className="rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-700 dark:bg-gray-700 dark:text-gray-300">
-                                          Qty: {item.quantity}
+                                          Jumlah: {item.quantity}
                                         </span>
                                         {item.is_checked === 1 && (
                                           <span className="flex items-center gap-0.5 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
