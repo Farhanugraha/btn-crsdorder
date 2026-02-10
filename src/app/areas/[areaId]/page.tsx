@@ -31,10 +31,14 @@ export default function RestaurantsByAreaPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [area, setArea] = useState<Area | null>(null);
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
-  const [filteredRestaurants, setFilteredRestaurants] = useState<Restaurant[]>([]);
+  const [filteredRestaurants, setFilteredRestaurants] = useState<
+    Restaurant[]
+  >([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [filterStatus, setFilterStatus] = useState<'all' | 'open' | 'closed'>('all');
+  const [filterStatus, setFilterStatus] = useState<
+    'all' | 'open' | 'closed'
+  >('all');
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
@@ -45,7 +49,9 @@ export default function RestaurantsByAreaPage() {
   const fetchData = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch(`${apiUrl}/api/restaurants/area/${areaId}`);
+      const response = await fetch(
+        `${apiUrl}/api/restaurants/area/${areaId}`
+      );
       const result = await response.json();
 
       if (result.success) {
@@ -72,7 +78,10 @@ export default function RestaurantsByAreaPage() {
     applyFilters(searchQuery, status);
   };
 
-  const applyFilters = (query: string, status: 'all' | 'open' | 'closed') => {
+  const applyFilters = (
+    query: string,
+    status: 'all' | 'open' | 'closed'
+  ) => {
     let filtered = restaurants;
 
     if (query.trim()) {
@@ -95,7 +104,7 @@ export default function RestaurantsByAreaPage() {
 
   if (isLoading) {
     return (
-       <div className="flex min-h-screen items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center">
         <div className="h-12 w-12 animate-spin rounded-full border-4 border-emerald-200 border-t-emerald-600"></div>
       </div>
     );
@@ -121,93 +130,104 @@ export default function RestaurantsByAreaPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-emerald-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
-      {/* Header */}
-      <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/80 backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/80">
-        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-          <Link
-            href="/areas"
-            className="mb-4 inline-flex items-center gap-2 text-sm font-medium text-slate-500 transition-colors hover:text-emerald-600 dark:text-slate-400 dark:hover:text-emerald-400"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Kembali
-          </Link>
+      {/* Header - Fixed Compact Design */}
+      <header className="sticky top-0 z-10 border-b border-slate-200/80 bg-white/95 backdrop-blur-md backdrop-saturate-150 dark:border-slate-800/80 dark:bg-slate-900/95">
+        <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
+          {/* Back Button - Smaller */}
+          <div className="mb-3">
+            <Link
+              href="/areas"
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 transition-colors hover:text-emerald-600 dark:text-slate-400 dark:hover:text-emerald-400 sm:text-sm"
+            >
+              <ArrowLeft className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              Kembali ke Area
+            </Link>
+          </div>
 
-          {/* Area Info */}
-          <div className="mb-6">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-              <div className="flex-1">
-                <div className="mb-3 flex items-start gap-3">
-                  <span className="mt-1 flex-shrink-0 text-3xl drop-shadow-sm sm:text-4xl">{area.icon}</span>
+          {/* Area Info - Compact */}
+          <div className="mb-4">
+            <div className="flex items-start justify-between">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-start gap-2.5">
+                  {/* Icon */}
+                  <div className="flex-shrink-0">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500/10 to-emerald-600/10 sm:h-12 sm:w-12">
+                      <span className="text-lg sm:text-xl">
+                        {area.icon}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Title and Description */}
                   <div className="min-w-0 flex-1">
-                    <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
+                    <h1 className="line-clamp-1 text-lg font-bold text-slate-900 dark:text-white sm:text-xl">
                       {area.name}
                     </h1>
+                    {area.description && (
+                      <p className="mt-0.5 line-clamp-1 text-xs text-slate-600 dark:text-slate-400 sm:text-sm">
+                        {area.description}
+                      </p>
+                    )}
                   </div>
                 </div>
-                {area.description && (
-                  <p className="max-w-2xl text-sm text-slate-600 dark:text-slate-400">
-                    {area.description}
-                  </p>
-                )}
               </div>
-              
-              {/* Restaurant Count Badge */}
-              <div className="inline-flex flex-shrink-0 items-center gap-2 rounded-full bg-emerald-100 px-4 py-2 dark:bg-emerald-900/30">
-                <div className="flex items-center justify-center">
-                  <span className="relative flex h-2.5 w-2.5">
-                    <span className="absolute inline-flex h-full w-full animate-pulse rounded-full bg-emerald-400 opacity-75" />
-                    <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-600 dark:bg-emerald-400" />
+
+              {/* Restaurant Count Badge - Smaller */}
+              <div className="flex-shrink-0 pl-2">
+                <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1.5 dark:bg-emerald-900/20">
+                  <div className="h-1.5 w-1.5 rounded-full bg-emerald-600 dark:bg-emerald-400"></div>
+                  <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 sm:text-sm">
+                    {filteredRestaurants.length}
                   </span>
                 </div>
-                <span className="whitespace-nowrap text-sm font-bold text-emerald-700 dark:text-emerald-400">
-                  {filteredRestaurants.length} Restoran
-                </span>
               </div>
             </div>
           </div>
 
           {/* Search & Filter Section */}
-          <div className="space-y-3 sm:space-y-4">
-            {/* Search Bar */}
+          <div className="space-y-3">
+            {/* Search Bar - Compact */}
             <div className="relative">
-              <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 sm:left-4 sm:h-5 sm:w-5" />
               <Input
                 type="text"
                 placeholder="Cari restoran..."
                 value={searchQuery}
                 onChange={(e) => handleSearch(e.target.value)}
-                className="h-11 w-full border-slate-200 bg-white pl-12 text-sm focus-visible:ring-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:focus-visible:ring-emerald-500/50"
+                className="h-9 w-full rounded-lg border-slate-300 bg-white pl-9 text-sm placeholder:text-slate-500 focus:border-emerald-300 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800 dark:placeholder:text-slate-400 sm:h-10 sm:rounded-xl sm:pl-12 sm:text-base"
               />
             </div>
 
-            {/* Status Filter */}
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:gap-3 sm:overflow-visible sm:pb-0">
-              {[
-                { id: 'all' as const, label: 'Semua' },
-                { id: 'open' as const, label: 'Buka' },
-                { id: 'closed' as const, label: 'Tutup' }
-              ].map((btn) => (
-                <button
-                  key={btn.id}
-                  onClick={() => handleStatusFilter(btn.id)}
-                  className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-all sm:px-4 ${
-                    filterStatus === btn.id
-                      ? btn.id === 'closed'
-                        ? 'bg-red-600 text-white shadow-md'
-                        : 'bg-emerald-600 text-white shadow-md'
-                      : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-300 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300 dark:hover:border-slate-600'
-                  }`}
-                >
-                  {btn.label}
-                </button>
-              ))}
+            {/* Status Filter - Compact */}
+            <div className="flex items-center gap-2">
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  { id: 'all' as const, label: 'Semua' },
+                  { id: 'open' as const, label: 'Buka' },
+                  { id: 'closed' as const, label: 'Tutup' }
+                ].map((btn) => (
+                  <button
+                    key={btn.id}
+                    onClick={() => handleStatusFilter(btn.id)}
+                    className={`whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all hover:shadow-sm sm:px-3 sm:py-2 sm:text-sm ${
+                      filterStatus === btn.id
+                        ? btn.id === 'closed'
+                          ? 'shadow-xs bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+                          : 'shadow-xs bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+                    }`}
+                  >
+                    {btn.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:py-10 sm:px-6 lg:px-8">
+      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
         {filteredRestaurants.length === 0 ? (
           <div className="py-16 text-center sm:py-20">
             <div className="mb-4 flex justify-center">
@@ -243,18 +263,28 @@ export default function RestaurantsByAreaPage() {
               {filteredRestaurants.map((restaurant) => (
                 <Link
                   key={restaurant.id}
-                  href={restaurant.is_open ? `/restaurants/${restaurant.id}` : '#'}
-                  onClick={(e) => !restaurant.is_open && e.preventDefault()}
+                  href={
+                    restaurant.is_open
+                      ? `/restaurants/${restaurant.id}`
+                      : '#'
+                  }
+                  onClick={(e) =>
+                    !restaurant.is_open && e.preventDefault()
+                  }
                 >
                   <div
-                    className={`group h-full overflow-hidden rounded-xl border transition-all duration-300 flex flex-col ${
+                    className={`group flex h-full flex-col overflow-hidden rounded-xl border transition-all duration-300 ${
                       !restaurant.is_open
                         ? 'border-slate-200 bg-white opacity-50 dark:border-slate-800 dark:bg-slate-900'
                         : 'border-slate-200 bg-white hover:-translate-y-0.5 hover:border-emerald-500/40 hover:shadow-md hover:shadow-emerald-500/10 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-emerald-500/50 dark:hover:shadow-emerald-900/20'
-                    } ${!restaurant.is_open ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                    } ${
+                      !restaurant.is_open
+                        ? 'cursor-not-allowed'
+                        : 'cursor-pointer'
+                    }`}
                   >
                     {/* Image Container */}
-                    <div className="relative h-40 overflow-hidden bg-slate-100 dark:bg-slate-800 flex-shrink-0">
+                    <div className="relative h-40 flex-shrink-0 overflow-hidden bg-slate-100 dark:bg-slate-800">
                       <img
                         src={
                           restaurant.photo
@@ -263,7 +293,9 @@ export default function RestaurantsByAreaPage() {
                         }
                         alt={restaurant.name}
                         className={`h-full w-full object-cover transition-transform duration-500 ${
-                          restaurant.is_open ? 'group-hover:scale-105' : ''
+                          restaurant.is_open
+                            ? 'group-hover:scale-105'
+                            : ''
                         }`}
                         onError={(e) => {
                           e.currentTarget.src = '/restaurant.png';
@@ -305,18 +337,20 @@ export default function RestaurantsByAreaPage() {
                       </p>
 
                       {/* Address */}
-                      <div className="mb-3 flex items-start gap-1.5 text-xs text-slate-500 dark:text-slate-400 flex-1">
+                      <div className="mb-3 flex flex-1 items-start gap-1.5 text-xs text-slate-500 dark:text-slate-400">
                         <MapPin className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-slate-400 dark:text-slate-500" />
-                        <span className="line-clamp-1">{restaurant.address}</span>
+                        <span className="line-clamp-1">
+                          {restaurant.address}
+                        </span>
                       </div>
 
                       {/* Button */}
                       <Button
                         disabled={!restaurant.is_open}
-                        className={`w-full h-9 text-xs font-semibold rounded-lg transition-all ${
+                        className={`h-9 w-full rounded-lg text-xs font-semibold transition-all ${
                           restaurant.is_open
                             ? 'bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-700'
-                            : 'bg-slate-200 text-slate-400 cursor-not-allowed dark:bg-slate-800 dark:text-slate-500'
+                            : 'cursor-not-allowed bg-slate-200 text-slate-400 dark:bg-slate-800 dark:text-slate-500'
                         }`}
                       >
                         {restaurant.is_open ? 'Lihat Menu' : 'Tutup'}
