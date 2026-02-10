@@ -74,6 +74,30 @@ export default function Home() {
     }
   };
 
+  // Fixed positions untuk menghindari hydration mismatch
+  const fixedPositions = [
+    { left: '10%', top: '20%' },
+    { left: '30%', top: '40%' },
+    { left: '50%', top: '10%' },
+    { left: '70%', top: '60%' },
+    { left: '90%', top: '30%' },
+    { left: '15%', top: '70%' },
+    { left: '40%', top: '80%' },
+    { left: '60%', top: '90%' },
+    { left: '85%', top: '75%' },
+    { left: '25%', top: '15%' },
+    { left: '45%', top: '50%' },
+    { left: '65%', top: '25%' },
+    { left: '5%', top: '45%' },
+    { left: '35%', top: '65%' },
+    { left: '75%', top: '85%' },
+    { left: '95%', top: '55%' },
+    { left: '20%', top: '95%' },
+    { left: '55%', top: '35%' },
+    { left: '80%', top: '5%' },
+    { left: '100%', top: '100%' }
+  ];
+
   return (
     <div className="min-h-screen overflow-hidden">
       {/* Hero Section */}
@@ -411,26 +435,23 @@ export default function Home() {
         </div>
       </section>
 
-      {/* CTA Section */}
+      {/* CTA Section - FIXED: Tidak pakai Math.random */}
       <section className="relative mt-20 overflow-hidden rounded-2xl bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-700 px-6 py-16 text-center md:py-20">
-        {/* Animated Background */}
+        {/* Animated Background - Fixed positions */}
         <div className="absolute inset-0 overflow-hidden">
-          {[...Array(20)].map((_, i) => (
+          {fixedPositions.map((pos, i) => (
             <motion.div
               key={i}
               className="absolute h-1 w-1 rounded-full bg-white/20"
-              style={{
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`
-              }}
+              style={{ left: pos.left, top: pos.top }}
               animate={{
                 y: [0, -20, 0],
                 opacity: [0, 1, 0]
               }}
               transition={{
-                duration: 2 + Math.random() * 2,
+                duration: 2 + (i % 3),
                 repeat: Infinity,
-                delay: Math.random() * 2,
+                delay: i * 0.1,
                 ease: 'easeInOut'
               }}
             />
