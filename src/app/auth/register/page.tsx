@@ -2,19 +2,13 @@
 
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import {
-  Loader2,
-  Eye,
-  EyeOff,
-  CheckCircle2,
-  AlertCircle
-} from 'lucide-react';
+import { Loader2, Eye, EyeOff } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import {
   Form,
@@ -24,6 +18,13 @@ import {
   FormLabel,
   FormMessage
 } from '@/components/ui/form';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select';
 
 // Updated validation schema
 const registerFormSchema = z
@@ -60,6 +61,7 @@ const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] =
     useState(false);
+  const [selectedDivisi, setSelectedDivisi] = useState<string>('');
 
   const form = useForm<FormType>({
     resolver: zodResolver(registerFormSchema),
@@ -73,6 +75,14 @@ const Register = () => {
       password_confirmation: ''
     }
   });
+
+  // Watch divisi field value
+  const divisiValue = form.watch('divisi');
+
+  // Update selectedDivisi when divisi value changes
+  useEffect(() => {
+    setSelectedDivisi(divisiValue || '');
+  }, [divisiValue]);
 
   const onSubmit = async (data: FormType) => {
     try {
@@ -231,27 +241,64 @@ const Register = () => {
 
               {/* Divisi and Unit Kerja */}
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <FormField
-                  control={form.control}
-                  name="divisi"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm font-semibold">
-                        Divisi
-                      </FormLabel>
+                <FormItem>
+                  <FormLabel className="text-sm font-semibold">
+                    Divisi
+                  </FormLabel>
+                  <div className="space-y-3">
+                    <Select
+                      disabled={isSubmitting}
+                      onValueChange={(value) => {
+                        if (value === 'Lainnya') {
+                          // Set value ke kosong untuk input manual
+                          form.setValue('divisi', '');
+                          setSelectedDivisi('Lainnya');
+                        } else {
+                          form.setValue('divisi', value);
+                          setSelectedDivisi(value);
+                        }
+                      }}
+                      value={selectedDivisi}
+                    >
                       <FormControl>
-                        <Input
-                          {...field}
-                          placeholder="Masukkan divisi"
-                          type="text"
-                          disabled={isSubmitting}
-                          className="border-border focus:ring-2 focus:ring-primary"
-                        />
+                        <SelectTrigger className="border-border focus:ring-2 focus:ring-primary">
+                          <SelectValue placeholder="Pilih divisi" />
+                        </SelectTrigger>
                       </FormControl>
-                      <FormMessage className="text-xs" />
-                    </FormItem>
-                  )}
-                />
+                      <SelectContent>
+                        <SelectItem value="CRSD 1">CRSD 1</SelectItem>
+                        <SelectItem value="CRSD 2">CRSD 2</SelectItem>
+                        <SelectItem value="Lainnya">
+                          Lainnya
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+
+                    {/* Manual Input*/}
+                    {selectedDivisi === 'Lainnya' && (
+                      <div>
+                        <FormField
+                          control={form.control}
+                          name="divisi"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormControl>
+                                <Input
+                                  {...field}
+                                  placeholder="Masukkan nama divisi lainnya"
+                                  type="text"
+                                  disabled={isSubmitting}
+                                  className="border-border focus:ring-2 focus:ring-primary"
+                                />
+                              </FormControl>
+                              <FormMessage className="text-xs" />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </FormItem>
 
                 <FormField
                   control={form.control}
