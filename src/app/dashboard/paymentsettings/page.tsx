@@ -14,9 +14,7 @@ import {
   Save,
   Trash2,
   Eye,
-  EyeOff,
-  Check,
-  XCircle
+  EyeOff
 } from 'lucide-react';
 
 interface PaymentSettings {
@@ -50,6 +48,7 @@ export default function PaymentSettingsPage() {
   const [isDark, setIsDark] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingData, setIsLoadingData] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [message, setMessage] = useState<{
@@ -75,6 +74,9 @@ export default function PaymentSettingsPage() {
     null
   );
   const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
+  const [initialLoadComplete, setInitialLoadComplete] =
+    useState(false);
 
   const apiUrl =
     process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -100,6 +102,23 @@ export default function PaymentSettingsPage() {
     checkAuth();
   }, []);
 
+  // Cek perubahan pada formData untuk enable/disable save button
+  useEffect(() => {
+    if (settings && initialLoadComplete) {
+      const isChanged =
+        formData.qris_title !== settings.qris_title ||
+        formData.qris_active !== settings.qris_active ||
+        formData.bank_name !== settings.bank_name ||
+        formData.account_number !== settings.account_number ||
+        formData.account_name !== settings.account_name ||
+        formData.bank_active !== settings.bank_active ||
+        formData.active !== settings.active ||
+        formData.qris_image_file !== undefined;
+
+      setHasChanges(isChanged);
+    }
+  }, [formData, settings, initialLoadComplete]);
+
   const checkAuth = async () => {
     const token = localStorage?.getItem('auth_token');
     const userData = localStorage?.getItem('auth_user');
@@ -117,8 +136,7 @@ export default function PaymentSettingsPage() {
       }
 
       setUser(parsedUser);
-      setIsLoading(false);
-      await fetchPaymentSettings();
+      await fetchPaymentSettings(); // Tunggu sampai data selesai di-fetch
     } catch (error) {
       console.error('Auth Error:', error);
       window.location.href = '/auth/login';
@@ -126,6 +144,7 @@ export default function PaymentSettingsPage() {
   };
 
   const fetchPaymentSettings = async () => {
+    setIsLoadingData(true);
     try {
       const token = localStorage?.getItem('auth_token');
       const response = await fetch(
@@ -148,19 +167,25 @@ export default function PaymentSettingsPage() {
         setSettings(data.data);
         setFormData({
           qris_title: data.data.qris_title || 'QRIS Pembayaran',
-          qris_active: data.data.qris_active || true,
+          qris_active: Boolean(data.data.qris_active),
           bank_name: data.data.bank_name || '',
           account_number: data.data.account_number || '',
           account_name: data.data.account_name || '',
-          bank_active: data.data.bank_active || true,
-          active: data.data.active || true,
+          bank_active: Boolean(data.data.bank_active),
+          active: Boolean(data.data.active),
           qris_image_preview: data.data.qris_image_url
         });
         setImagePreview(data.data.qris_image_url);
+      } else {
+        showMessage('error', 'Data pengaturan tidak ditemukan');
       }
     } catch (error) {
       console.error('Error fetching payment settings:', error);
       showMessage('error', 'Gagal memuat pengaturan pembayaran');
+    } finally {
+      setIsLoadingData(false);
+      setIsLoading(false);
+      setInitialLoadComplete(true);
     }
   };
 
@@ -170,9 +195,10 @@ export default function PaymentSettingsPage() {
     const { name, value, type } = e.target;
 
     if (type === 'checkbox') {
+      const checked = (e.target as HTMLInputElement).checked;
       setFormData((prev) => ({
         ...prev,
-        [name]: (e.target as HTMLInputElement).checked
+        [name]: checked
       }));
     } else {
       setFormData((prev) => ({
@@ -180,6 +206,13 @@ export default function PaymentSettingsPage() {
         [name]: value
       }));
     }
+  };
+
+  const handleToggleChange = (field: keyof FormData) => {
+    setFormData((prev) => ({
+      ...prev,
+      [field]: !prev[field]
+    }));
   };
 
   const handleImageUpload = async (
@@ -306,6 +339,11 @@ export default function PaymentSettingsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!hasChanges) {
+      showMessage('info', 'Tidak ada perubahan yang disimpan');
+      return;
+    }
+
     setIsSaving(true);
 
     try {
@@ -364,7 +402,25 @@ export default function PaymentSettingsPage() {
     setTimeout(() => setMessage(null), 4000);
   };
 
-  if (isLoading) {
+  const resetToOriginal = () => {
+    if (settings) {
+      setFormData({
+        qris_title: settings.qris_title || 'QRIS Pembayaran',
+        qris_active: Boolean(settings.qris_active),
+        bank_name: settings.bank_name || '',
+        account_number: settings.account_number || '',
+        account_name: settings.account_name || '',
+        bank_active: Boolean(settings.bank_active),
+        active: Boolean(settings.active),
+        qris_image_preview: settings.qris_image_url
+      });
+      setImagePreview(settings.qris_image_url);
+      showMessage('info', 'Perubahan dibatalkan');
+    }
+  };
+
+  // Tampilkan loading spinner selama data belum siap
+  if (isLoading || isLoadingData) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-sm dark:bg-gray-900/80">
         <div className="flex flex-col items-center">
@@ -376,10 +432,12 @@ export default function PaymentSettingsPage() {
           </div>
           <div className="mt-6 text-center">
             <p className="text-lg font-semibold text-gray-800 dark:text-gray-200">
-              Memuat Pengaturan Pembayaran
+              {isLoading ? 'Memuat Pengaturan' : 'Mengambil Data...'}
             </p>
             <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-              Sedang mengambil data pengaturan...
+              {isLoading
+                ? 'Sedang memuat halaman...'
+                : 'Mengambil data pengaturan pembayaran...'}
             </p>
           </div>
         </div>
@@ -414,11 +472,23 @@ export default function PaymentSettingsPage() {
                 </h1>
               </div>
             </div>
-            <div className="flex flex-shrink-0 items-center gap-1 sm:gap-2">
+            <div className="flex flex-shrink-0 items-center gap-2 sm:gap-3">
+              {hasChanges && (
+                <button
+                  onClick={resetToOriginal}
+                  className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 sm:px-3 sm:py-2 sm:text-sm"
+                >
+                  Batal
+                </button>
+              )}
               <button
                 onClick={handleSubmit}
-                disabled={isSaving}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50 sm:gap-2 sm:px-4 sm:py-2 sm:text-sm"
+                disabled={isSaving || !hasChanges}
+                className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors sm:gap-2 sm:px-4 sm:py-2 sm:text-sm ${
+                  hasChanges
+                    ? 'bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50'
+                    : 'cursor-not-allowed bg-slate-200 text-slate-500 dark:bg-slate-700 dark:text-slate-400'
+                }`}
               >
                 {isSaving ? (
                   <>
@@ -528,14 +598,22 @@ export default function PaymentSettingsPage() {
                           ? 'QRIS aktif untuk pembayaran'
                           : 'QRIS dinonaktifkan'}
                       </p>
+                      {settings &&
+                        formData.qris_active !==
+                          settings.qris_active && (
+                          <div className="mt-1 text-xs text-blue-600 dark:text-blue-400">
+                            Status akan diubah
+                          </div>
+                        )}
                     </div>
                   </div>
                   <label className="relative inline-flex cursor-pointer items-center">
                     <input
                       type="checkbox"
-                      name="qris_active"
                       checked={formData.qris_active}
-                      onChange={handleInputChange}
+                      onChange={() =>
+                        handleToggleChange('qris_active')
+                      }
                       className="peer sr-only"
                     />
                     <div className="peer h-6 w-11 rounded-full bg-slate-300 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-slate-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-green-600 peer-checked:after:translate-x-full peer-checked:after:border-white dark:bg-slate-700 dark:after:border-slate-600"></div>
@@ -555,6 +633,13 @@ export default function PaymentSettingsPage() {
                     placeholder="Contoh: QRIS BTN Food"
                     className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-500"
                   />
+                  {settings &&
+                    formData.qris_title !== settings.qris_title && (
+                      <div className="text-xs text-blue-600 dark:text-blue-400">
+                        Judul akan diubah dari "{settings.qris_title}"
+                        ke "{formData.qris_title}"
+                      </div>
+                    )}
                 </div>
 
                 {/* QRIS Image Upload */}
@@ -687,14 +772,22 @@ export default function PaymentSettingsPage() {
                           ? 'Transfer bank aktif'
                           : 'Transfer bank dinonaktifkan'}
                       </p>
+                      {settings &&
+                        formData.bank_active !==
+                          settings.bank_active && (
+                          <div className="mt-1 text-xs text-blue-600 dark:text-blue-400">
+                            Status akan diubah
+                          </div>
+                        )}
                     </div>
                   </div>
                   <label className="relative inline-flex cursor-pointer items-center">
                     <input
                       type="checkbox"
-                      name="bank_active"
                       checked={formData.bank_active}
-                      onChange={handleInputChange}
+                      onChange={() =>
+                        handleToggleChange('bank_active')
+                      }
                       className="peer sr-only"
                     />
                     <div className="peer h-6 w-11 rounded-full bg-slate-300 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-slate-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-blue-600 peer-checked:after:translate-x-full peer-checked:after:border-white dark:bg-slate-700 dark:after:border-slate-600"></div>
@@ -714,6 +807,14 @@ export default function PaymentSettingsPage() {
                     placeholder="Contoh: Bank Tabungan Negara"
                     className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-500"
                   />
+                  {settings &&
+                    formData.bank_name !== settings.bank_name && (
+                      <div className="text-xs text-blue-600 dark:text-blue-400">
+                        {settings.bank_name
+                          ? `Nama bank akan diubah dari "${settings.bank_name}"`
+                          : 'Nama bank akan ditambahkan'}
+                      </div>
+                    )}
                 </div>
 
                 {/* Account Number */}
@@ -721,29 +822,23 @@ export default function PaymentSettingsPage() {
                   <label className="text-sm font-semibold text-slate-900 dark:text-white">
                     Nomor Rekening
                   </label>
-                  <div className="relative">
-                    <input
-                      type={showAccountNumber ? 'text' : 'password'}
-                      name="account_number"
-                      value={formData.account_number}
-                      onChange={handleInputChange}
-                      placeholder="1234567890"
-                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 pr-10 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-500"
-                    />
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setShowAccountNumber(!showAccountNumber)
-                      }
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-                    >
-                      {showAccountNumber ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
-                    </button>
-                  </div>
+                  <input
+                    type="text"
+                    name="account_number"
+                    value={formData.account_number}
+                    onChange={handleInputChange}
+                    placeholder="1234567890"
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-500"
+                  />
+                  {settings &&
+                    formData.account_number !==
+                      settings.account_number && (
+                      <div className="text-xs text-blue-600 dark:text-blue-400">
+                        {settings.account_number
+                          ? `Nomor rekening akan diubah`
+                          : 'Nomor rekening akan ditambahkan'}
+                      </div>
+                    )}
                 </div>
 
                 {/* Account Name */}
@@ -759,6 +854,15 @@ export default function PaymentSettingsPage() {
                     placeholder="Contoh: CRSD BTN"
                     className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-500"
                   />
+                  {settings &&
+                    formData.account_name !==
+                      settings.account_name && (
+                      <div className="text-xs text-blue-600 dark:text-blue-400">
+                        {settings.account_name
+                          ? `Nama rekening akan diubah dari "${settings.account_name}"`
+                          : 'Nama rekening akan ditambahkan'}
+                      </div>
+                    )}
                 </div>
               </div>
             </div>
@@ -805,14 +909,19 @@ export default function PaymentSettingsPage() {
                           ? 'Semua pembayaran aktif'
                           : 'Sistem pembayaran dinonaktifkan'}
                       </p>
+                      {settings &&
+                        formData.active !== settings.active && (
+                          <div className="mt-1 text-xs text-blue-600 dark:text-blue-400">
+                            Status sistem akan diubah
+                          </div>
+                        )}
                     </div>
                   </div>
                   <label className="relative inline-flex cursor-pointer items-center">
                     <input
                       type="checkbox"
-                      name="active"
                       checked={formData.active}
-                      onChange={handleInputChange}
+                      onChange={() => handleToggleChange('active')}
                       className="peer sr-only"
                     />
                     <div className="peer h-6 w-11 rounded-full bg-slate-300 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-slate-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-purple-600 peer-checked:after:translate-x-full peer-checked:after:border-white dark:bg-slate-700 dark:after:border-slate-600"></div>
