@@ -511,6 +511,16 @@ const Navbar = () => {
                             Restaurant
                           </Link>
                         </DropdownMenuItem>
+                        {/* TAMBAHKAN INI: Menu Pengaturan Pembayaran */}
+                        <DropdownMenuItem asChild>
+                          <Link
+                            href="/dashboard/paymentsettings"
+                            className="flex cursor-pointer items-center gap-2"
+                          >
+                            <CreditCard className="h-4 w-4" />
+                            Pengaturan Pembayaran
+                          </Link>
+                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   )}
@@ -911,6 +921,15 @@ const Navbar = () => {
                       >
                         <ChefHat className="h-4 w-4" />
                         Restaurant
+                      </Link>
+                      {/* TAMBAHKAN INI: Menu Pengaturan Pembayaran untuk Mobile */}
+                      <Link
+                        href="/dashboard/paymentsettings"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
+                      >
+                        <CreditCard className="h-4 w-4" />
+                        Pengaturan Pembayaran
                       </Link>
                     </>
                   )}
