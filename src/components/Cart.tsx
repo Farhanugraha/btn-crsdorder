@@ -413,7 +413,7 @@ const CartComponent = () => {
       );
 
       const createOrderData = await createOrderResponse.json();
-      console.log('📦 Create order response:', createOrderData);
+      console.log('Create order response:', createOrderData);
 
       if (!createOrderResponse.ok) {
         console.error('❌ Create order error:', createOrderData);
@@ -440,7 +440,7 @@ const CartComponent = () => {
         setCheckoutNotes('');
         setSheetOpen(false);
 
-        console.log('📍 Navigating to payment:', orderId);
+        console.log('Navigating to payment:', orderId);
         // Redirect ke halaman payment/confirmation
         router.push(`/checkout/${orderId}`);
       }

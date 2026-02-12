@@ -4,7 +4,7 @@ import './globals.css';
 import { cn } from '@/lib/utils';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import Footer from '@/components/Footer';
-import Navbar from '@/components/Navbar';
+import Navbar from '@/components/navbar';
 import AuthProvider from '@/components/AuthProvider';
 import { Toaster } from 'sonner';
 
@@ -36,9 +36,9 @@ export default function RootLayout({
             disableTransitionOnChange
           >
             <Toaster position="bottom-right" />
-            <main className="relative mx-auto flex min-h-screen max-w-screen-xl flex-col px-5 py-2">
+            <main className="relative mx-auto flex min-h-screen max-w-screen-xl flex-col px-4 py-2 sm:px-5 lg:px-6">
               <Navbar />
-              <div className="flex flex-grow flex-col items-center">
+              <div className="flex w-full flex-grow flex-col items-center">
                 {children}
               </div>
               <Footer />
