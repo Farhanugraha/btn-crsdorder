@@ -1604,7 +1604,7 @@ export default function CompactOrdersPage() {
             <StatsCard
               title={
                 statusFilter === 'processing'
-                  ? 'Pesanan Diproses'
+                  ? 'Pesanan Menunggu'
                   : statusFilter === 'completed'
                     ? 'Pesanan Selesai'
                     : 'Total Pesanan'

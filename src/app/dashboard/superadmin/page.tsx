@@ -10,29 +10,22 @@ import {
   TrendingUp,
   AlertCircle,
   Users,
-  CreditCard,
-  CheckCircle2,
   Settings2,
   RefreshCw,
   Building2,
   MapPin,
-  UtensilsCrossed,
   UserPlus,
   BarChart3,
-  ShieldCheck,
   Search,
   Filter,
-  Mail,
-  Phone,
   UserCheck,
-  UserX,
-  Clock,
   Package,
+  CheckCircle2,
   XCircle,
-  ArrowRight,
+  Clock,
   Home,
   MoreHorizontal,
-  MoreVertical
+  CalendarDays
 } from 'lucide-react';
 
 interface User {
@@ -56,15 +49,16 @@ interface UserData {
 
 interface DashboardData {
   total_orders: number;
+  today_orders: number; // Total pesanan hari ini
   total_users: number;
   total_admins: number;
   total_superadmins: number;
-  pending_orders: number;
-  processing_orders: number;
-  completed_orders: number;
-  canceled_orders: number;
-  total_revenue: number;
-  pending_payments: number;
+  total_crsd1_admins?: number;
+  total_crsd2_admins?: number;
+
+  today_processing_orders: number;
+  today_completed_orders: number;
+  today_canceled_orders: number;
 }
 
 interface PaginatedUsers {
@@ -454,34 +448,56 @@ export default function SuperadminDashboard() {
       <main className="mx-auto max-w-[1600px] p-4 sm:p-6 lg:p-8">
         {/* Stats Grid */}
         {dashboardData && (
-          <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-2 md:grid-cols-4 lg:gap-4">
-            {/* Total Pesanan */}
+          <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:gap-4">
+            {/* Pesanan Hari Ini */}
             <div className="group relative overflow-hidden rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:shadow-md dark:border-slate-700 dark:bg-slate-800">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                    Total Pesanan
-                  </p>
-                  <p className="mt-1 text-xl font-bold text-slate-900 dark:text-white sm:text-2xl">
-                    {dashboardData.total_orders}
-                  </p>
-                  <div className="mt-2 flex items-center gap-3">
-                    <div className="flex items-center gap-1 text-xs">
-                      <div className="h-1.5 w-1.5 rounded-full bg-emerald-500"></div>
-                      <span className="text-emerald-600 dark:text-emerald-400">
-                        {dashboardData.completed_orders}
-                      </span>
+                  <div className="flex items-center gap-2">
+                    <div className="rounded-full bg-blue-100 p-1.5 dark:bg-blue-900/20">
+                      <Package className="h-3 w-3 text-blue-600 dark:text-blue-400" />
                     </div>
+                    <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                      Pesanan Hari Ini
+                    </p>
+                  </div>
+                  <p className="mt-2 text-2xl font-bold text-slate-900 dark:text-white sm:text-3xl">
+                    {dashboardData.today_orders || 0}
+                  </p>
+                  <div className="mt-3 grid grid-cols-2 gap-2">
                     <div className="flex items-center gap-1 text-xs">
                       <div className="h-1.5 w-1.5 rounded-full bg-blue-500"></div>
                       <span className="text-blue-600 dark:text-blue-400">
-                        {dashboardData.processing_orders}
+                        Menunggu:{' '}
+                        {dashboardData.today_processing_orders || 0}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1 text-xs">
+                      <div className="h-1.5 w-1.5 rounded-full bg-emerald-500"></div>
+                      <span className="text-emerald-600 dark:text-emerald-400">
+                        Selesai:{' '}
+                        {dashboardData.today_completed_orders || 0}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1 text-xs">
+                      <div className="h-1.5 w-1.5 rounded-full bg-red-500"></div>
+                      <span className="text-red-600 dark:text-red-400">
+                        Batal:{' '}
+                        {dashboardData.today_canceled_orders || 0}
                       </span>
                     </div>
                   </div>
+                  <p className="mt-2 text-xs text-slate-600 dark:text-slate-400">
+                    {new Date().toLocaleDateString('id-ID', {
+                      weekday: 'long',
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric'
+                    })}
+                  </p>
                 </div>
                 <div className="ml-4 rounded-lg bg-blue-100 p-2.5 dark:bg-blue-900/20">
-                  <Package className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  <Package className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                 </div>
               </div>
             </div>
@@ -490,79 +506,46 @@ export default function SuperadminDashboard() {
             <div className="group relative overflow-hidden rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:shadow-md dark:border-slate-700 dark:bg-slate-800">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                    Total Pengguna
-                  </p>
-                  <p className="mt-1 text-xl font-bold text-slate-900 dark:text-white sm:text-2xl">
+                  <div className="flex items-center gap-2">
+                    <div className="rounded-full bg-purple-100 p-1.5 dark:bg-purple-900/20">
+                      <Users className="h-3 w-3 text-purple-600 dark:text-purple-400" />
+                    </div>
+                    <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                      Total Pengguna
+                    </p>
+                  </div>
+                  <p className="mt-2 text-2xl font-bold text-slate-900 dark:text-white sm:text-3xl">
                     {dashboardData.total_users}
                   </p>
-                  <div className="mt-2 flex items-center gap-3">
+                  <div className="mt-3 grid grid-cols-2 gap-2">
                     <div className="flex items-center gap-1 text-xs">
                       <div className="h-1.5 w-1.5 rounded-full bg-orange-500"></div>
                       <span className="text-orange-600 dark:text-orange-400">
-                        {dashboardData.total_admins}
+                        Admin: {dashboardData.total_admins}
                       </span>
                     </div>
                     <div className="flex items-center gap-1 text-xs">
                       <div className="h-1.5 w-1.5 rounded-full bg-red-500"></div>
                       <span className="text-red-600 dark:text-red-400">
-                        {dashboardData.total_superadmins}
+                        SuperAdmin: {dashboardData.total_superadmins}
+                      </span>
+                    </div>
+                    <div className="col-span-2 mt-1 flex items-center gap-1 text-xs">
+                      <div className="h-1.5 w-1.5 rounded-full bg-blue-500"></div>
+                      <span className="text-blue-600 dark:text-blue-400">
+                        User Biasa:{' '}
+                        {dashboardData.total_users -
+                          dashboardData.total_admins -
+                          dashboardData.total_superadmins}
                       </span>
                     </div>
                   </div>
+                  <p className="mt-2 text-xs text-slate-600 dark:text-slate-400">
+                    Semua pengguna terdaftar
+                  </p>
                 </div>
                 <div className="ml-4 rounded-lg bg-purple-100 p-2.5 dark:bg-purple-900/20">
-                  <Users className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                </div>
-              </div>
-            </div>
-
-            {/* Total Revenue */}
-            <div className="group relative overflow-hidden rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:shadow-md dark:border-slate-700 dark:bg-slate-800">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                    Total Revenue
-                  </p>
-                  <p className="mt-1 text-xl font-bold text-slate-900 dark:text-white sm:text-2xl">
-                    {formatCurrency(dashboardData.total_revenue)}
-                  </p>
-                  <div className="mt-2 flex items-center gap-3">
-                    <div className="flex items-center gap-1 text-xs">
-                      <div className="h-1.5 w-1.5 rounded-full bg-emerald-500"></div>
-                      <span className="text-emerald-600 dark:text-emerald-400">
-                        Revenue
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <div className="ml-4 rounded-lg bg-emerald-100 p-2.5 dark:bg-emerald-900/20">
-                  <CreditCard className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-                </div>
-              </div>
-            </div>
-
-            {/* Pending Payments */}
-            <div className="group relative overflow-hidden rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:shadow-md dark:border-slate-700 dark:bg-slate-800">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                    Pending Payments
-                  </p>
-                  <p className="mt-1 text-xl font-bold text-slate-900 dark:text-white sm:text-2xl">
-                    {dashboardData.pending_payments}
-                  </p>
-                  <div className="mt-2 flex items-center gap-3">
-                    <div className="flex items-center gap-1 text-xs">
-                      <div className="h-1.5 w-1.5 rounded-full bg-amber-500"></div>
-                      <span className="text-amber-600 dark:text-amber-400">
-                        Menunggu
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <div className="ml-4 rounded-lg bg-amber-100 p-2.5 dark:bg-amber-900/20">
-                  <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                  <Users className="h-6 w-6 text-purple-600 dark:text-purple-400" />
                 </div>
               </div>
             </div>
@@ -722,9 +705,150 @@ export default function SuperadminDashboard() {
             </div>
           </div>
 
-          {/* Sidebar - Quick Access */}
+          {/* Sidebar - Quick Access & Status Pesanan */}
           <div className="w-full lg:w-80 lg:flex-shrink-0">
             <div className="space-y-6">
+              {/* Status Pesanan */}
+              {dashboardData && (
+                <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
+                  <div className="border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white px-4 py-4 dark:border-slate-700 dark:from-slate-800 dark:to-slate-800 sm:px-5 sm:py-5">
+                    <div className="flex items-center gap-3">
+                      <div className="rounded-lg bg-emerald-600 p-2 text-white">
+                        <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-bold text-slate-900 dark:text-white sm:text-base">
+                          Status Pesanan
+                        </h3>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-4 sm:p-6">
+                    <div className="space-y-4">
+                      {/* Progress Bars untuk Status Pesanan Hari Ini */}
+                      <div className="space-y-3">
+                        {/* Menunggu (Processing) */}
+                        <div>
+                          <div className="mb-1 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <div className="h-2 w-2 rounded-full bg-blue-500"></div>
+                              <span className="text-sm text-slate-700 dark:text-slate-300">
+                                Menunggu
+                              </span>
+                            </div>
+                            <span className="text-sm font-bold text-blue-600 dark:text-blue-400">
+                              {dashboardData.today_processing_orders ||
+                                0}
+                            </span>
+                          </div>
+                          <div className="h-2 w-full rounded-full bg-slate-200 dark:bg-slate-700">
+                            <div
+                              className="h-full rounded-full bg-blue-500 transition-all duration-500"
+                              style={{
+                                width: `${
+                                  ((dashboardData.today_processing_orders ||
+                                    0) /
+                                    (dashboardData.today_orders ||
+                                      1)) *
+                                  100
+                                }%`
+                              }}
+                            ></div>
+                          </div>
+                        </div>
+
+                        {/* Selesai (Completed) */}
+                        <div>
+                          <div className="mb-1 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <div className="h-2 w-2 rounded-full bg-emerald-500"></div>
+                              <span className="text-sm text-slate-700 dark:text-slate-300">
+                                Selesai
+                              </span>
+                            </div>
+                            <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
+                              {dashboardData.today_completed_orders ||
+                                0}
+                            </span>
+                          </div>
+                          <div className="h-2 w-full rounded-full bg-slate-200 dark:bg-slate-700">
+                            <div
+                              className="h-full rounded-full bg-emerald-500 transition-all duration-500"
+                              style={{
+                                width: `${
+                                  ((dashboardData.today_completed_orders ||
+                                    0) /
+                                    (dashboardData.today_orders ||
+                                      1)) *
+                                  100
+                                }%`
+                              }}
+                            ></div>
+                          </div>
+                        </div>
+
+                        {/* Dibatalkan (Canceled) */}
+                        <div>
+                          <div className="mb-1 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <div className="h-2 w-2 rounded-full bg-red-500"></div>
+                              <span className="text-sm text-slate-700 dark:text-slate-300">
+                                Dibatalkan
+                              </span>
+                            </div>
+                            <span className="text-sm font-bold text-red-600 dark:text-red-400">
+                              {dashboardData.today_canceled_orders ||
+                                0}
+                            </span>
+                          </div>
+                          <div className="h-2 w-full rounded-full bg-slate-200 dark:bg-slate-700">
+                            <div
+                              className="h-full rounded-full bg-red-500 transition-all duration-500"
+                              style={{
+                                width: `${
+                                  ((dashboardData.today_canceled_orders ||
+                                    0) /
+                                    (dashboardData.today_orders ||
+                                      1)) *
+                                  100
+                                }%`
+                              }}
+                            ></div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Ringkasan */}
+                      <div className="mt-4 rounded-lg bg-slate-50 p-3 dark:bg-slate-700/30">
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="text-center">
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                              Aktif
+                            </p>
+                            <p className="text-lg font-bold text-blue-600 dark:text-blue-400">
+                              {dashboardData.today_processing_orders ||
+                                0}
+                            </p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                              Selesai
+                            </p>
+                            <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
+                              {(dashboardData.today_completed_orders ||
+                                0) +
+                                (dashboardData.today_canceled_orders ||
+                                  0)}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Quick Actions */}
               <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
                 <div className="border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white px-4 py-4 dark:border-slate-700 dark:from-slate-800 dark:to-slate-800 sm:px-5 sm:py-5">
@@ -770,74 +894,6 @@ export default function SuperadminDashboard() {
                 </div>
               </div>
 
-              {/* Order Stats */}
-              {dashboardData && (
-                <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
-                  <div className="border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white px-4 py-4 dark:border-slate-700 dark:from-slate-800 dark:to-slate-800 sm:px-5 sm:py-5">
-                    <div className="flex items-center gap-3">
-                      <div className="rounded-lg bg-emerald-600 p-2 text-white">
-                        <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5" />
-                      </div>
-                      <h3 className="text-sm font-bold text-slate-900 dark:text-white sm:text-base">
-                        Status Pesanan
-                      </h3>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4 p-4 sm:p-6">
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Clock className="h-4 w-4 text-amber-500" />
-                          <span className="text-sm text-slate-700 dark:text-slate-300">
-                            Menunggu
-                          </span>
-                        </div>
-                        <span className="text-sm font-bold text-amber-600 dark:text-amber-400">
-                          {dashboardData.pending_orders}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Settings2 className="h-4 w-4 text-blue-500" />
-                          <span className="text-sm text-slate-700 dark:text-slate-300">
-                            Diproses
-                          </span>
-                        </div>
-                        <span className="text-sm font-bold text-blue-600 dark:text-blue-400">
-                          {dashboardData.processing_orders}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                          <span className="text-sm text-slate-700 dark:text-slate-300">
-                            Selesai
-                          </span>
-                        </div>
-                        <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
-                          {dashboardData.completed_orders}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <XCircle className="h-4 w-4 text-red-500" />
-                          <span className="text-sm text-slate-700 dark:text-slate-300">
-                            Dibatalkan
-                          </span>
-                        </div>
-                        <span className="text-sm font-bold text-red-600 dark:text-red-400">
-                          {dashboardData.canceled_orders}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
               {/* System Alert */}
               <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-900/30 dark:bg-blue-900/10 sm:p-5">
                 <div className="flex gap-3">
@@ -858,16 +914,6 @@ export default function SuperadminDashboard() {
       </main>
     </div>
   );
-}
-
-// Helper function for currency formatting
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0
-  }).format(amount);
 }
 
 // Component: User List Item

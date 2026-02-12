@@ -62,6 +62,21 @@ interface Restaurant {
   is_open: number;
 }
 
+interface PaymentSettings {
+  id: number;
+  qris_title: string;
+  qris_image: string | null;
+  qris_image_url: string | null;
+  qris_active: boolean;
+  bank_name: string;
+  account_number: string;
+  account_name: string;
+  bank_active: boolean;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 const CheckoutConfirmationPage = () => {
   const router = useRouter();
   const params = useParams();
@@ -72,14 +87,22 @@ const CheckoutConfirmationPage = () => {
   const [restaurants, setRestaurants] = useState<
     Map<number, Restaurant>
   >(new Map());
+  const [paymentSettings, setPaymentSettings] =
+    useState<PaymentSettings | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingPaymentMethods, setIsLoadingPaymentMethods] =
+    useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showNoPaymentDialog, setShowNoPaymentDialog] =
     useState(false);
+  const [showNoPaymentMethodsDialog, setShowNoPaymentMethodsDialog] =
+    useState(false);
   const [paymentMethod, setPaymentMethod] = useState<
     'qris' | 'transfer'
   >('qris');
+  const [availablePaymentMethods, setAvailablePaymentMethods] =
+    useState<string[]>([]);
   const [copiedText, setCopiedText] = useState('');
   const [proofImage, setProofImage] = useState<File | null>(null);
   const [proofImagePreview, setProofImagePreview] = useState('');
@@ -87,12 +110,6 @@ const CheckoutConfirmationPage = () => {
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
 
-  const BANK_ACCOUNT = '1234567890';
-  const BANK_NAME = 'Bank Tabungan Negara (BTN)';
-  const ACCOUNT_NAME = 'CRSD BTN';
-  const QRIS_CODE =
-    'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=00020126360014ID.CO.QRISDDATA5204500753033606107' +
-    '12345678906304F500';
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
   useEffect(() => {
@@ -102,6 +119,7 @@ const CheckoutConfirmationPage = () => {
   useEffect(() => {
     if (mounted && orderId) {
       loadOrderData();
+      loadPaymentMethods();
     } else if (mounted && !orderId) {
       setShowNoPaymentDialog(true);
     }
@@ -172,6 +190,86 @@ const CheckoutConfirmationPage = () => {
       setShowNoPaymentDialog(true);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const loadPaymentMethods = async () => {
+    try {
+      setIsLoadingPaymentMethods(true);
+
+      const response = await fetch(`${apiUrl}/api/payment-methods`, {
+        method: 'GET',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP Error: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (data.success && data.data) {
+        setPaymentSettings(data.data);
+
+        // Cek metode pembayaran yang tersedia
+        const methods: string[] = [];
+
+        // Check if system is active
+        if (data.data.active) {
+          // Check QRIS availability
+          if (data.data.qris_active && data.data.qris_image_url) {
+            methods.push('qris');
+          }
+
+          // Check Bank Transfer availability
+          if (
+            data.data.bank_active &&
+            data.data.bank_name &&
+            data.data.account_number &&
+            data.data.account_name
+          ) {
+            methods.push('transfer');
+          }
+        }
+
+        setAvailablePaymentMethods(methods);
+
+        // Set default payment method
+        if (methods.length > 0) {
+          setPaymentMethod(methods[0] as 'qris' | 'transfer');
+        }
+
+        // Jika tidak ada metode pembayaran yang tersedia
+        if (methods.length === 0) {
+          setShowNoPaymentMethodsDialog(true);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading payment methods:', error);
+      // Fallback ke data statis jika API error
+      const fallbackData: PaymentSettings = {
+        id: 1,
+        qris_title: 'QRIS Pembayaran',
+        qris_image: null,
+        qris_image_url: null,
+        qris_active: true,
+        bank_name: 'Bank Example',
+        account_number: '1234567890',
+        account_name: 'Admin Name',
+        bank_active: true,
+        active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      setPaymentSettings(fallbackData);
+      setAvailablePaymentMethods(['qris', 'transfer']);
+      setPaymentMethod('qris');
+    } finally {
+      setIsLoadingPaymentMethods(false);
     }
   };
 
@@ -389,29 +487,82 @@ const CheckoutConfirmationPage = () => {
     setTimeout(() => setCopiedText(''), 2000);
   };
 
-  if (!mounted || isLoading) {
+  // Loading state untuk payment methods
+  if (!mounted || isLoading || isLoadingPaymentMethods) {
     return (
       <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white dark:bg-slate-900">
         <div className="relative">
-          {/* Spinner utama */}
           <div className="h-16 w-16 animate-spin rounded-full border-[6px] border-emerald-100 border-t-emerald-600"></div>
-
-          {/* Spinner inner untuk efek depth */}
           <div className="absolute left-1/2 top-1/2 h-8 w-8 -translate-x-1/2 -translate-y-1/2 animate-spin rounded-full border-[3px] border-transparent border-t-emerald-400"></div>
-
-          {/* Center dot */}
           <div className="absolute left-1/2 top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-emerald-600"></div>
         </div>
 
-        {/* Loading text dengan animasi */}
         <div className="mt-6 text-center">
           <p className="animate-pulse text-lg font-semibold text-slate-700 dark:text-slate-300">
-            Memuat pembayaran...
+            {isLoadingPaymentMethods
+              ? 'Memuat metode pembayaran...'
+              : 'Memuat pembayaran...'}
           </p>
           <p className="mt-2 text-sm text-slate-500 dark:text-slate-500">
-            Sedang mengambil data pembayaran anda, harap tunggu.
+            {isLoadingPaymentMethods
+              ? 'Mengambil data metode pembayaran...'
+              : 'Sedang mengambil data pembayaran anda, harap tunggu.'}
           </p>
         </div>
+      </div>
+    );
+  }
+
+  // Jika tidak ada metode pembayaran yang tersedia
+  if (
+    availablePaymentMethods.length === 0 &&
+    paymentSettings?.active === false
+  ) {
+    return (
+      <div className="min-h-screen bg-slate-50 px-4 py-6 dark:bg-slate-900 sm:px-6 sm:py-8">
+        <AlertDialog
+          open={showNoPaymentMethodsDialog}
+          onOpenChange={setShowNoPaymentMethodsDialog}
+        >
+          <AlertDialogContent className="rounded-xl border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 sm:max-w-md">
+            <AlertDialogHeader>
+              <div className="mb-4 flex justify-center">
+                <AlertCircle className="h-12 w-12 text-yellow-600 dark:text-yellow-400 sm:h-16 sm:w-16" />
+              </div>
+              <AlertDialogTitle className="text-center text-xl sm:text-2xl">
+                Metode Pembayaran Tidak Tersedia
+              </AlertDialogTitle>
+              <AlertDialogDescription className="mt-4 text-center text-xs sm:text-base">
+                Saat ini tidak ada metode pembayaran yang aktif.
+                Silakan hubungi admin atau coba lagi nanti.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="my-6 rounded-lg border-l-4 border-l-yellow-600 bg-yellow-50 p-4 dark:bg-yellow-900/20">
+              <p className="text-xs font-semibold text-yellow-800 dark:text-yellow-300 sm:text-sm">
+                ⚠️ Sistem pembayaran sedang tidak aktif
+              </p>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
+              <AlertDialogCancel asChild>
+                <Link
+                  href="/"
+                  className="rounded-lg border border-slate-300 px-4 py-2 text-center dark:border-slate-700"
+                >
+                  Tutup
+                </Link>
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  setShowNoPaymentMethodsDialog(false);
+                  router.push('/order');
+                }}
+                className="rounded-lg bg-emerald-600 text-white hover:bg-emerald-700"
+              >
+                Kembali ke Pesanan
+              </AlertDialogAction>
+            </div>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     );
   }
@@ -623,286 +774,354 @@ const CheckoutConfirmationPage = () => {
             </div>
 
             {/* Payment Method Selection */}
-            <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800 sm:p-6">
-              <h2 className="mb-4 text-lg font-bold text-slate-900 dark:text-white sm:text-xl">
-                Metode Pembayaran
-              </h2>
+            {availablePaymentMethods.length > 0 && (
+              <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800 sm:p-6">
+                <h2 className="mb-4 text-lg font-bold text-slate-900 dark:text-white sm:text-xl">
+                  Metode Pembayaran
+                </h2>
 
-              <div className="space-y-3">
-                {/* QRIS Option */}
-                <label
-                  className="flex cursor-pointer items-center gap-3 rounded-lg border-2 border-slate-200 p-4 transition-all hover:border-emerald-300 dark:border-slate-700 dark:hover:border-emerald-600"
-                  style={{
-                    borderColor:
-                      paymentMethod === 'qris' ? '#10b981' : undefined
-                  }}
-                >
-                  <input
-                    type="radio"
-                    name="payment"
-                    value="qris"
-                    checked={paymentMethod === 'qris'}
-                    onChange={(e) =>
-                      setPaymentMethod(
-                        e.target.value as 'qris' | 'transfer'
-                      )
-                    }
-                    className="h-4 w-4 cursor-pointer"
-                  />
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold text-slate-900 dark:text-white">
-                      QRIS
-                    </p>
-                    <p className="text-xs text-slate-600 dark:text-slate-400">
-                      Scan dengan e-wallet Anda
-                    </p>
-                  </div>
-                </label>
+                <div className="space-y-3">
+                  {/* QRIS Option */}
+                  {availablePaymentMethods.includes('qris') &&
+                    paymentSettings?.qris_active && (
+                      <label
+                        className="flex cursor-pointer items-center gap-3 rounded-lg border-2 border-slate-200 p-4 transition-all hover:border-emerald-300 dark:border-slate-700 dark:hover:border-emerald-600"
+                        style={{
+                          borderColor:
+                            paymentMethod === 'qris'
+                              ? '#10b981'
+                              : undefined
+                        }}
+                      >
+                        <input
+                          type="radio"
+                          name="payment"
+                          value="qris"
+                          checked={paymentMethod === 'qris'}
+                          onChange={(e) =>
+                            setPaymentMethod(
+                              e.target.value as 'qris' | 'transfer'
+                            )
+                          }
+                          className="h-4 w-4 cursor-pointer"
+                        />
+                        <div className="flex-1">
+                          <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                            QRIS -{' '}
+                            {paymentSettings?.qris_title ||
+                              'QRIS Pembayaran'}
+                          </p>
+                          <p className="text-xs text-slate-600 dark:text-slate-400">
+                            Scan dengan e-wallet Anda
+                          </p>
+                        </div>
+                      </label>
+                    )}
 
-                {/* Bank Transfer Option */}
-                <label
-                  className="flex cursor-pointer items-center gap-3 rounded-lg border-2 border-slate-200 p-4 transition-all hover:border-emerald-300 dark:border-slate-700 dark:hover:border-emerald-600"
-                  style={{
-                    borderColor:
-                      paymentMethod === 'transfer'
-                        ? '#10b981'
-                        : undefined
-                  }}
-                >
-                  <input
-                    type="radio"
-                    name="payment"
-                    value="transfer"
-                    checked={paymentMethod === 'transfer'}
-                    onChange={(e) =>
-                      setPaymentMethod(
-                        e.target.value as 'qris' | 'transfer'
-                      )
-                    }
-                    className="h-4 w-4 cursor-pointer"
-                  />
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold text-slate-900 dark:text-white">
-                      Transfer Bank
-                    </p>
-                    <p className="text-xs text-slate-600 dark:text-slate-400">
-                      Transfer ke rekening bank
-                    </p>
-                  </div>
-                </label>
+                  {/* Bank Transfer Option */}
+                  {availablePaymentMethods.includes('transfer') &&
+                    paymentSettings?.bank_active && (
+                      <label
+                        className="flex cursor-pointer items-center gap-3 rounded-lg border-2 border-slate-200 p-4 transition-all hover:border-emerald-300 dark:border-slate-700 dark:hover:border-emerald-600"
+                        style={{
+                          borderColor:
+                            paymentMethod === 'transfer'
+                              ? '#10b981'
+                              : undefined
+                        }}
+                      >
+                        <input
+                          type="radio"
+                          name="payment"
+                          value="transfer"
+                          checked={paymentMethod === 'transfer'}
+                          onChange={(e) =>
+                            setPaymentMethod(
+                              e.target.value as 'qris' | 'transfer'
+                            )
+                          }
+                          className="h-4 w-4 cursor-pointer"
+                        />
+                        <div className="flex-1">
+                          <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                            Transfer Bank
+                          </p>
+                          <p className="text-xs text-slate-600 dark:text-slate-400">
+                            Transfer ke rekening bank
+                          </p>
+                        </div>
+                      </label>
+                    )}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Payment Details */}
-            <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800 sm:p-6">
-              {paymentMethod === 'qris' ? (
-                <div className="space-y-4">
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">
-                    Scan QRIS
-                  </h3>
-                  <div className="flex flex-col items-center">
-                    <img
-                      src={QRIS_CODE}
-                      alt="QRIS Code"
-                      className="h-48 w-48 rounded-lg border-4 border-slate-200 dark:border-slate-700 sm:h-56 sm:w-56"
-                    />
-                    <p className="mt-4 text-center text-xs text-slate-600 dark:text-slate-400 sm:text-sm">
-                      Scan dengan aplikasi e-wallet Anda
-                    </p>
-                  </div>
-
-                  <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-900/20">
-                    <div className="flex gap-2">
-                      <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-blue-600 dark:text-blue-400 sm:h-5 sm:w-5" />
-                      <p className="text-xs text-blue-800 dark:text-blue-300 sm:text-sm">
-                        Pastikan Anda sudah melakukan pembayaran
-                        sebelum menutup aplikasi
-                      </p>
+            {availablePaymentMethods.length > 0 &&
+              paymentSettings?.active && (
+                <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800 sm:p-6">
+                  {paymentMethod === 'qris' &&
+                  paymentSettings?.qris_active ? (
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                        Scan QRIS - {paymentSettings.qris_title}
+                      </h3>
+                      {paymentSettings.qris_image_url ? (
+                        <>
+                          <div className="flex flex-col items-center">
+                            <img
+                              src={paymentSettings.qris_image_url}
+                              alt="QRIS Code"
+                              className="h-48 w-48 rounded-lg border-4 border-slate-200 dark:border-slate-700 sm:h-56 sm:w-56"
+                              onError={(e) => {
+                                e.currentTarget.src =
+                                  'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=00020126360014ID.CO.QRISDDATA520450075303360610712345678906304F500';
+                              }}
+                            />
+                            <p className="mt-4 text-center text-xs text-slate-600 dark:text-slate-400 sm:text-sm">
+                              Scan dengan aplikasi e-wallet Anda
+                            </p>
+                          </div>
+                          <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-900/20">
+                            <div className="flex gap-2">
+                              <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-blue-600 dark:text-blue-400 sm:h-5 sm:w-5" />
+                              <p className="text-xs text-blue-800 dark:text-blue-300 sm:text-sm">
+                                Pastikan Anda sudah melakukan
+                                pembayaran sebelum menutup aplikasi
+                              </p>
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4 dark:border-yellow-800 dark:bg-yellow-900/20">
+                          <div className="flex items-start gap-3">
+                            <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-yellow-600 dark:text-yellow-400" />
+                            <div>
+                              <p className="text-sm font-semibold text-yellow-800 dark:text-yellow-300">
+                                QRIS Image Not Available
+                              </p>
+                              <p className="mt-1 text-xs text-yellow-700 dark:text-yellow-400">
+                                Admin belum mengupload gambar QRIS.
+                                Silakan pilih metode pembayaran lain.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  </div>
+                  ) : paymentMethod === 'transfer' &&
+                    paymentSettings?.bank_active ? (
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                        Detail Rekening Bank
+                      </h3>
+
+                      {/* Bank Name */}
+                      {paymentSettings?.bank_name && (
+                        <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900 sm:p-4">
+                          <p className="mb-2 text-xs font-medium text-slate-600 dark:text-slate-400">
+                            Nama Bank
+                          </p>
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="font-semibold text-slate-900 dark:text-white sm:text-lg">
+                              {paymentSettings.bank_name}
+                            </p>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() =>
+                                copyToClipboard(
+                                  paymentSettings.bank_name,
+                                  'Bank'
+                                )
+                              }
+                              className="h-8 w-8 flex-shrink-0"
+                            >
+                              {copiedText === 'Bank' ? (
+                                <CheckCircle className="h-4 w-4 text-emerald-600" />
+                              ) : (
+                                <Copy className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Account Number */}
+                      {paymentSettings?.account_number && (
+                        <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900 sm:p-4">
+                          <p className="mb-2 text-xs font-medium text-slate-600 dark:text-slate-400">
+                            Nomor Rekening
+                          </p>
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="font-mono font-semibold text-slate-900 dark:text-white sm:text-lg">
+                              {paymentSettings.account_number}
+                            </p>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() =>
+                                copyToClipboard(
+                                  paymentSettings.account_number,
+                                  'Nomor Rekening'
+                                )
+                              }
+                              className="h-8 w-8 flex-shrink-0"
+                            >
+                              {copiedText === 'Nomor Rekening' ? (
+                                <CheckCircle className="h-4 w-4 text-emerald-600" />
+                              ) : (
+                                <Copy className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Account Name */}
+                      {paymentSettings?.account_name && (
+                        <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900 sm:p-4">
+                          <p className="mb-2 text-xs font-medium text-slate-600 dark:text-slate-400">
+                            Atas Nama
+                          </p>
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="font-semibold text-slate-900 dark:text-white sm:text-lg">
+                              {paymentSettings.account_name}
+                            </p>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() =>
+                                copyToClipboard(
+                                  paymentSettings.account_name,
+                                  'Nama Rekening'
+                                )
+                              }
+                              className="h-8 w-8 flex-shrink-0"
+                            >
+                              {copiedText === 'Nama Rekening' ? (
+                                <CheckCircle className="h-4 w-4 text-emerald-600" />
+                              ) : (
+                                <Copy className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-900/20">
+                        <div className="flex gap-2">
+                          <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-blue-600 dark:text-blue-400 sm:h-5 sm:w-5" />
+                          <p className="text-xs text-blue-800 dark:text-blue-300 sm:text-sm">
+                            Transfer{' '}
+                            <strong>
+                              Rp {totalPrice.toLocaleString('id-ID')}
+                            </strong>{' '}
+                            ke rekening di atas
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4 dark:border-yellow-800 dark:bg-yellow-900/20">
+                      <div className="flex items-start gap-3">
+                        <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-yellow-600 dark:text-yellow-400" />
+                        <div>
+                          <p className="text-sm font-semibold text-yellow-800 dark:text-yellow-300">
+                            Metode pembayaran tidak tersedia
+                          </p>
+                          <p className="mt-1 text-xs text-yellow-700 dark:text-yellow-400">
+                            Metode pembayaran yang dipilih sedang
+                            tidak aktif. Silakan pilih metode
+                            pembayaran lain.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <div className="space-y-4">
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">
-                    Detail Rekening Bank
-                  </h3>
+              )}
 
-                  {/* Bank Name */}
-                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900 sm:p-4">
-                    <p className="mb-2 text-xs font-medium text-slate-600 dark:text-slate-400">
-                      Nama Bank
-                    </p>
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="font-semibold text-slate-900 dark:text-white sm:text-lg">
-                        {BANK_NAME}
-                      </p>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() =>
-                          copyToClipboard(BANK_NAME, 'Bank')
-                        }
-                        className="h-8 w-8 flex-shrink-0"
-                      >
-                        {copiedText === 'Bank' ? (
-                          <CheckCircle className="h-4 w-4 text-emerald-600" />
+            {/* Upload Proof & Notes */}
+            {availablePaymentMethods.length > 0 &&
+              paymentSettings?.active && (
+                <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800 sm:p-6">
+                  <h2 className="mb-4 text-lg font-bold text-slate-900 dark:text-white sm:text-xl">
+                    Unggah Bukti Transfer
+                  </h2>
+
+                  <div className="space-y-4">
+                    {/* Image Upload */}
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-slate-900 dark:text-white">
+                        Bukti Transfer{' '}
+                        <span className="text-red-600">*</span>
+                      </label>
+                      <div className="rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 p-4 text-center dark:border-slate-600 dark:bg-slate-900 sm:p-6">
+                        {proofImagePreview ? (
+                          <div className="space-y-3">
+                            <img
+                              src={proofImagePreview}
+                              alt="Preview"
+                              className="mx-auto max-h-48 rounded-lg object-cover"
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setProofImage(null);
+                                setProofImagePreview('');
+                              }}
+                              className="mx-auto"
+                            >
+                              <X className="mr-2 h-4 w-4" /> Hapus
+                            </Button>
+                          </div>
                         ) : (
-                          <Copy className="h-4 w-4" />
+                          <label className="cursor-pointer space-y-2">
+                            <Upload className="mx-auto h-8 w-8 text-slate-400" />
+                            <p className="text-xs font-medium text-slate-900 dark:text-white sm:text-sm">
+                              Klik untuk upload atau drag gambar
+                            </p>
+                            <p className="text-xs text-slate-600 dark:text-slate-400">
+                              PNG, JPG, JPEG (Max 5MB)
+                            </p>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={handleImageChange}
+                              className="hidden"
+                            />
+                          </label>
                         )}
-                      </Button>
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Account Number */}
-                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900 sm:p-4">
-                    <p className="mb-2 text-xs font-medium text-slate-600 dark:text-slate-400">
-                      Nomor Rekening
-                    </p>
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="font-mono font-semibold text-slate-900 dark:text-white sm:text-lg">
-                        {BANK_ACCOUNT}
-                      </p>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() =>
-                          copyToClipboard(
-                            BANK_ACCOUNT,
-                            'Nomor Rekening'
-                          )
+                    {/* Notes */}
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-slate-900 dark:text-white">
+                        Catatan{' '}
+                        <span className="text-slate-400">
+                          (Opsional)
+                        </span>
+                      </label>
+                      <textarea
+                        placeholder="Contoh: Sudah transfer jam 10 pagi..."
+                        value={confirmationNotes}
+                        onChange={(e) =>
+                          setConfirmationNotes(e.target.value)
                         }
-                        className="h-8 w-8 flex-shrink-0"
-                      >
-                        {copiedText === 'Nomor Rekening' ? (
-                          <CheckCircle className="h-4 w-4 text-emerald-600" />
-                        ) : (
-                          <Copy className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Account Name */}
-                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900 sm:p-4">
-                    <p className="mb-2 text-xs font-medium text-slate-600 dark:text-slate-400">
-                      Atas Nama
-                    </p>
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="font-semibold text-slate-900 dark:text-white sm:text-lg">
-                        {ACCOUNT_NAME}
-                      </p>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() =>
-                          copyToClipboard(
-                            ACCOUNT_NAME,
-                            'Nama Rekening'
-                          )
-                        }
-                        className="h-8 w-8 flex-shrink-0"
-                      >
-                        {copiedText === 'Nama Rekening' ? (
-                          <CheckCircle className="h-4 w-4 text-emerald-600" />
-                        ) : (
-                          <Copy className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-900/20">
-                    <div className="flex gap-2">
-                      <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-blue-600 dark:text-blue-400 sm:h-5 sm:w-5" />
-                      <p className="text-xs text-blue-800 dark:text-blue-300 sm:text-sm">
-                        Transfer{' '}
-                        <strong>
-                          Rp {totalPrice.toLocaleString('id-ID')}
-                        </strong>{' '}
-                        ke rekening di atas
+                        className="min-h-20 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm placeholder-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-600 dark:bg-slate-900 dark:text-white dark:placeholder-slate-500 dark:focus:border-emerald-400"
+                        maxLength={500}
+                      />
+                      <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                        {confirmationNotes.length} / 500 karakter
                       </p>
                     </div>
                   </div>
                 </div>
               )}
-            </div>
-
-            {/* Upload Proof & Notes */}
-            <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800 sm:p-6">
-              <h2 className="mb-4 text-lg font-bold text-slate-900 dark:text-white sm:text-xl">
-                Unggah Bukti Transfer
-              </h2>
-
-              <div className="space-y-4">
-                {/* Image Upload */}
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-900 dark:text-white">
-                    Bukti Transfer{' '}
-                    <span className="text-red-600">*</span>
-                  </label>
-                  <div className="rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 p-4 text-center dark:border-slate-600 dark:bg-slate-900 sm:p-6">
-                    {proofImagePreview ? (
-                      <div className="space-y-3">
-                        <img
-                          src={proofImagePreview}
-                          alt="Preview"
-                          className="mx-auto max-h-48 rounded-lg object-cover"
-                        />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setProofImage(null);
-                            setProofImagePreview('');
-                          }}
-                          className="mx-auto"
-                        >
-                          <X className="mr-2 h-4 w-4" />
-                          Hapus
-                        </Button>
-                      </div>
-                    ) : (
-                      <label className="cursor-pointer space-y-2">
-                        <Upload className="mx-auto h-8 w-8 text-slate-400" />
-                        <p className="text-xs font-medium text-slate-900 dark:text-white sm:text-sm">
-                          Klik untuk upload atau drag gambar
-                        </p>
-                        <p className="text-xs text-slate-600 dark:text-slate-400">
-                          PNG, JPG, JPEG (Max 5MB)
-                        </p>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleImageChange}
-                          className="hidden"
-                        />
-                      </label>
-                    )}
-                  </div>
-                </div>
-
-                {/* Notes */}
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-900 dark:text-white">
-                    Catatan{' '}
-                    <span className="text-slate-400">(Opsional)</span>
-                  </label>
-                  <textarea
-                    placeholder="Contoh: Sudah transfer jam 10 pagi..."
-                    value={confirmationNotes}
-                    onChange={(e) =>
-                      setConfirmationNotes(e.target.value)
-                    }
-                    className="min-h-20 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm placeholder-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-600 dark:bg-slate-900 dark:text-white dark:placeholder-slate-500 dark:focus:border-emerald-400"
-                    maxLength={500}
-                  />
-                  <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-                    {confirmationNotes.length} / 500 karakter
-                  </p>
-                </div>
-              </div>
-            </div>
           </div>
 
           {/* Right Column - Sidebar */}
@@ -947,17 +1166,21 @@ const CheckoutConfirmationPage = () => {
             <div className="space-y-3">
               <Button
                 onClick={handleSubmitConfirmation}
-                disabled={isSubmitting || !proofImage}
+                disabled={
+                  isSubmitting ||
+                  !proofImage ||
+                  !paymentSettings?.active
+                }
                 className="w-full bg-emerald-600 py-2 text-sm font-semibold hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 sm:py-3 sm:text-base"
               >
                 {isSubmitting ? (
                   <>
-                    <span className="mr-2 animate-spin">⏳</span>
+                    <span className="mr-2 animate-spin">⏳</span>{' '}
                     Mengunggah...
                   </>
                 ) : (
                   <>
-                    <CheckCircle className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
+                    <CheckCircle className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />{' '}
                     Konfirmasi
                   </>
                 )}
@@ -978,8 +1201,7 @@ const CheckoutConfirmationPage = () => {
                 disabled={isSubmitting || isCancelling}
                 className="w-full text-sm sm:text-base"
               >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Batalkan Pesanan
+                <Trash2 className="mr-2 h-4 w-4" /> Batalkan Pesanan
               </Button>
             </div>
           </div>

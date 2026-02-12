@@ -511,6 +511,15 @@ const Navbar = () => {
                             Restaurant
                           </Link>
                         </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <Link
+                            href="/dashboard/paymentsettings"
+                            className="flex cursor-pointer items-center gap-2"
+                          >
+                            <CreditCard className="h-4 w-4" />
+                            Manajemen User
+                          </Link>
+                        </DropdownMenuItem>
                         {/* TAMBAHKAN INI: Menu Pengaturan Pembayaran */}
                         <DropdownMenuItem asChild>
                           <Link
@@ -777,6 +786,15 @@ const Navbar = () => {
                               >
                                 <ChefHat className="h-4 w-4" />
                                 Restaurant
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem asChild>
+                              <Link
+                                href="/dashboard/paymentsettings"
+                                className="flex cursor-pointer items-center gap-2"
+                              >
+                                <CreditCard className="h-4 w-4" />
+                                Pengaturan Pembayaran
                               </Link>
                             </DropdownMenuItem>
                           </>
