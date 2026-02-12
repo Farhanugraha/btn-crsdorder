@@ -65,7 +65,6 @@ const Navbar = () => {
   const getAdminReportsLink = () =>
     isSuperAdmin ? '/dashboard/reports' : '/dashboard/reports';
 
-  // ✅ TAMBAHKAN FUNGSI INI - Get role badge color
   const getRoleColor = (role: string) => {
     switch (role) {
       case 'superadmin':
