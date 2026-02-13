@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { ToggleTheme } from '@/components/ToggleTheme';
 import { Separator } from '@/components/ui/separator';
 import { Menu, X } from 'lucide-react';
-import Cart from '../Cart';
+import Cart from '@/components/cart';
 
 // Hooks
 import { useAuth } from './hooks/useAuth';

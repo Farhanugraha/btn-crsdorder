@@ -2,7 +2,6 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import logo from '@public/logo.png';
 
 interface LogoProps {
   dashboardLink: string;
@@ -19,12 +18,12 @@ export const Logo = ({ dashboardLink }: LogoProps) => {
           <div className="h-full w-full bg-[linear-gradient(45deg,transparent_25%,rgba(255,255,255,0.1)_50%,transparent_75%,transparent_100%)] bg-[length:10px_10px]" />
         </div>
 
+        {/* ✅ Langsung akses dari public folder dengan path string */}
         <Image
-          src={logo}
+          src="/logo.png"
           alt="CRSD OBAMA"
           width={64}
           height={44}
-          placeholder="blur"
           priority
           className="relative h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
         />
