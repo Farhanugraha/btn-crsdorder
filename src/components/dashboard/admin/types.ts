@@ -31,10 +31,13 @@ export interface DashboardData {
     processing: number;
     completed: number;
     canceled: number;
+    today?: number;
+    completedToday?: number;
   };
   payments: {
     total_revenue: number;
     pending_payments: number;
+    today_revenue?: number;
   };
   users: {
     total_users: number;

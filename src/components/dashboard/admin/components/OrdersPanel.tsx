@@ -88,7 +88,7 @@ export const OrdersPanel = ({
               <OrderRow key={order.id} order={order} />
             ))
           ) : (
-            <EmptyState /> // ✅ Sekarang sudah terdefinisi
+            <EmptyState />
           )}
         </div>
 

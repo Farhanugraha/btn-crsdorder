@@ -24,7 +24,8 @@ export const StatsGrid = ({
   isCalculatingRevenue,
   isLoading = false
 }: StatsGridProps) => {
-  if (isLoading || !dashboardData) {
+  // ✅ Tampilkan skeleton selama loading, tapi jangan delay
+  if (isLoading) {
     return (
       <div className="mb-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
@@ -46,29 +47,75 @@ export const StatsGrid = ({
     );
   }
 
+  // ✅ Jika sudah loading false tapi data masih null? Tampilkan placeholder
+  if (!dashboardData) {
+    return (
+      <div className="mb-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <StatCard
+          title="Total Pesanan"
+          value="0"
+          icon={<ShoppingCart className="h-6 w-6" />}
+          color="blue"
+          description="Memuat data..."
+        />
+        <StatCard
+          title="Menunggu Diproses"
+          value="0"
+          icon={<Clock className="h-6 w-6" />}
+          color="amber"
+          description="Memuat data..."
+        />
+        <StatCard
+          title="Selesai"
+          value="0"
+          icon={<CheckCircle2 className="h-6 w-6" />}
+          color="emerald"
+          description="Memuat data..."
+        />
+        <StatCard
+          title="Pendapatan Minggu Ini"
+          value="Rp 0"
+          icon={<CreditCard className="h-6 w-6" />}
+          color="green"
+          description="Memuat data..."
+        />
+      </div>
+    );
+  }
+
+  const today = new Date();
+  const todayFormatted = today.toLocaleDateString('id-ID', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  });
+
   return (
     <div className="mb-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       <StatCard
-        title="Total Pesanan"
-        value={dashboardData.orders.total}
+        title="Total Pesanan Hari Ini"
+        value={dashboardData.orders?.today ?? 0}
         icon={<ShoppingCart className="h-6 w-6" />}
         color="blue"
-        description="Semua waktu"
+        description={todayFormatted}
       />
+
       <StatCard
         title="Menunggu Diproses"
-        value={dashboardData.orders.processing}
+        value={dashboardData.orders?.processing ?? 0}
         icon={<Clock className="h-6 w-6" />}
         color="amber"
-        description="Perlu tindakan"
+        description="Perlu tindakan segera"
       />
+
       <StatCard
-        title="Selesai"
-        value={dashboardData.orders.completed}
+        title="Selesai Hari Ini"
+        value={dashboardData.orders?.completedToday ?? 0}
         icon={<CheckCircle2 className="h-6 w-6" />}
         color="emerald"
-        description="Berhasil diselesaikan"
+        description={todayFormatted}
       />
+
       <StatCard
         title="Pendapatan Minggu Ini"
         value={formatCurrency(weeklyRevenue)}
