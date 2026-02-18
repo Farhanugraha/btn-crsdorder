@@ -24,7 +24,6 @@ export const StatsGrid = ({
   isCalculatingRevenue,
   isLoading = false
 }: StatsGridProps) => {
-  // ✅ Tampilkan skeleton selama loading, tapi jangan delay
   if (isLoading) {
     return (
       <div className="mb-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -46,8 +45,6 @@ export const StatsGrid = ({
       </div>
     );
   }
-
-  // ✅ Jika sudah loading false tapi data masih null? Tampilkan placeholder
   if (!dashboardData) {
     return (
       <div className="mb-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

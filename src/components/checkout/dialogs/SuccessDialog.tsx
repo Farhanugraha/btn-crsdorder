@@ -34,15 +34,13 @@ export const SuccessDialog = ({
             Pembayaran Dikonfirmasi!
           </AlertDialogTitle>
           <AlertDialogDescription className="mt-4 text-center">
-            <p className="text-xs sm:text-base">
-              Bukti transfer Anda telah diterima. Admin akan
-              memverifikasi dalam waktu singkat.
-            </p>
-            <p className="mt-4 text-xs text-slate-600 dark:text-slate-400">
-              Nomor Pesanan:{' '}
-              <span className="font-mono font-bold">{orderCode}</span>
-            </p>
+            Bukti transfer Anda telah diterima. Admin akan
+            memverifikasi dalam waktu singkat.
           </AlertDialogDescription>
+          <div className="mt-4 text-center text-xs text-slate-600 dark:text-slate-400">
+            Nomor Pesanan:{' '}
+            <span className="font-mono font-bold">{orderCode}</span>
+          </div>
         </AlertDialogHeader>
         <AlertDialogAction
           onClick={onConfirm}

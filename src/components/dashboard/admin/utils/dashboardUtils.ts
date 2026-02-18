@@ -48,7 +48,7 @@ export const calculateRevenue = (orders: Order[]): { weeklyRevenue: number; last
     const orderDate = new Date(order.created_at);
     const orderAmount = parseFloat(order.total_price);
 
-    if (order.order_status === 'completed' && order.status === 'paid') {
+    if (order.status === 'paid') {
       if (orderDate >= startOfWeek && orderDate <= endOfWeek) {
         weeklyRevenue += orderAmount;
       }

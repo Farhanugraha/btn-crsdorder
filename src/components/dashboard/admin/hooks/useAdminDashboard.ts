@@ -49,7 +49,6 @@ export const useAdminDashboard = () => {
           return;
         }
 
-        // ✅ FETCH PARALLEL - lebih cepat
         const [dashboardRes, ordersRes] = await Promise.all([
           fetch(`${apiUrl}/api/admin/dashboard`, {
             headers: { Authorization: `Bearer ${token}` }
@@ -63,13 +62,9 @@ export const useAdminDashboard = () => {
           dashboardRes.json(),
           ordersRes.json()
         ]);
-
-        // ✅ Set dashboard data
         if (dashboardJson.success && dashboardJson.data) {
           setDashboardData(dashboardJson.data);
         }
-
-        // ✅ Set orders data
         if (ordersJson.success && ordersJson.data) {
           const processedOrders = ordersJson.data.map((order: any) => ({
             ...order,
@@ -119,8 +114,6 @@ export const useAdminDashboard = () => {
   useEffect(() => {
     if (dashboardData && orders.length > 0) {
       const { totalToday, completedToday, revenueToday } = getTodayStats(orders);
-      
-      // ✅ Only update if different
       if (
         dashboardData.orders?.today !== totalToday ||
         dashboardData.orders?.completedToday !== completedToday ||

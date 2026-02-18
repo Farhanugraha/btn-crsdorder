@@ -104,7 +104,7 @@ export const generateOrdersAuditExcel = async (
 
     // ==================== SHEET 1: RINGKASAN EKSEKUTIF ====================
     const summaryData: (string | number)[][] = [
-      ['LAPORAN AUDIT PESANAN - RINGKASAN EKSEKUTIF'],
+      ['LAPORAN PESANAN - RINGKASAN EKSEKUTIF'],
       [''],
       [
         'Periode',
@@ -756,7 +756,7 @@ export const generateOrdersAuditPDF = async (
       <body>
         <div class="container">
           <div class="header">
-            <h1>LAPORAN AUDIT PESANAN CRSD</h1>
+            <h1>LAPORAN PESANAN CRSD</h1>
             <p>(ORDER AUDIT REPORT CRSD)</p>
           </div>
 
@@ -968,7 +968,7 @@ export const generateOrdersAuditTXT = (
     '╔═══════════════════════════════════════════════════════════════╗'
   );
   lines.push(
-    '║               LAPORAN AUDIT PESANAN LENGKAP                   ║'
+    '║               LAPORAN  PESANAN LENGKAP                   ║'
   );
   lines.push(
     '║                  (ORDER AUDIT REPORT)                         ║'
@@ -1178,7 +1178,7 @@ export const generateOrdersAuditCSV = (
   const now = new Date();
   const lines: string[] = [];
 
-  lines.push('LAPORAN AUDIT PESANAN');
+  lines.push('LAPORAN PESANAN');
   lines.push('');
   lines.push(
     `Periode,${data.period.start_date} s/d ${data.period.end_date}`
