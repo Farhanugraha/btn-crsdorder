@@ -18,7 +18,6 @@ export const Logo = ({ dashboardLink }: LogoProps) => {
           <div className="h-full w-full bg-[linear-gradient(45deg,transparent_25%,rgba(255,255,255,0.1)_50%,transparent_75%,transparent_100%)] bg-[length:10px_10px]" />
         </div>
 
-        {/* ✅ Langsung akses dari public folder dengan path string */}
         <Image
           src="/logo.png"
           alt="CRSD OBAMA"

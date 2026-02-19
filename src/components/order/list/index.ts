@@ -4,7 +4,7 @@ export { LoadingState } from './components/LoadingState';
 export { ErrorState } from './components/ErrorState';
 export { OrderHeader } from './components/OrderHeader';
 export { OrderStats } from './components/OrderStats';
-export { OrderFilter } from './components/OrderFilters';  // ✅ Component
+export { OrderFilter } from './components/OrderFilters'; 
 export { MobileFilters } from './components/MobileFilters';
 export { OrderTabs } from './components/OrderTabs';
 export { OrderGrid } from './components/OrderGrid';
@@ -29,11 +29,10 @@ export {
   getRestaurantName
 } from './utils/orderUtils';
 
-// ✅ Export type dengan nama yang berbeda
 export type {
   Order,
   OrderItem,
-  OrderFilterType,  // ✅ Renamed from OrderFilter
+  OrderFilterType,  
   SortBy,
   DateFilter,
   StatusTab,

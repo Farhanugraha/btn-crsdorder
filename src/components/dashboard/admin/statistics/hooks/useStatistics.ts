@@ -30,7 +30,6 @@ export const useStatistics = () => {
   });
   const [isExporting, setIsExporting] = useState(false);
   
-  // ✅ Gunakan ref untuk mencegah infinite loop
   const initialLoadRef = useRef(false);
   const filterChangeRef = useRef(false);
   const prevFilterTypeRef = useRef<FilterType>('bulan-ini');
@@ -122,7 +121,6 @@ export const useStatistics = () => {
 
   // ============= INITIAL LOAD =============
   useEffect(() => {
-    // ✅ Hanya jalankan sekali saat mount
     if (!initialLoadRef.current) {
       initialLoadRef.current = true;
       
@@ -134,11 +132,10 @@ export const useStatistics = () => {
 
       fetchStatistics(firstDayOfMonth, today, false);
     }
-  }, []); // ✅ Empty dependency array - hanya sekali
+  }, []); 
 
-  // ============= LOAD DATA SAAT FILTER BERUBAH =============
   useEffect(() => {
-    // ✅ Hanya jalankan jika filter benar-benar berubah
+
     if (filterType !== 'kustom' && filterType !== prevFilterTypeRef.current) {
       prevFilterTypeRef.current = filterType;
       
@@ -146,10 +143,8 @@ export const useStatistics = () => {
       const endDate = getEndDateByFilter();
       fetchStatistics(startDate, endDate, false);
     }
-  }, [filterType]); // ✅ Hanya depend pada filterType
+  }, [filterType]); 
 
-  // ============= LOAD DATA SAAT CUSTOM DATE BERUBAH =============
-  // Handler untuk custom date dipanggil manual melalui tombol, tidak perlu useEffect
 
   // ============= PIE CHART DATA =============
   const pieChartData = useMemo<PieChartData>(() => {

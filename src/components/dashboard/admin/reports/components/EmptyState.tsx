@@ -4,7 +4,7 @@ import { BarChart3 } from 'lucide-react';
 
 interface EmptyStateProps {
   onRefresh: () => void;
-  onModuleSelect: () => void;
+  onModuleSelect: () => void; // Required
 }
 
 export const EmptyState = ({

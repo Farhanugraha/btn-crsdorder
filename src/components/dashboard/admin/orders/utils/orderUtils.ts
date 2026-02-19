@@ -191,11 +191,6 @@ export const filterOrdersByRestaurant = (orders: Order[], restaurantId: string):
 
 // ============= FIXED STATISTICS FUNCTIONS =============
 
-/**
- * ✅ FIXED: Hitung TOTAL PENDAPATAN - HANYA berdasarkan filter tanggal dan CRSD
- * ✅ TIDAK terpengaruh oleh filter status!
- * Untuk menampilkan total pendapatan hari ini/kemarin/minggu ini/semua waktu
- */
 export const calculateRevenueByDateFilter = (
   orders: Order[],
   dateFilter: DateFilterType,
@@ -216,10 +211,6 @@ export const calculateRevenueByDateFilter = (
   return { totalOrders, totalRevenue };
 };
 
-/**
- * ✅ FIXED: Hitung JUMLAH PESANAN - Berdasarkan filter status, tanggal, dan CRSD
- * Untuk menampilkan jumlah pesanan dengan status tertentu
- */
 export const calculateOrderCountByStatusFilter = (
   orders: Order[],
   statusFilter: OrderStatusFilter,
@@ -244,9 +235,6 @@ export const calculateOrderCountByStatusFilter = (
   return { totalOrders, totalRevenue };
 };
 
-/**
- * ✅ BACKWARD COMPATIBILITY: Fungsi lama, tapi akan deprecated
- */
 export const calculateFilteredStats = (
   orders: Order[],
   statusFilter: OrderStatusFilter,

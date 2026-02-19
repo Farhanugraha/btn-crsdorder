@@ -78,7 +78,7 @@ export const useAdminDashboard = () => {
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {
-        // ✅ Langsung set loading false setelah semua selesai
+
         setIsLoading(false);
       }
     };

@@ -67,6 +67,8 @@ export interface ModuleColors {
 }
 
 export interface UserData {
+  id?: string; 
+  email?: string; 
   data_access: string[];
   role: string;
   divisi: string | null;
@@ -77,4 +79,19 @@ export interface UserData {
 export interface AvailableDate {
   date: string;
   has_data: boolean;
+}
+
+export interface ExtendedUserData extends UserData {
+  id: string; // Required id untuk internal tracking
+  email?: string;
+}
+
+// Cache item type
+export interface CacheItem {
+  dashboardData: DashboardData | null;
+  reportsData: ReportsData | null;
+  ordersDetailData: OrdersDetailData | undefined;
+  timestamp: number;
+  userAccess: string[];
+  userId: string;
 }

@@ -33,7 +33,7 @@ export const useDashboardOrders = () => {
   const [page, setPage] = useState(1);
   const [expandedOrder, setExpandedOrder] = useState<number | null>(null);
   const [userRole, setUserRole] = useState<string>('');
-  const [userDivisi, setUserDivisi] = useState<string>(''); // ✅ TAMBAHKAN: user divisi
+  const [userDivisi, setUserDivisi] = useState<string>('');
 
   // ============= API CALLS =============
   const fetchOrders = useCallback(async () => {
@@ -48,7 +48,6 @@ export const useDashboardOrders = () => {
         return;
       }
 
-      // ✅ Ambil userRole dan userDivisi dari localStorage
       let role = userRole;
       let divisi = userDivisi;
       
@@ -78,7 +77,6 @@ export const useDashboardOrders = () => {
         }
       }
 
-      // ✅ Tentukan endpoint berdasarkan role DAN divisi
       let endpoint;
       
       if (role === 'superadmin') {
@@ -94,13 +92,11 @@ export const useDashboardOrders = () => {
         // Admin biasa - filter berdasarkan divisi mereka
         if (divisi === 'CRSD 1' || divisi === 'crsd1') {
           endpoint = `${process.env.NEXT_PUBLIC_API_URL}/api/admin/crsd1/orders`;
-          // ✅ Paksa crsdFilter ke 'crsd1' untuk admin CRSD 1
           if (crsdFilter !== 'crsd1') {
             setCrsdFilter('crsd1');
           }
         } else if (divisi === 'CRSD 2' || divisi === 'crsd2') {
           endpoint = `${process.env.NEXT_PUBLIC_API_URL}/api/admin/crsd2/orders`;
-          // ✅ Paksa crsdFilter ke 'crsd2' untuk admin CRSD 2
           if (crsdFilter !== 'crsd2') {
             setCrsdFilter('crsd2');
           }
@@ -155,7 +151,7 @@ export const useDashboardOrders = () => {
       setLoading(false);
       setIsRefreshing(false);
     }
-  }, [userRole, userDivisi, crsdFilter]); // ✅ Tambahkan userDivisi sebagai dependency
+  }, [userRole, userDivisi, crsdFilter]); 
 
   const fetchUserInfo = useCallback(() => {
     try {
@@ -185,8 +181,7 @@ export const useDashboardOrders = () => {
   // ============= INITIAL LOAD =============
   useEffect(() => {
     const { role, divisi } = fetchUserInfo();
-    
-    // ✅ Set initial crsdFilter berdasarkan divisi
+  
     if (role !== 'superadmin') {
       if (divisi === 'CRSD 1' || divisi === 'crsd1') {
         setCrsdFilter('crsd1');
@@ -287,7 +282,6 @@ const getOrderCountByRestaurant = useCallback((restaurantId: number) => {
     setRestaurantFilter('all');
     setDateFilter('today');
     
-    // ✅ Reset CRSD filter berdasarkan divisi
     if (userRole === 'superadmin') {
       setCrsdFilter('all');
     } else if (userDivisi === 'CRSD 1' || userDivisi === 'crsd1') {
@@ -314,7 +308,6 @@ const getOrderCountByRestaurant = useCallback((restaurantId: number) => {
   }, []);
 
   const handleCrsdChange = useCallback((value: CrsdFilterType) => {
-    // ✅ Hanya superadmin yang bisa mengubah CRSD filter
     if (userRole === 'superadmin') {
       setCrsdFilter(value);
       setPage(1);
@@ -366,7 +359,7 @@ const getOrderCountByRestaurant = useCallback((restaurantId: number) => {
   const isSuperAdmin = userRole === 'superadmin';
   const isAdmin = userRole === 'admin' || userRole === 'superadmin';
   
-  // ✅ TAMBAHKAN: Cek apakah user adalah admin CRSD 1 atau CRSD 2
+
   const isCrsd1Admin = userDivisi === 'CRSD 1' || userDivisi === 'crsd1';
   const isCrsd2Admin = userDivisi === 'CRSD 2' || userDivisi === 'crsd2';
   const isCrsdAdmin = isCrsd1Admin || isCrsd2Admin;
@@ -402,14 +395,14 @@ const getOrderCountByRestaurant = useCallback((restaurantId: number) => {
     pages,
     expandedOrder,
     userRole,
-    userDivisi, // ✅ EXPORT userDivisi
+    userDivisi, 
     hasActiveFilters,
     dateDisplayText,
     isSuperAdmin,
     isAdmin,
-    isCrsd1Admin, // ✅ EXPORT isCrsd1Admin
-    isCrsd2Admin, // ✅ EXPORT isCrsd2Admin
-    isCrsdAdmin,  // ✅ EXPORT isCrsdAdmin
+    isCrsd1Admin, 
+    isCrsd2Admin, 
+    isCrsdAdmin,  
     
     // Count functions
     getProcessingOrderCountByStatus,

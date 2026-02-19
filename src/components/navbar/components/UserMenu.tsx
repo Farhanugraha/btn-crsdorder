@@ -28,7 +28,7 @@ interface UserMenuProps {
   isSuperAdmin: boolean;
   getAdminReportsLink: () => string;
   onLogoutClick: () => void;
-  getRoleColor: (role: string) => string; // ✅ Tambahkan ini
+  getRoleColor: (role: string) => string;
 }
 
 export const UserMenu = ({
@@ -37,7 +37,7 @@ export const UserMenu = ({
   isSuperAdmin,
   getAdminReportsLink,
   onLogoutClick,
-  getRoleColor // ✅ Tambahkan ini
+  getRoleColor
 }: UserMenuProps) => {
   return (
     <DropdownMenu>

@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import { motion } from 'framer-motion';
-import homePic from '@public/mainpage.png'; // ✅ Pakai alias @public
+import homePic from '@public/mainpage.png';
 import { Coffee, Zap } from 'lucide-react';
 import {
   pulseAnimation,
@@ -33,7 +33,7 @@ export const HeroImage = () => {
             width={500}
             height={500}
             className="h-auto w-full object-cover"
-            placeholder="blur" // ✅ Bisa pakai blur karena import
+            placeholder="blur"
             priority
           />
           <motion.div

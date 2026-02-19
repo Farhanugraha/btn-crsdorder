@@ -16,7 +16,7 @@ export interface User {
 export interface NavigationItem {
   href: string;
   label: string;
-  icon: string;  // ✅ Simpan sebagai string nama icon
+  icon: string; 
   roles?: ('superadmin' | 'admin' | 'user' | 'guest')[];
   condition?: (user: User | null) => boolean;
 }

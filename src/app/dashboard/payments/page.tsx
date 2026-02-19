@@ -79,8 +79,6 @@ export default function PaymentsPage() {
             onDateRangeChange={handleDateRangeChange}
             onTodayFilter={handleTodayFilter}
           />
-
-          {/* ✅ STATISTIK DINAMIS - Berdasarkan filter periode */}
           <PaymentsStats
             stats={stats}
             dateDisplayText={dateDisplayText}

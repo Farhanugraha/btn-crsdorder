@@ -34,7 +34,6 @@ export type DateFilter = 'all' | 'today' | 'yesterday' | 'week' | 'month';
 export type StatusTab = 'all' | 'pending' | 'paid' | 'canceled';
 export type StatsPeriod = 'today' | 'month' | 'year' | 'all';
 
-// ✅ Rename dari OrderFilter ke OrderFilterType
 export interface OrderFilterType {
   searchQuery: string;
   sortBy: SortBy;

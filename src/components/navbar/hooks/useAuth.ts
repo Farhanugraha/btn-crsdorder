@@ -99,7 +99,6 @@ export const useAuth = () => {
     }
   };
 
-  // ✅ FIX: Selalu return boolean, tidak pernah null
   const isAdmin = user ? (user.role === 'admin' || user.role === 'superadmin') : false;
   const isSuperAdmin = user ? user.role === 'superadmin' : false;
 

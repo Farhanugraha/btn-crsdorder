@@ -23,7 +23,6 @@ export const PaymentsStats = ({
 }: PaymentsStatsProps) => {
   return (
     <div className="mb-6 grid grid-cols-2 gap-3 lg:mb-8 lg:grid-cols-4 lg:gap-6">
-      {/* ✅ Total Pembayaran - MENGIKUTI FILTER PERIODE */}
       <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-800 lg:p-5">
         <div className="flex items-center justify-between">
           <div>
@@ -43,7 +42,6 @@ export const PaymentsStats = ({
         </div>
       </div>
 
-      {/* ✅ Selesai - MENGIKUTI FILTER PERIODE */}
       <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-800 lg:p-5">
         <div className="flex items-center justify-between">
           <div>
@@ -63,7 +61,6 @@ export const PaymentsStats = ({
         </div>
       </div>
 
-      {/* ✅ Total Pendapatan - MENGIKUTI FILTER PERIODE */}
       <div className="rounded-xl border border-gray-200 bg-gradient-to-br from-blue-50 to-blue-100 p-3 shadow-sm dark:border-gray-700 dark:from-blue-900/20 dark:to-blue-800/20 lg:p-5">
         <div className="flex items-center justify-between">
           <div>
@@ -83,7 +80,6 @@ export const PaymentsStats = ({
         </div>
       </div>
 
-      {/* ✅ Pendapatan Hari Ini - TETAP (untuk perbandingan) */}
       <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-800 lg:p-5">
         <div className="flex items-center justify-between">
           <div>
