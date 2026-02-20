@@ -27,6 +27,17 @@ interface UserWithId extends UserData {
   id: string;
 }
 
+// Cache untuk menyimpan data per module dan filter
+interface ModuleDataCache {
+  [key: string]: {
+    dashboardData: DashboardData | null;
+    reportsData: ReportsData | null;
+    ordersDetailData: OrdersDetailData | undefined;
+    availableDates: AvailableDate[];
+    timestamp: number;
+  }
+}
+
 export const useReports = () => {
   const router = useRouter();
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
@@ -60,91 +71,100 @@ export const useReports = () => {
 
   const [activeFilterStartDate, setActiveFilterStartDate] = useState<string>(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem(STORAGE_KEYS.ACTIVE_FILTER_START) || '';
+      return localStorage.getItem(STORAGE_KEYS.ACTIVE_FILTER_START) || getMonthAgoDate();
     }
-    return '';
+    return getMonthAgoDate();
   });
   
   const [activeFilterEndDate, setActiveFilterEndDate] = useState<string>(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem(STORAGE_KEYS.ACTIVE_FILTER_END) || '';
+      return localStorage.getItem(STORAGE_KEYS.ACTIVE_FILTER_END) || getTodayDate();
     }
-    return '';
+    return getTodayDate();
   });
 
   // Refs
   const isFetchingRef = useRef(false);
   const initialLoadDoneRef = useRef(false);
   const currentUserIdRef = useRef<string | null>(null);
+  
+  // Cache data per module dan filter
+  const moduleCacheRef = useRef<ModuleDataCache>({});
 
   // ============= LOCALSTORAGE =============
   useEffect(() => {
     if (activeFilterStartDate) {
       localStorage.setItem(STORAGE_KEYS.ACTIVE_FILTER_START, activeFilterStartDate);
-    } else {
-      localStorage.removeItem(STORAGE_KEYS.ACTIVE_FILTER_START);
     }
   }, [activeFilterStartDate]);
 
   useEffect(() => {
     if (activeFilterEndDate) {
       localStorage.setItem(STORAGE_KEYS.ACTIVE_FILTER_END, activeFilterEndDate);
-    } else {
-      localStorage.removeItem(STORAGE_KEYS.ACTIVE_FILTER_END);
     }
   }, [activeFilterEndDate]);
 
   // ============= AUTH =============
   const getAuthToken = useCallback((): string | null => {
     if (typeof window === 'undefined') return null;
-    const token = localStorage.getItem('auth_token');
+    return localStorage.getItem('auth_token');
+  }, []);
+
+  const checkAuth = useCallback(() => {
+    const token = getAuthToken();
     if (!token) {
       router.push('/auth/login');
-      return null;
+      return false;
     }
-    return token;
-  }, [router]);
+    return true;
+  }, [router, getAuthToken]);
 
+  // ============= GET USER DATA FROM STORAGE =============
   const getUserDataFromStorage = useCallback((): UserWithId | null => {
     if (typeof window === 'undefined') return null;
     
     try {
       const userDataStr = localStorage.getItem('auth_user');
-      if (userDataStr) {
-        const user = JSON.parse(userDataStr);
-        
-        const dataAccess = user.data_access || [];
-        const hasMultiple = dataAccess.filter((a: string) => 
-          ['crsd1', 'crsd2'].includes(a)
-        ).length > 1;
-        
-        let defaultModule = '';
-        if (dataAccess.includes('crsd1') && dataAccess.includes('crsd2')) {
-          defaultModule = 'general';
-        } else if (dataAccess.includes('crsd1')) {
-          defaultModule = 'crsd1';
-        } else if (dataAccess.includes('crsd2')) {
-          defaultModule = 'crsd2';
-        }
-        
-        return {
-          id: user.id || user.email || 'unknown',
-          data_access: dataAccess,
-          role: user.role || '',
-          divisi: user.divisi || null,
-          hasMultipleAccess: hasMultiple,
-          defaultModule
-        };
+      if (!userDataStr) return null;
+      
+      const user = JSON.parse(userDataStr);
+      
+      let dataAccess = user.data_access || [];
+      
+      // PERBAIKAN: Superadmin selalu punya akses ke semua module
+      if (user.role === 'superadmin') {
+        dataAccess = ['crsd1', 'crsd2', 'general'];
       }
+      
+      const hasMultiple = dataAccess.filter((a: string) => 
+        ['crsd1', 'crsd2'].includes(a)
+      ).length > 1;
+      
+      let defaultModule = '';
+      if (dataAccess.includes('crsd1') && dataAccess.includes('crsd2')) {
+        defaultModule = 'general';
+      } else if (dataAccess.includes('crsd1')) {
+        defaultModule = 'crsd1';
+      } else if (dataAccess.includes('crsd2')) {
+        defaultModule = 'crsd2';
+      }
+      
+      return {
+        id: user.id || user.email || 'unknown',
+        data_access: dataAccess,
+        role: user.role || '',
+        divisi: user.divisi || null,
+        hasMultipleAccess: hasMultiple,
+        defaultModule
+      };
     } catch (err) {
       console.error('Error parsing user data:', err);
+      return null;
     }
-    return null;
   }, []);
 
   // ============= RESET =============
   const resetAllData = useCallback(() => {
-    console.log('🔄 Resetting all data');
     setDashboardData(null);
     setReportsData(null);
     setOrdersDetailData(undefined);
@@ -153,6 +173,7 @@ export const useReports = () => {
     setShowModuleSelection(false);
     setError(null);
     setSuccessMessage(null);
+    moduleCacheRef.current = {};
     initialLoadDoneRef.current = false;
   }, []);
 
@@ -163,7 +184,6 @@ export const useReports = () => {
       if (!user) return;
       
       if (currentUserIdRef.current && currentUserIdRef.current !== user.id) {
-        console.log('🚨 User changed');
         resetAllData();
         window.location.reload();
       }
@@ -180,16 +200,23 @@ export const useReports = () => {
   }, [getUserDataFromStorage, resetAllData]);
 
   // ============= DATA TRANSFORM =============
-  const transformDashboardData = useCallback((data: any): DashboardData => ({
-    orders: { total: data.orders?.total || 0 },
-    payments: { total_revenue: data.payments?.total_revenue || 0 }
-  }), []);
+  const transformDashboardData = useCallback((data: any): DashboardData => {
+    const ordersTotal = typeof data?.orders?.total === 'number' ? data.orders.total : 0;
+    const paymentsRevenue = typeof data?.payments?.total_revenue === 'number' ? data.payments.total_revenue : 0;
+    
+    return {
+      orders: { total: ordersTotal },
+      payments: { total_revenue: paymentsRevenue }
+    };
+  }, []);
 
-  const transformReportsData = useCallback((data: any): ReportsData => ({
-    total_orders: data.total_orders || 0,
-    orders_by_status: data.orders_by_status || [],
-    payment_summary: data.payment_summary || []
-  }), []);
+  const transformReportsData = useCallback((data: any): ReportsData => {
+    return {
+      total_orders: data.total_orders || 0,
+      orders_by_status: data.orders_by_status || [],
+      payment_summary: data.payment_summary || []
+    };
+  }, []);
 
   const mapToOrdersDetailData = useCallback((apiData: any, activeStart: string, activeEnd: string): OrdersDetailData | undefined => {
     try {
@@ -204,7 +231,6 @@ export const useReports = () => {
         date: day.date,
         has_data: day.total_orders > 0
       }));
-      setAvailableDates(dates);
 
       const mappedOrdersByDate: OrderByDate[] = ordersByDate.map((day: any) => ({
         date: day.date,
@@ -255,10 +281,52 @@ export const useReports = () => {
     return url.toString();
   }, []);
 
+  // ============= CACHE KEY =============
+  const getCacheKey = useCallback((module: string, start: string, end: string) => {
+    return `${module}_${start}_${end}`;
+  }, []);
+
+  const getCachedData = useCallback((module: string, start: string, end: string) => {
+    const cacheKey = getCacheKey(module, start, end);
+    const cache = moduleCacheRef.current[cacheKey];
+    if (!cache) return null;
+    
+    const CACHE_DURATION = 2 * 60 * 1000; // 2 menit
+    if (Date.now() - cache.timestamp > CACHE_DURATION) {
+      delete moduleCacheRef.current[cacheKey];
+      return null;
+    }
+    
+    return cache;
+  }, [getCacheKey]);
+
+  const setCachedData = useCallback((
+    module: string,
+    start: string,
+    end: string,
+    data: {
+      dashboardData: DashboardData | null;
+      reportsData: ReportsData | null;
+      ordersDetailData: OrdersDetailData | undefined;
+      availableDates: AvailableDate[];
+    }
+  ) => {
+    const cacheKey = getCacheKey(module, start, end);
+    moduleCacheRef.current[cacheKey] = {
+      ...data,
+      timestamp: Date.now()
+    };
+  }, [getCacheKey]);
+
   // ============= FETCH FUNCTIONS =============
-  const fetchDashboard = useCallback(async (token: string, module?: string): Promise<DashboardData | null> => {
+  // ✅ PERBAIKAN: Dashboard sekarang menggunakan filter tanggal
+  const fetchDashboard = useCallback(async (token: string, start: string, end: string, module?: string): Promise<DashboardData | null> => {
     try {
       const params: Record<string, string> = {};
+      
+      // Tambahkan filter tanggal ke dashboard
+      if (start) params.start_date = start;
+      if (end) params.end_date = end;
       if (module && module !== 'general') params.crsd_type = module;
       
       const response = await fetch(buildUrl(`${apiUrl}/api/admin/dashboard`, params), {
@@ -275,27 +343,20 @@ export const useReports = () => {
         return null;
       }
 
-      if (response.status === 403) {
-        console.error('Forbidden access to dashboard');
-        return null;
-      }
+      if (!response.ok) return null;
 
-      if (response.ok) {
-        const data = await response.json();
-        return data.success ? transformDashboardData(data.data) : null;
-      }
-      return null;
+      const data = await response.json();
+      return data.success ? transformDashboardData(data.data) : null;
     } catch (err) {
-      console.error('Dashboard fetch error:', err);
       return null;
     }
   }, [apiUrl, router, transformDashboardData, buildUrl]);
 
-  const fetchReports = useCallback(async (token: string, module?: string): Promise<ReportsData | null> => {
+  const fetchReports = useCallback(async (token: string, start: string, end: string, module?: string): Promise<ReportsData | null> => {
     try {
       const params: Record<string, string> = {};
-      if (activeFilterStartDate) params.start_date = activeFilterStartDate;
-      if (activeFilterEndDate) params.end_date = activeFilterEndDate;
+      if (start) params.start_date = start;
+      if (end) params.end_date = end;
       if (module && module !== 'general') params.crsd_type = module;
       
       const response = await fetch(buildUrl(`${apiUrl}/api/admin/reports`, params), {
@@ -307,21 +368,14 @@ export const useReports = () => {
         cache: 'no-cache'
       });
 
-      if (response.status === 403) {
-        console.error('Forbidden access to reports');
-        return null;
-      }
+      if (!response.ok) return null;
 
-      if (response.ok) {
-        const data = await response.json();
-        return data.success ? transformReportsData(data.data) : null;
-      }
-      return null;
+      const data = await response.json();
+      return data.success ? transformReportsData(data.data) : null;
     } catch (err) {
-      console.error('Reports fetch error:', err);
       return null;
     }
-  }, [apiUrl, activeFilterStartDate, activeFilterEndDate, transformReportsData, buildUrl]);
+  }, [apiUrl, transformReportsData, buildUrl]);
 
   const fetchOrdersDetail = useCallback(async (token: string, start: string, end: string, module?: string): Promise<OrdersDetailData | undefined> => {
     try {
@@ -340,47 +394,61 @@ export const useReports = () => {
         cache: 'no-cache'
       });
 
-      if (response.status === 403) {
-        console.error('Forbidden access to orders detail');
-        return undefined;
-      }
+      if (!response.ok) return undefined;
 
-      if (response.status === 404) {
-        console.log('No orders detail found');
-        return undefined;
-      }
-
-      if (response.ok) {
-        const data = await response.json();
-        return data.success ? mapToOrdersDetailData(data.data, start, end) : undefined;
-      }
-      return undefined;
+      const data = await response.json();
+      return data.success ? mapToOrdersDetailData(data.data, start, end) : undefined;
     } catch (err) {
-      console.error('Orders detail fetch error:', err);
       return undefined;
     }
   }, [apiUrl, mapToOrdersDetailData, buildUrl]);
 
+  // ✅ PERBAIKAN: FetchModuleData sekarang konsisten menggunakan filter tanggal
   const fetchModuleData = useCallback(async (token: string, start: string, end: string, module: string) => {
-    console.log(`📊 Fetching data for module: ${module}`);
-    
+    // Cek cache dengan filter tanggal
+    const cached = getCachedData(module, start, end);
+    if (cached) {
+      setDashboardData(cached.dashboardData);
+      setReportsData(cached.reportsData);
+      setOrdersDetailData(cached.ordersDetailData);
+      setAvailableDates(cached.availableDates);
+      return;
+    }
+
     setDashboardData(null);
     setReportsData(null);
     setOrdersDetailData(undefined);
     setAvailableDates([]);
     
+    // ✅ PERBAIKAN: Semua fetch menggunakan parameter start dan end yang sama
     const [dashboardResult, reportsResult, ordersDetailResult] = await Promise.all([
-      fetchDashboard(token, module),
-      fetchReports(token, module),
+      fetchDashboard(token, start, end, module),
+      fetchReports(token, start, end, module),
       fetchOrdersDetail(token, start, end, module)
     ]);
+
+    // Set available dates dari ordersDetail jika ada
+    let newAvailableDates: AvailableDate[] = [];
+    if (ordersDetailResult?.orders_by_date) {
+      newAvailableDates = ordersDetailResult.orders_by_date.map(day => ({
+        date: day.date,
+        has_data: day.total_orders > 0
+      }));
+    }
 
     setDashboardData(dashboardResult);
     setReportsData(reportsResult);
     setOrdersDetailData(ordersDetailResult);
-    
-    console.log('✅ Data fetched successfully');
-  }, [fetchDashboard, fetchReports, fetchOrdersDetail]);
+    setAvailableDates(newAvailableDates);
+
+    // Simpan ke cache dengan filter tanggal
+    setCachedData(module, start, end, {
+      dashboardData: dashboardResult,
+      reportsData: reportsResult,
+      ordersDetailData: ordersDetailResult,
+      availableDates: newAvailableDates
+    });
+  }, [fetchDashboard, fetchReports, fetchOrdersDetail, getCachedData, setCachedData]);
 
   // ============= MAIN FETCH =============
   const fetchAllData = useCallback(async (start: string, end: string, module?: string, force = false) => {
@@ -390,6 +458,8 @@ export const useReports = () => {
       isFetchingRef.current = true;
       setIsLoading(true);
       setError(null);
+
+      if (!checkAuth()) return;
 
       const token = getAuthToken();
       if (!token || !apiUrl) {
@@ -412,15 +482,16 @@ export const useReports = () => {
 
       const moduleToUse = module || selectedModule;
 
-      // All Admin - No module selected
-      if (!moduleToUse && user.hasMultipleAccess) {
+      const isSuperadmin = user.role === 'superadmin';
+      const needsModuleSelection = (isSuperadmin || user.hasMultipleAccess) && !moduleToUse;
+
+      if (needsModuleSelection) {
         setShowModuleSelection(true);
         setIsLoading(false);
         return;
       }
 
-      // Single Access - Use default module
-      if (!moduleToUse && !user.hasMultipleAccess) {
+      if (!moduleToUse && !user.hasMultipleAccess && !isSuperadmin) {
         const defaultModule = user.data_access.includes('crsd1') ? 'crsd1' : 
                              user.data_access.includes('crsd2') ? 'crsd2' : '';
         if (defaultModule) {
@@ -430,15 +501,14 @@ export const useReports = () => {
         return;
       }
 
-      // Validate module
-      if (moduleToUse && moduleToUse !== 'general' && !user.data_access.includes(moduleToUse)) {
+      // Validasi akses
+      if (moduleToUse && moduleToUse !== 'general' && !isSuperadmin && !user.data_access.includes(moduleToUse)) {
         setError('Anda tidak memiliki akses ke modul ini');
         setSelectedModule('');
         if (user.hasMultipleAccess) setShowModuleSelection(true);
         return;
       }
 
-      // Fetch data
       if (moduleToUse) {
         await fetchModuleData(token, start, end, moduleToUse);
         setShowModuleSelection(false);
@@ -450,85 +520,86 @@ export const useReports = () => {
       setIsLoading(false);
       isFetchingRef.current = false;
     }
-  }, [apiUrl, getAuthToken, selectedModule, fetchModuleData, getUserDataFromStorage]);
+  }, [apiUrl, selectedModule, fetchModuleData, getUserDataFromStorage, checkAuth, getAuthToken]);
 
-// ============= INITIAL LOAD =============
-useEffect(() => {
-  if (initialLoadDoneRef.current) return;
+  // ============= INITIAL LOAD =============
+  useEffect(() => {
+    if (initialLoadDoneRef.current) return;
 
-  const initialize = async () => {
-    // SCROLL TO TOP - TAMBAHKAN INI
-    if (typeof window !== 'undefined') {
-      window.scrollTo({
-        top: 0,
-        left: 0,
-        behavior: 'instant' // instant agar langsung
-      });
-    }
+    const initialize = async () => {
+      if (typeof window !== 'undefined') {
+        window.scrollTo(0, 0);
+      }
 
-    const token = getAuthToken();
-    if (!token || !apiUrl) {
-      setError('Konfigurasi tidak lengkap');
-      setIsLoading(false);
-      return;
-    }
+      if (!checkAuth()) return;
 
-    const user = getUserDataFromStorage();
-    if (!user) {
-      setError('Data user tidak ditemukan');
-      setIsLoading(false);
-      return;
-    }
+      const token = getAuthToken();
+      if (!token || !apiUrl) {
+        setError('Konfigurasi tidak lengkap');
+        setIsLoading(false);
+        return;
+      }
 
-    currentUserIdRef.current = user.id;
-    setUserData(user);
-    setAvailableModules(user.data_access);
-    setSelectedModule('');
+      const user = getUserDataFromStorage();
+      if (!user) {
+        setError('Data user tidak ditemukan');
+        setIsLoading(false);
+        return;
+      }
 
-    const monthAgo = getMonthAgoDate();
-    const today = getTodayDate();
+      currentUserIdRef.current = user.id;
+      setUserData(user);
+      setAvailableModules(user.data_access);
+      setSelectedModule('');
 
-    if (!activeFilterStartDate) {
-      setActiveFilterStartDate(monthAgo);
-      setStartDate(monthAgo);
-    } else {
-      setStartDate(activeFilterStartDate);
-    }
+      const monthAgo = getMonthAgoDate();
+      const today = getTodayDate();
 
-    if (!activeFilterEndDate) {
-      setActiveFilterEndDate(today);
-      setEndDate(today);
-    } else {
-      setEndDate(activeFilterEndDate);
-    }
+      // Set start date jika belum ada
+      if (!activeFilterStartDate) {
+        setActiveFilterStartDate(monthAgo);
+        setStartDate(monthAgo);
+      } else {
+        setStartDate(activeFilterStartDate);
+      }
 
-    // All Admin - Show module selection
-    if (user.hasMultipleAccess) {
-      setShowModuleSelection(true);
-      setIsLoading(false);
+      // Set end date jika belum ada
+      if (!activeFilterEndDate) {
+        setActiveFilterEndDate(today);
+        setEndDate(today);
+      } else {
+        setEndDate(activeFilterEndDate);
+      }
+
+      // Superadmin atau multiple access -> show module selection
+      if (user.role === 'superadmin' || user.hasMultipleAccess) {
+        setShowModuleSelection(true);
+        setIsLoading(false);
+        initialLoadDoneRef.current = true;
+        return;
+      }
+
+      // Single access -> auto select module
+      const defaultModule = user.data_access.includes('crsd1') ? 'crsd1' : 
+                           user.data_access.includes('crsd2') ? 'crsd2' : '';
+      
+      if (defaultModule) {
+        setSelectedModule(defaultModule);
+        await fetchAllData(
+          activeFilterStartDate || monthAgo,
+          activeFilterEndDate || today,
+          defaultModule,
+          true
+        );
+      } else {
+        setIsLoading(false);
+      }
+      
       initialLoadDoneRef.current = true;
-      return;
-    }
+    };
 
-    // Single Access - Auto select module
-    const defaultModule = user.data_access.includes('crsd1') ? 'crsd1' : 
-                         user.data_access.includes('crsd2') ? 'crsd2' : '';
-    
-    if (defaultModule) {
-      setSelectedModule(defaultModule);
-      await fetchAllData(
-        activeFilterStartDate || monthAgo,
-        activeFilterEndDate || today,
-        defaultModule,
-        true
-      );
-    }
-    
-    initialLoadDoneRef.current = true;
-  };
-
-  initialize();
-}, []);
+    initialize();
+  }, []);
 
   // ============= HANDLERS =============
   const handleModuleSelect = useCallback(async (module: string) => {
@@ -536,13 +607,20 @@ useEffect(() => {
     setError(null);
     
     const user = getUserDataFromStorage();
-    if (user && module !== 'general' && !user.data_access.includes(module)) {
-      setError('Anda tidak memiliki akses ke modul ini');
-      setIsLoading(false);
-      return;
+    
+    if (user && module !== 'general') {
+      const isSuperadmin = user.role === 'superadmin';
+      if (!isSuperadmin && !user.data_access.includes(module)) {
+        setError('Anda tidak memiliki akses ke modul ini');
+        setIsLoading(false);
+        return;
+      }
     }
     
     setSelectedModule(module);
+    setShowModuleSelection(false);
+
+    if (!checkAuth()) return;
 
     const token = getAuthToken();
     if (!token || !apiUrl) {
@@ -564,10 +642,9 @@ useEffect(() => {
         : `Dashboard ${module === 'crsd1' ? 'CRSD 1' : 'CRSD 2'} berhasil dimuat`
     );
     setTimeout(() => setSuccessMessage(null), 3000);
-  }, [apiUrl, getAuthToken, activeFilterStartDate, activeFilterEndDate, startDate, endDate, fetchAllData, getUserDataFromStorage]);
+  }, [apiUrl, activeFilterStartDate, activeFilterEndDate, startDate, endDate, fetchAllData, getUserDataFromStorage, checkAuth, getAuthToken]);
 
   const handleChangeModule = useCallback(() => {
-    console.log('🔄 Changing module');
     setSelectedModule('');
     setShowModuleSelection(true);
     setDashboardData(null);
@@ -591,6 +668,17 @@ useEffect(() => {
 
     setActiveFilterStartDate(startDate);
     setActiveFilterEndDate(endDate);
+    
+    // Clear cache untuk module saat ini dengan filter lama
+    if (selectedModule) {
+      const prefix = selectedModule;
+      Object.keys(moduleCacheRef.current).forEach(key => {
+        if (key.startsWith(prefix)) {
+          delete moduleCacheRef.current[key];
+        }
+      });
+    }
+    
     fetchAllData(startDate, endDate, selectedModule, true);
   }, [startDate, endDate, selectedModule, fetchAllData]);
 
@@ -631,6 +719,15 @@ useEffect(() => {
   }, [ordersDetailData, exportFormat]);
 
   const handleRefresh = useCallback(() => {
+    // Clear cache untuk module saat ini
+    if (selectedModule) {
+      const prefix = selectedModule;
+      Object.keys(moduleCacheRef.current).forEach(key => {
+        if (key.startsWith(prefix)) {
+          delete moduleCacheRef.current[key];
+        }
+      });
+    }
     fetchAllData(activeFilterStartDate, activeFilterEndDate, selectedModule, true);
   }, [activeFilterStartDate, activeFilterEndDate, selectedModule, fetchAllData]);
 
@@ -664,7 +761,7 @@ useEffect(() => {
     setEndDate,
     setExportFormat,
     handleModuleSelect,
-    handleChangeModule,
+    handleChangeModule, 
     handleApplyFilter,
     handleExport,
     handleRefresh,

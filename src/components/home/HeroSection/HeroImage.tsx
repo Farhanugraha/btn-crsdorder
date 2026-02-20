@@ -2,7 +2,6 @@
 
 import Image from 'next/image';
 import { motion } from 'framer-motion';
-import homePic from '@public/mainpage.png';
 import { Coffee, Zap } from 'lucide-react';
 import {
   pulseAnimation,
@@ -28,13 +27,13 @@ export const HeroImage = () => {
         />
         <div className="relative overflow-hidden rounded-2xl shadow-2xl">
           <Image
-            src={homePic}
+            src="/mainpage.png" // Langsung dari public folder
             alt="Fooder - Platform Pemesanan Makanan"
             width={500}
             height={500}
             className="h-auto w-full object-cover"
-            placeholder="blur"
             priority
+            unoptimized // Tambahkan ini untuk sementara
           />
           <motion.div
             animate={floatAnimation}
