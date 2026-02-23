@@ -7,7 +7,7 @@ interface EmptyStateProps {
   description?: string;
   icon?: React.ReactNode;
   onRefresh: () => void;
-  onModuleSelect?: () => void; // Buat optional dengan tanda ?
+  onModuleSelect?: () => void;
 }
 
 export const EmptyState = ({
@@ -42,7 +42,6 @@ export const EmptyState = ({
           Refresh
         </button>
 
-        {/* Tampilkan button hanya jika onModuleSelect tersedia */}
         {onModuleSelect && (
           <button
             onClick={onModuleSelect}

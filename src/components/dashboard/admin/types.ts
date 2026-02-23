@@ -11,7 +11,7 @@ export interface Order {
   user_id: number;
   restaurant_id: number;
   total_price: string;
-  status: string;
+  status: string; 
   order_status: string;
   notes: string | null;
   created_at: string;
@@ -27,10 +27,10 @@ export interface Order {
 export interface DashboardData {
   orders: {
     total: number;
-    pending: number;
+    pending: number; 
     processing: number;
     completed: number;
-    canceled: number;
+    canceled: number; 
     today?: number;
     completedToday?: number;
   };

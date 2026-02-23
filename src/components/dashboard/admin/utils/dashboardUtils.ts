@@ -48,6 +48,7 @@ export const calculateRevenue = (orders: Order[]): { weeklyRevenue: number; last
     const orderDate = new Date(order.created_at);
     const orderAmount = parseFloat(order.total_price);
 
+    // Revenue hanya dari order dengan status = 'paid' (payment completed)
     if (order.status === 'paid') {
       if (orderDate >= startOfWeek && orderDate <= endOfWeek) {
         weeklyRevenue += orderAmount;
@@ -72,7 +73,8 @@ export const getStatusLabel = (status: string): string => {
   const statusMap: Record<string, string> = {
     processing: 'Menunggu Diproses',
     completed: 'Selesai',
-    canceled: 'Dibatalkan'
+    canceled: 'Dibatalkan',
+    pending: 'Menunggu Pembayaran'
   };
   return statusMap[status] || status;
 };
@@ -80,13 +82,13 @@ export const getStatusLabel = (status: string): string => {
 export const filterOrdersByStatus = (orders: Order[], status: string): Order[] => {
   return orders.filter((order) => {
     if (status === 'processing') {
-      return order.status === 'paid' && order.order_status === 'processing';
+      return order.order_status === 'processing';
     } else if (status === 'pending') {
       return order.status === 'pending';
     } else if (status === 'completed') {
-      return order.order_status === 'completed';
+      return order.order_status === 'completed' && order.status === 'paid';
     } else if (status === 'canceled') {
-      return order.order_status === 'canceled';
+      return order.order_status === 'canceled' || order.status === 'canceled';
     }
     return true;
   });
