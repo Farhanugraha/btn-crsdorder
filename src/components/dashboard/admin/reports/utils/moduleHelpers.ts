@@ -1,5 +1,5 @@
 import { MODULE_CONFIG } from './constants';
-import type { ModuleColors } from '../types';
+
 
 export const getModuleDisplayName = (module: string): string => {
   switch (module) {

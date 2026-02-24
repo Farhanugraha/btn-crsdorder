@@ -11,7 +11,8 @@ export interface Order {
   order_id: number;
   order_number: string;
   customer: string;
-  status: string;
+  order_status: string;  // ✅ Ubah dari 'status' ke 'order_status'
+  payment_status: string; // ✅ Tambahkan field baru
   items: OrderItem[];
   total: number;
   created_at: string;
@@ -487,7 +488,8 @@ export const generateOrdersAuditExcel = async (
           'No.',
           'Nomor Pesanan',
           'Pelanggan',
-          'Status',
+          'Status Order', // ✅ Ubah dari 'Status' ke 'Status Order'
+          'Status Payment', // ✅ Tambahkan kolom baru
           'Nama Produk',
           'Qty',
           'Harga Satuan',
@@ -503,7 +505,8 @@ export const generateOrdersAuditExcel = async (
             isFirstItem ? orderIdx + 1 : '',
             isFirstItem ? order.order_number : '',
             isFirstItem ? order.customer : '',
-            isFirstItem ? order.status : '',
+            isFirstItem ? order.order_status : '', // ✅ Gunakan order_status
+            isFirstItem ? order.payment_status : '', // ✅ Gunakan payment_status
             item.name,
             item.quantity,
             item.price,
@@ -513,6 +516,7 @@ export const generateOrdersAuditExcel = async (
         });
 
         dayDetailData.push([
+          '',
           '',
           '',
           '',
@@ -533,6 +537,7 @@ export const generateOrdersAuditExcel = async (
         '',
         '',
         '',
+        '',
         dayData.daily_total
       ]);
 
@@ -541,7 +546,8 @@ export const generateOrdersAuditExcel = async (
         { wch: 8 },
         { wch: 16 },
         { wch: 18 },
-        { wch: 14 },
+        { wch: 12 }, // Status Order
+        { wch: 12 }, // Status Payment
         { wch: 25 },
         { wch: 8 },
         { wch: 15 },
@@ -579,7 +585,7 @@ export const generateOrdersAuditExcel = async (
       }
 
       // Header row
-      for (let c = 0; c < 8; c++) {
+      for (let c = 0; c < 9; c++) {
         const cellAddress = XLSX.utils.encode_cell({ r: 2, c });
         if (dayDetailSheet[cellAddress]) {
           dayDetailSheet[cellAddress].s = {
@@ -614,14 +620,14 @@ export const generateOrdersAuditExcel = async (
       // Data rows
       let itemCount = 0;
       for (let row = 3; row < dayDetailData.length; row++) {
-        const cellValue = dayDetailData[row][4];
+        const cellValue = dayDetailData[row][5];
         const isTotalPesanan = cellValue === 'TOTAL PESANAN';
         const isTotalHarian =
           dayDetailData[row][0] === 'TOTAL HARIAN';
         const isSpacerRow = dayDetailData[row][0] === '';
 
         if (!isSpacerRow) {
-          for (let col = 0; col < 8; col++) {
+          for (let col = 0; col < 9; col++) {
             const cellAddress = XLSX.utils.encode_cell({
               r: row,
               c: col
@@ -650,10 +656,10 @@ export const generateOrdersAuditExcel = async (
                 fill: { fgColor: { rgb: bgColor } },
                 alignment: {
                   horizontal:
-                    col >= 5 ? ('right' as const) : ('left' as const),
+                    col >= 6 ? ('right' as const) : ('left' as const),
                   vertical: 'center' as const
                 },
-                numFmt: col >= 5 ? '#,##0' : '@',
+                numFmt: col >= 6 ? '#,##0' : '@',
                 border: {
                   top: {
                     style: 'thin' as const,
@@ -698,7 +704,7 @@ export const generateOrdersAuditExcel = async (
 };
 
 /**
- * Generate PDF menggunakan jsPDF dan html2canvas dengan multi-page support
+ * Generate PDF dengan tampilan yang lebih user-friendly
  */
 export const generateOrdersAuditPDF = async (
   data: OrdersDetail
@@ -714,6 +720,7 @@ export const generateOrdersAuditPDF = async (
     container.style.left = '-9999px';
     container.style.width = '210mm';
     container.style.backgroundColor = 'white';
+    container.style.fontFamily = 'Arial, sans-serif';
 
     let htmlContent = `
       <!DOCTYPE html>
@@ -721,181 +728,446 @@ export const generateOrdersAuditPDF = async (
       <head>
         <meta charset="UTF-8">
         <style>
-          * { margin: 0; padding: 0; box-sizing: border-box; }
+          * { 
+            margin: 0; 
+            padding: 0; 
+            box-sizing: border-box; 
+          }
           html, body { 
-            font-family: Arial, sans-serif; 
-            color: #333; 
-            line-height: 1.3;
+            font-family: 'Segoe UI', Arial, sans-serif; 
+            color: #2c3e50; 
+            line-height: 1.5;
             width: 210mm;
             height: auto;
             padding: 0;
             margin: 0;
+            background-color: #ffffff;
           }
-          .page-break { page-break-after: always; margin-bottom: 20px; padding-bottom: 20px; }
-          .container { padding: 15px 20px; width: 100%; }
-          .header { text-align: center; margin-bottom: 15px; }
-          .header h1 { color: #1F3A70; font-size: 16px; margin-bottom: 3px; }
-          .header p { color: #666; font-size: 11px; }
-          .info { font-size: 9px; margin-bottom: 15px; line-height: 1.5; }
-          .info p { margin: 2px 0; }
-          .section-header { background-color: #1F3A70; color: white; padding: 8px; margin: 10px 0 8px 0; font-weight: bold; font-size: 11px; }
-          .day-header { background-color: #366092; color: white; padding: 6px; margin-top: 10px; margin-bottom: 6px; font-weight: bold; font-size: 10px; }
-          .summary-line { font-size: 9px; margin-bottom: 6px; }
-          table { width: 100%; border-collapse: collapse; margin-bottom: 8px; font-size: 8px; }
-          th { background-color: #366092; color: white; padding: 4px 3px; text-align: left; border: 0.5px solid #999; font-weight: bold; }
-          td { padding: 3px; border: 0.5px solid #ddd; }
-          tr:nth-child(even) { background-color: #f9fafb; }
-          .total-row { background-color: #E8EEF7; font-weight: bold; }
-          .daily-total { background-color: #10B981; color: white; font-weight: bold; }
-          .amount { text-align: right; }
-          .qty { text-align: center; }
-          .note { font-size: 8px; color: #666; margin-top: 10px; line-height: 1.4; padding: 8px; background-color: #f3f4f6; }
-          .footer { font-size: 7px; color: #999; text-align: center; margin-top: 10px; }
+          .page-break { 
+            page-break-after: always; 
+            page-break-inside: avoid;
+          }
+          .container { 
+            padding: 15px 20px; 
+            width: 100%; 
+          }
+          
+          /* Header Styles */
+          .header { 
+            text-align: center; 
+            margin-bottom: 20px; 
+            padding-bottom: 10px;
+            border-bottom: 2px solid #3498db;
+          }
+          .header h1 { 
+            color: #2c3e50; 
+            font-size: 20px; 
+            margin-bottom: 5px; 
+            font-weight: 600;
+          }
+          .header .subtitle { 
+            color: #7f8c8d; 
+            font-size: 12px; 
+            font-style: italic;
+          }
+          
+          /* Info Box */
+          .info-box {
+            background-color: #f8f9fa;
+            border-left: 4px solid #3498db;
+            padding: 12px 15px;
+            margin-bottom: 20px;
+            border-radius: 0 4px 4px 0;
+            font-size: 11px;
+          }
+          .info-box p {
+            margin: 4px 0;
+            color: #34495e;
+          }
+          .info-box strong {
+            color: #2c3e50;
+            min-width: 100px;
+            display: inline-block;
+          }
+          
+          /* Section Headers */
+          .section-title { 
+            background: linear-gradient(135deg, #2980b9 0%, #3498db 100%);
+            color: white; 
+            padding: 8px 15px; 
+            margin: 20px 0 15px 0; 
+            font-weight: 600; 
+            font-size: 14px;
+            border-radius: 4px;
+            letter-spacing: 0.5px;
+          }
+          .date-title { 
+            background-color: #ebf5fb; 
+            color: #2c3e50; 
+            padding: 10px 15px; 
+            margin: 15px 0 10px 0; 
+            font-weight: 600; 
+            font-size: 13px;
+            border-left: 4px solid #3498db;
+            border-radius: 0 4px 4px 0;
+          }
+          
+          /* Summary Cards */
+          .summary-cards {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+          }
+          .card {
+            flex: 1;
+            min-width: 120px;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(52, 152, 219, 0.1);
+          }
+          .card-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: #2980b9;
+            margin-top: 5px;
+          }
+          .card-label {
+            font-size: 11px;
+            color: #7f8c8d;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+          
+          /* Table Styles - Prevent cutting */
+          .table-container {
+            margin: 10px 0 20px 0;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(52, 152, 219, 0.15);
+            page-break-inside: avoid;
+          }
+          table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            font-size: 9.5px; 
+            background-color: white;
+            page-break-inside: auto;
+          }
+          tr { 
+            page-break-inside: avoid; 
+            page-break-after: auto;
+          }
+          thead { 
+            display: table-header-group; 
+          }
+          tfoot { 
+            display: table-footer-group; 
+          }
+          th { 
+            background: linear-gradient(135deg, #2980b9 0%, #3498db 100%);
+            color: white; 
+            padding: 10px 6px; 
+            text-align: left; 
+            font-weight: 600;
+            white-space: nowrap;
+          }
+          td { 
+            padding: 8px 6px; 
+            border-bottom: 1px solid #e0e0e0;
+            vertical-align: top;
+            text-align: left;
+          }
+          tr:last-child td {
+            border-bottom: none;
+          }
+          tr:hover {
+            background-color: #f0f7ff;
+          }
+          
+          /* Status Text Colors */
+          .status-text {
+            font-weight: 500;
+            font-size: 9px;
+          }
+          .status-text.completed {
+            color: #1e7e34;
+          }
+          .status-text.processing {
+            color: #b45b0f;
+          }
+          .status-text.pending {
+            color: #b33c3c;
+          }
+          .status-text.canceled {
+            color: #6c757d;
+          }
+          .status-text.paid {
+            color: #0d6efd;
+          }
+          
+          /* Product List */
+          .product-item {
+            padding: 2px 0;
+            border-bottom: 1px dashed #d4e6f1;
+          }
+          .product-item:last-child {
+            border-bottom: none;
+          }
+          .product-name {
+            font-weight: 500;
+            color: #2c3e50;
+          }
+          .product-detail {
+            font-size: 8.5px;
+            color: #7f8c8d;
+            margin-left: 4px;
+          }
+          
+          /* Amount Styles */
+          .amount { 
+            text-align: right; 
+            font-weight: 500;
+            white-space: nowrap;
+          }
+          .qty { 
+            text-align: center; 
+            font-weight: 500;
+          }
+          
+          /* Total Rows */
+          .order-total {
+            background-color: #e8f4fc;
+          }
+          .order-total td {
+            font-weight: 600;
+            color: #2c3e50;
+            border-top: 1px solid #b0d4f0;
+            text-align: left;
+          }
+          .order-total .amount {
+            text-align: right;
+            font-weight: 700;
+            color: #2980b9;
+          }
+          
+          .daily-total {
+            background: linear-gradient(135deg, #2980b9 0%, #3498db 100%);
+            color: white;
+          }
+          .daily-total td {
+            color: white;
+            font-weight: 600;
+            padding: 10px 6px;
+            border: none;
+            text-align: left;
+          }
+          .daily-total .amount {
+            color: white;
+            text-align: right;
+            font-weight: 700;
+          }
+          
+          /* Footer */
+          .footer { 
+            margin-top: 30px; 
+            padding: 15px 20px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            font-size: 9px; 
+            color: #7f8c8d; 
+            text-align: center; 
+            border-top: 1px solid #dee2e6;
+            page-break-inside: avoid;
+          }
+          .footer-note {
+            margin-top: 10px;
+            font-size: 9px;
+            color: #95a5a6;
+          }
+          
+          /* Keep together */
+          .keep-together {
+            page-break-inside: avoid;
+          }
+          
+          /* Spacing */
+          .mt-20 { margin-top: 20px; }
+          .mb-10 { margin-bottom: 10px; }
+          .text-right { text-align: right; }
+          .text-left { text-align: left; }
         </style>
       </head>
       <body>
         <div class="container">
+          <!-- Header -->
           <div class="header">
-            <h1>LAPORAN PESANAN CRSD</h1>
-            <p>(ORDER AUDIT REPORT CRSD)</p>
+            <h1>LAPORAN PESANAN</h1>
+            <div class="subtitle">CRSD Order Report</div>
           </div>
 
-          <div class="info">
-            <p><strong>Periode:</strong> ${
-              data.period.start_date
-            } s/d ${data.period.end_date}</p>
-            <p><strong>Tanggal Export:</strong> ${now.toLocaleDateString(
-              'id-ID'
-            )}</p>
-            <p><strong>Waktu Export:</strong> ${now.toLocaleTimeString(
-              'id-ID'
-            )}</p>
+          <!-- Info Box -->
+          <div class="info-box">
+            <p><strong>Periode:</strong> ${data.period.start_date} s/d ${data.period.end_date}</p>
+            <p><strong>Tanggal Cetak:</strong> ${now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+            <p><strong>Waktu Cetak:</strong> ${now.toLocaleTimeString('id-ID')}</p>
           </div>
 
-          <div class="section-header">RINGKASAN EKSEKUTIF</div>
-          <div class="info">
-            <p>• Total Pesanan: ${data.summary.total_orders} unit</p>
-            <p>• Total Revenue: Rp ${data.summary.total_revenue.toLocaleString(
-              'id-ID'
-            )}</p>
-            <p>• Rata-rata per Pesanan: Rp ${data.summary.average_order_value.toLocaleString(
-              'id-ID'
-            )}</p>
-            <p>• Jumlah Hari: ${data.orders_by_date.length} hari</p>
+          <!-- Summary Cards -->
+          <div class="summary-cards">
+            <div class="card">
+              <div class="card-label">Total Pesanan</div>
+              <div class="card-value">${data.summary.total_orders}</div>
+            </div>
+            <div class="card">
+              <div class="card-label">Total Pendapatan</div>
+              <div class="card-value">Rp ${data.summary.total_revenue.toLocaleString('id-ID')}</div>
+            </div>
+            <div class="card">
+              <div class="card-label">Rata-rata</div>
+              <div class="card-value">Rp ${data.summary.average_order_value.toLocaleString('id-ID')}</div>
+            </div>
+            <div class="card">
+              <div class="card-label">Hari</div>
+              <div class="card-value">${data.orders_by_date.length}</div>
+            </div>
           </div>
-        </div>
     `;
 
-    // Add each day's data with page break logic
-    data.orders_by_date.forEach(
-      (dayData: OrderByDate, dayIndex: number) => {
-        htmlContent += `
-        <div class="page-break">
-          <div class="container">
-            <div class="day-header">DETAIL TANGGAL: ${
-              dayData.date
-            }</div>
-            <div class="summary-line">
-              Total Pesanan: ${
-                dayData.total_orders
-              } | Daily Total: Rp ${dayData.daily_total.toLocaleString(
-                'id-ID'
-              )} | Cumulative: Rp ${dayData.cumulative_total.toLocaleString(
-                'id-ID'
-              )}
-            </div>
+    // Add each day's data
+    data.orders_by_date.forEach((dayData, dayIndex) => {
+      htmlContent += `
+        <div class="keep-together ${dayIndex > 0 ? 'page-break' : ''}">
+          <div class="date-title">
+            📅 ${new Date(dayData.date).toLocaleDateString('id-ID', { 
+              weekday: 'long', 
+              day: 'numeric', 
+              month: 'long', 
+              year: 'numeric' 
+            })}
+            <span style="float: right; font-weight: normal; color: #2980b9;">
+              ${dayData.total_orders} Pesanan | Rp ${dayData.daily_total.toLocaleString('id-ID')}
+            </span>
+          </div>
 
+          <div class="table-container">
             <table>
               <thead>
                 <tr>
-                  <th style="width: 5%;">No.</th>
-                  <th style="width: 14%;">Nomor Pesanan</th>
-                  <th style="width: 14%;">Pelanggan</th>
-                  <th style="width: 11%;">Status</th>
-                  <th style="width: 18%;">Produk</th>
-                  <th style="width: 5%;" class="qty">Qty</th>
-                  <th style="width: 11%;" class="amount">Harga</th>
-                  <th style="width: 11%;" class="amount">Subtotal</th>
+                  <th style="width: 5%;">No</th>
+                  <th style="width: 15%;">No. Pesanan</th>
+                  <th style="width: 12%;">Pelanggan</th>
+                  <th style="width: 10%;">Status</th>
+                  <th style="width: 28%;">Produk</th>
+                  <th style="width: 5%;">Qty</th>
+                  <th style="width: 12%;">Harga</th>
+                  <th style="width: 13%;">Subtotal</th>
                 </tr>
               </thead>
               <tbody>
       `;
 
-        dayData.orders.forEach((order: Order) => {
-          let isFirstItem = true;
-          order.items.forEach((item: OrderItem) => {
-            htmlContent += `
+      dayData.orders.forEach((order, orderIdx) => {
+        // Baris pertama item
+        order.items.forEach((item, itemIdx) => {
+          htmlContent += `
             <tr>
-              <td>${isFirstItem ? order.order_id : ''}</td>
-              <td>${isFirstItem ? order.order_number : ''}</td>
-              <td>${isFirstItem ? order.customer : ''}</td>
-              <td>${isFirstItem ? order.status : ''}</td>
-              <td>${item.name}</td>
-              <td class="qty">${item.quantity}</td>
-              <td class="amount">Rp ${item.price.toLocaleString(
-                'id-ID'
-              )}</td>
-              <td class="amount">Rp ${item.subtotal.toLocaleString(
-                'id-ID'
-              )}</td>
+              <td style="text-align: left;">${itemIdx === 0 ? orderIdx + 1 : ''}</td>
+              <td style="text-align: left;">${itemIdx === 0 ? order.order_number : ''}</td>
+              <td style="text-align: left;">${itemIdx === 0 ? order.customer : ''}</td>
+              <td style="text-align: left;">
+                ${itemIdx === 0 ? `
+                  <span class="status-text completed">Selesai</span>
+                ` : ''}
+              </td>
+              <td style="text-align: left;">
+                <div class="product-item">
+                  <span class="product-name">${item.name}</span>
+                  ${item.quantity > 1 ? `<span class="product-detail">x${item.quantity}</span>` : ''}
+                </div>
+              </td>
+              <td style="text-align: center;">${item.quantity}</td>
+              <td style="text-align: right;">Rp ${item.price.toLocaleString('id-ID')}</td>
+              <td style="text-align: right;">Rp ${item.subtotal.toLocaleString('id-ID')}</td>
             </tr>
           `;
-            isFirstItem = false;
-          });
-
-          htmlContent += `
-          <tr class="total-row">
-            <td colspan="7">TOTAL PESANAN</td>
-            <td class="amount">Rp ${order.total.toLocaleString(
-              'id-ID'
-            )}</td>
-          </tr>
-        `;
         });
 
+        // Total per order
         htmlContent += `
-              <tr class="daily-total">
-                <td>TOTAL HARIAN</td>
-                <td>${dayData.total_orders} Pesanan</td>
-                <td colspan="5"></td>
-                <td class="amount">Rp ${dayData.daily_total.toLocaleString(
-                  'id-ID'
-                )}</td>
+          <tr class="order-total">
+            <td colspan="7" style="text-align: right; padding-right: 20px; font-weight: 600;">
+              Total Pesanan ${order.order_number} :
+            </td>
+            <td class="amount" style="text-align: right; font-weight: 700; color: #2980b9;">
+              Rp ${order.total.toLocaleString('id-ID')}
+            </td>
+          </tr>
+        `;
+      });
+
+      // Daily total
+      htmlContent += `
+          <tr class="daily-total">
+            <td colspan="7" style="text-align: right; font-weight: 600;">
+              TOTAL HARIAN ${new Date(dayData.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })} :
+            </td>
+            <td class="amount" style="text-align: right; font-weight: 700;">
+              Rp ${dayData.daily_total.toLocaleString('id-ID')}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    `;
+
+      // Cumulative if not last day
+      if (dayIndex < data.orders_by_date.length - 1) {
+        htmlContent += `
+          <div style="text-align: right; font-size: 9px; color: #3498db; margin: 5px 0 15px 0;">
+            Kumulatif: Rp ${dayData.cumulative_total.toLocaleString('id-ID')}
+          </div>
+        `;
+      }
+    });
+
+    // Final summary
+    htmlContent += `
+        <div class="keep-together mt-20">
+          <div class="section-title">RINGKASAN AKHIR</div>
+          <div style="background-color: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #3498db;">
+            <table style="width: 100%; font-size: 11px; background-color: transparent;">
+              <tr>
+                <td style="padding: 8px; border: none; text-align: left;"><strong>Periode:</strong> ${data.period.start_date} s/d ${data.period.end_date}</td>
+                <td style="padding: 8px; border: none; text-align: left;"><strong>Jumlah Hari:</strong> ${data.orders_by_date.length}</td>
               </tr>
-              </tbody>
+              <tr>
+                <td style="padding: 8px; border: none; text-align: left;"><strong>Total Pesanan:</strong> ${data.summary.total_orders}</td>
+                <td style="padding: 8px; border: none; text-align: left;"><strong>Total Pendapatan:</strong> Rp ${data.summary.total_revenue.toLocaleString('id-ID')}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px; border: none; text-align: left;"><strong>Rata-rata per Pesanan:</strong> Rp ${data.summary.average_order_value.toLocaleString('id-ID')}</td>
+                <td style="padding: 8px; border: none;"></td>
+              </tr>
             </table>
           </div>
         </div>
-      `;
-      }
-    );
 
-    // Add summary at the end
-    htmlContent += `
-      <div class="container">
-        <div class="section-header">RINGKASAN AKHIR</div>
-        <div class="info">
-          <p><strong>Periode:</strong> ${
-            data.period.start_date
-          } s/d ${data.period.end_date}</p>
-          <p><strong>Jumlah Hari:</strong> ${
-            data.orders_by_date.length
-          } hari</p>
-          <p><strong>Total Pesanan:</strong> ${
-            data.summary.total_orders
-          }</p>
-          <p><strong>Total Revenue:</strong> Rp ${data.summary.total_revenue.toLocaleString(
-            'id-ID'
-          )}</p>
-        </div>
-
-        <div class="note">
-          <p><strong>CATATAN AUDIT:</strong></p>
-          <p>Laporan ini dibuat secara otomatis oleh sistem untuk keperluan audit internal. Silakan verifikasi data dengan sumber data utama sebelum digunakan untuk keperluan resmi.</p>
-        </div>
-
+        <!-- Footer -->
         <div class="footer">
-          Generated by: Audit System | Date: ${now.toISOString()}
+          <div>Laporan ini dibuat secara otomatis oleh sistem</div>
+          <div class="footer-note">
+            Dicetak pada: ${now.toLocaleDateString('id-ID', { 
+              day: 'numeric', 
+              month: 'long', 
+              year: 'numeric', 
+              hour: '2-digit', 
+              minute: '2-digit' 
+            })}
+          </div>
         </div>
       </div>
       </body>
@@ -917,44 +1189,53 @@ export const generateOrdersAuditPDF = async (
     document.body.removeChild(container);
 
     // Create PDF with calculated height
-    const imgWidth = 210; // A4 width in mm
-    const pageHeight = 297; // A4 height in mm
+    const imgWidth = 210;
+    const pageHeight = 297;
     const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    
+    // Calculate total pages needed
     const totalPages = Math.ceil(imgHeight / pageHeight);
-
+    
+    // Create PDF with custom page size if needed
     const pdf = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
-      format: 'a4'
+      format: 'a4',
+      compress: true
     });
 
     const imgData = canvas.toDataURL('image/jpeg', 0.95);
-    let heightLeft = imgHeight;
-    let position = 0;
-
-    // Add first page
-    pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
-    heightLeft -= pageHeight;
-
-    // Add remaining pages if needed
-    while (heightLeft > 0) {
-      position = heightLeft - imgHeight;
-      pdf.addPage();
-      pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
+    
+    // Add pages with proper positioning to avoid cutting
+    for (let i = 0; i < totalPages; i++) {
+      if (i > 0) {
+        pdf.addPage();
+      }
+      
+      const yOffset = -i * pageHeight;
+      
+      pdf.addImage(
+        imgData, 
+        'JPEG', 
+        0, 
+        yOffset, 
+        imgWidth, 
+        imgHeight,
+        undefined,
+        'FAST'
+      );
     }
 
     // Save PDF
-    const filename = `audit-orders-${data.period.start_date}-to-${data.period.end_date}.pdf`;
+    const filename = `laporan-pesanan-${data.period.start_date}-to-${data.period.end_date}.pdf`;
     pdf.save(filename);
 
-    console.log('✅ PDF file generated with multiple pages support');
+    console.log('✅ PDF file generated successfully with proper page breaks');
   } catch (error) {
     console.error('❌ Error generating PDF:', error);
     throw error;
   }
 };
-
 /**
  * Generate TXT
  */
@@ -1048,13 +1329,13 @@ export const generateOrdersAuditTXT = (
     lines.push('');
 
     lines.push(
-      '┌────┬────────────────────┬──────────────────┬──────────────┬─────────────┬──────┬──────────────┬──────────────┐'
+      '┌────┬────────────────────┬──────────────────┬──────────────┬──────────────┬─────────────┬──────┬──────────────┬──────────────┐'
     );
     lines.push(
-      '│ No.│ Nomor Pesanan      │ Pelanggan        │ Status       │ Produk      │ Qty  │ Harga        │ Subtotal     │'
+      '│ No.│ Nomor Pesanan      │ Pelanggan        │ Status Order │ Status Payment│ Produk      │ Qty  │ Harga        │ Subtotal     │'
     );
     lines.push(
-      '├────┼────────────────────┼──────────────────┼──────────────┼─────────────┼──────┼──────────────┼──────────────┤'
+      '├────┼────────────────────┼──────────────────┼──────────────┼──────────────┼─────────────┼──────┼──────────────┼──────────────┤'
     );
 
     dayData.orders.forEach((order, orderIdx) => {
@@ -1070,8 +1351,11 @@ export const generateOrdersAuditTXT = (
         const customer = isFirstItem
           ? order.customer.substring(0, 16).padEnd(16)
           : '                ';
-        const status = isFirstItem
-          ? order.status.padEnd(12)
+        const orderStatus = isFirstItem
+          ? order.order_status.padEnd(12)
+          : '            ';
+        const paymentStatus = isFirstItem
+          ? order.payment_status.padEnd(12)
           : '            ';
         const product = item.name.substring(0, 11).padEnd(11);
         const qty = String(item.quantity).padStart(4);
@@ -1083,21 +1367,21 @@ export const generateOrdersAuditTXT = (
         )}`.padStart(12);
 
         lines.push(
-          `│ ${no}│ ${orderNum} │ ${customer} │ ${status} │ ${product} │${qty} │${price} │${subtotal} │`
+          `│ ${no}│ ${orderNum} │ ${customer} │ ${orderStatus} │ ${paymentStatus} │ ${product} │${qty} │${price} │${subtotal} │`
         );
         isFirstItem = false;
       });
 
       lines.push(
-        '├────┼────────────────────┼──────────────────┼──────────────┼─────────────┼──────┼──────────────┼──────────────┤'
+        '├────┼────────────────────┼──────────────────┼──────────────┼──────────────┼─────────────┼──────┼──────────────┼──────────────┤'
       );
       lines.push(
-        `│    │ TOTAL PESANAN      │                  │              │             │      │              │ Rp ${order.total
+        `│    │ TOTAL PESANAN      │                  │              │              │             │      │              │ Rp ${order.total
           .toLocaleString('id-ID')
           .padStart(10)} │`
       );
       lines.push(
-        '├────┼────────────────────┼──────────────────┼──────────────┼─────────────┼──────┼──────────────┼──────────────┤'
+        '├────┼────────────────────┼──────────────────┼──────────────┼──────────────┼─────────────┼──────┼──────────────┼──────────────┤'
       );
     });
 
@@ -1203,7 +1487,7 @@ export const generateOrdersAuditCSV = (
     lines.push('');
 
     lines.push(
-      'No.,Nomor Pesanan,Pelanggan,Status,Produk,Qty,Harga Satuan,Subtotal,Total Pesanan'
+      'No.,Nomor Pesanan,Pelanggan,Status Order,Status Payment,Produk,Qty,Harga Satuan,Subtotal,Total Pesanan'
     );
 
     dayData.orders.forEach((order, orderIdx) => {
@@ -1212,7 +1496,8 @@ export const generateOrdersAuditCSV = (
           orderIdx + 1,
           order.order_number,
           order.customer,
-          order.status,
+          order.order_status, // ✅ Gunakan order_status
+          order.payment_status, // ✅ Gunakan payment_status
           item.name,
           item.quantity,
           item.price,
@@ -1225,9 +1510,9 @@ export const generateOrdersAuditCSV = (
 
     lines.push('');
     lines.push(
-      `SUBTOTAL HARIAN,${dayData.total_orders},,,,,,,${dayData.daily_total}`
+      `SUBTOTAL HARIAN,${dayData.total_orders},,,,,,,,${dayData.daily_total}`
     );
-    lines.push(`CUMULATIVE,${dayData.cumulative_total},,,,,,,`);
+    lines.push(`CUMULATIVE,${dayData.cumulative_total},,,,,,,,`);
     lines.push('');
     lines.push('---');
     lines.push('');

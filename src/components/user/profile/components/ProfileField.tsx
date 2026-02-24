@@ -30,16 +30,19 @@ export const ProfileField = ({
   type = 'text'
 }: ProfileFieldProps) => {
   return (
-    <div>
+    <div className="mb-4">
       <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
         {label}
       </label>
+
       {isEditing ? (
         <>
           <div className="relative">
             {icon && (
-              <div className="absolute left-3 top-1/2 -translate-y-1/2">
-                {icon}
+              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                <span className="text-gray-400 dark:text-gray-500">
+                  {icon}
+                </span>
               </div>
             )}
             <input
@@ -49,9 +52,9 @@ export const ProfileField = ({
               onChange={onChange}
               placeholder={placeholder}
               disabled={disabled}
-              className={`w-full rounded-lg border border-gray-300 bg-white py-2 ${
+              className={`w-full rounded-lg border border-gray-300 bg-white py-2 text-sm text-gray-900 placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 ${
                 icon ? 'pl-10' : 'px-3'
-              } pr-3 text-sm text-gray-900 placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400`}
+              }`}
             />
           </div>
           {error && error.length > 0 && (
@@ -59,16 +62,14 @@ export const ProfileField = ({
           )}
         </>
       ) : (
-        <div className="rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 dark:border-gray-600 dark:bg-gray-700/50">
-          <div className="flex items-center gap-2">
-            {icon && (
-              <div className="text-gray-400 dark:text-gray-500">
-                {icon}
-              </div>
-            )}
-            <p className="text-sm text-gray-900 dark:text-white">
-              {value}
-            </p>
+        <div className="flex items-center gap-2 rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 dark:border-gray-600 dark:bg-gray-700/50">
+          {icon && (
+            <div className="text-gray-400 dark:text-gray-500">
+              {icon}
+            </div>
+          )}
+          <div className="text-sm text-gray-900 dark:text-white">
+            {value}
           </div>
         </div>
       )}

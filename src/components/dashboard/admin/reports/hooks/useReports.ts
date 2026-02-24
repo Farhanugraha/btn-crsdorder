@@ -20,14 +20,14 @@ import { getTodayDate, getMonthAgoDate } from '../utils/formatters';
 
 const STORAGE_KEYS = {
   ACTIVE_FILTER_START: 'reports_active_start',
-  ACTIVE_FILTER_END: 'reports_active_end'
+  ACTIVE_FILTER_END: 'reports_active_end',
+  SELECTED_MODULE: 'reports_selected_module'
 };
 
 interface UserWithId extends UserData {
   id: string;
 }
 
-// Cache untuk menyimpan data per module dan filter
 interface ModuleDataCache {
   [key: string]: {
     dashboardData: DashboardData | null;
@@ -42,7 +42,6 @@ export const useReports = () => {
   const router = useRouter();
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
-  // ============= STATE =============
   const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -58,7 +57,12 @@ export const useReports = () => {
     defaultModule: ''
   });
   
-  const [selectedModule, setSelectedModule] = useState<string>('');
+  const [selectedModule, setSelectedModule] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem(STORAGE_KEYS.SELECTED_MODULE) || '';
+    }
+    return '';
+  });
   
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [reportsData, setReportsData] = useState<ReportsData | null>(null);
@@ -83,15 +87,12 @@ export const useReports = () => {
     return getTodayDate();
   });
 
-  // Refs
   const isFetchingRef = useRef(false);
   const initialLoadDoneRef = useRef(false);
   const currentUserIdRef = useRef<string | null>(null);
   
-  // Cache data per module dan filter
   const moduleCacheRef = useRef<ModuleDataCache>({});
 
-  // ============= LOCALSTORAGE =============
   useEffect(() => {
     if (activeFilterStartDate) {
       localStorage.setItem(STORAGE_KEYS.ACTIVE_FILTER_START, activeFilterStartDate);
@@ -104,7 +105,14 @@ export const useReports = () => {
     }
   }, [activeFilterEndDate]);
 
-  // ============= AUTH =============
+  useEffect(() => {
+    if (selectedModule) {
+      localStorage.setItem(STORAGE_KEYS.SELECTED_MODULE, selectedModule);
+    } else {
+      localStorage.removeItem(STORAGE_KEYS.SELECTED_MODULE);
+    }
+  }, [selectedModule]);
+
   const getAuthToken = useCallback((): string | null => {
     if (typeof window === 'undefined') return null;
     return localStorage.getItem('auth_token');
@@ -119,7 +127,6 @@ export const useReports = () => {
     return true;
   }, [router, getAuthToken]);
 
-  // ============= GET USER DATA FROM STORAGE =============
   const getUserDataFromStorage = useCallback((): UserWithId | null => {
     if (typeof window === 'undefined') return null;
     
@@ -131,7 +138,6 @@ export const useReports = () => {
       
       let dataAccess = user.data_access || [];
       
-      // PERBAIKAN: Superadmin selalu punya akses ke semua module
       if (user.role === 'superadmin') {
         dataAccess = ['crsd1', 'crsd2', 'general'];
       }
@@ -157,27 +163,21 @@ export const useReports = () => {
         hasMultipleAccess: hasMultiple,
         defaultModule
       };
-    } catch (err) {
-      console.error('Error parsing user data:', err);
+    } catch {
       return null;
     }
   }, []);
 
-  // ============= RESET =============
   const resetAllData = useCallback(() => {
     setDashboardData(null);
     setReportsData(null);
     setOrdersDetailData(undefined);
     setAvailableDates([]);
-    setSelectedModule('');
-    setShowModuleSelection(false);
     setError(null);
     setSuccessMessage(null);
     moduleCacheRef.current = {};
-    initialLoadDoneRef.current = false;
   }, []);
 
-  // ============= USER CHANGE DETECTION =============
   useEffect(() => {
     const checkUserChange = () => {
       const user = getUserDataFromStorage();
@@ -185,6 +185,7 @@ export const useReports = () => {
       
       if (currentUserIdRef.current && currentUserIdRef.current !== user.id) {
         resetAllData();
+        setSelectedModule('');
         window.location.reload();
       }
     };
@@ -199,18 +200,61 @@ export const useReports = () => {
     return () => window.removeEventListener('storage', handleStorageChange);
   }, [getUserDataFromStorage, resetAllData]);
 
-  // ============= DATA TRANSFORM =============
   const transformDashboardData = useCallback((data: any): DashboardData => {
-    const ordersTotal = typeof data?.orders?.total === 'number' ? data.orders.total : 0;
-    const paymentsRevenue = typeof data?.payments?.total_revenue === 'number' ? data.payments.total_revenue : 0;
-    
+    if (!data) {
+      return {
+        orders: {
+          total: 0,
+          pending: 0,
+          processing: 0,
+          completed: 0,
+          canceled: 0,
+          today: 0,
+          completedToday: 0
+        },
+        payments: {
+          total_revenue: 0,
+          pending_payments: 0,
+          today_revenue: 0
+        },
+        users: {
+          total_users: 0,
+          total_admins: 0
+        }
+      };
+    }
+
     return {
-      orders: { total: ordersTotal },
-      payments: { total_revenue: paymentsRevenue }
+      orders: {
+        total: data?.orders?.total || 0,
+        pending: data?.orders?.pending || 0,
+        processing: data?.orders?.processing || 0,
+        completed: data?.orders?.completed || 0,
+        canceled: data?.orders?.canceled || 0,
+        today: data?.orders?.today || 0,
+        completedToday: data?.orders?.completedToday || 0
+      },
+      payments: {
+        total_revenue: data?.payments?.total_revenue || 0,
+        pending_payments: data?.payments?.pending_payments || 0,
+        today_revenue: data?.payments?.today_revenue || 0
+      },
+      users: {
+        total_users: data?.users?.total_users || 0,
+        total_admins: data?.users?.total_admins || 0
+      }
     };
   }, []);
 
   const transformReportsData = useCallback((data: any): ReportsData => {
+    if (!data) {
+      return {
+        total_orders: 0,
+        orders_by_status: [],
+        payment_summary: []
+      };
+    }
+
     return {
       total_orders: data.total_orders || 0,
       orders_by_status: data.orders_by_status || [],
@@ -220,40 +264,44 @@ export const useReports = () => {
 
   const mapToOrdersDetailData = useCallback((apiData: any, activeStart: string, activeEnd: string): OrdersDetailData | undefined => {
     try {
-      if (!apiData?.orders_by_date?.length) return undefined;
+      if (!apiData) {
+        return undefined;
+      }
+      
+      if (!apiData?.orders_by_date?.length) {
+        return undefined;
+      }
       
       const ordersByDate = apiData.orders_by_date;
       
       const totalOrders = ordersByDate.reduce((sum: number, day: any) => sum + (day.total_orders || 0), 0);
       const totalRevenue = ordersByDate.reduce((sum: number, day: any) => sum + (day.daily_total || 0), 0);
       
-      const dates = ordersByDate.map((day: any) => ({
-        date: day.date,
-        has_data: day.total_orders > 0
-      }));
-
-      const mappedOrdersByDate: OrderByDate[] = ordersByDate.map((day: any) => ({
-        date: day.date,
-        total_orders: day.total_orders || 0,
-        daily_total: day.daily_total || 0,
-        cumulative_total: day.cumulative_total || 0,
-        orders: (day.orders || []).map((order: any) => ({
-          order_id: order.id || order.order_id,
-          order_number: order.order_code || order.order_number,
-          customer: order.user?.name || order.customer || '-',
-          status: order.status || '-',
-          created_at: order.created_at,
-          total: order.total_price || order.total || 0,
-          items: (order.items || []).map((item: any) => ({
-            name: item.menu?.name || item.name || '-',
-            quantity: item.quantity || 0,
-            price: parseFloat(item.price) || 0,
-            subtotal: (parseFloat(item.price) || 0) * (item.quantity || 0)
+      const mappedOrdersByDate: OrderByDate[] = ordersByDate.map((day: any) => {
+        return {
+          date: day.date,
+          total_orders: day.total_orders || 0,
+          daily_total: day.daily_total || 0,
+          cumulative_total: day.cumulative_total || 0,
+          orders: (day.orders || []).map((order: any) => ({
+            order_id: order.order_id || order.id,
+            order_number: order.order_number || order.order_code,
+            customer: order.customer || '-',
+            order_status: order.order_status || 'completed',
+            payment_status: order.payment_status || 'paid',
+            created_at: order.created_at,
+            total: order.total || 0,
+            items: (order.items || []).map((item: any) => ({
+              name: item.name || '-',
+              quantity: item.quantity || 0,
+              price: item.price || 0,
+              subtotal: item.subtotal || 0
+            }))
           }))
-        }))
-      }));
+        };
+      });
 
-      return {
+      const result = {
         period: { 
           start_date: apiData.period?.start_date || activeStart, 
           end_date: apiData.period?.end_date || activeEnd 
@@ -261,17 +309,18 @@ export const useReports = () => {
         summary: {
           total_orders: apiData.summary?.total_orders || totalOrders,
           total_revenue: apiData.summary?.total_revenue || totalRevenue,
-          average_order_value: totalOrders > 0 ? totalRevenue / totalOrders : 0
+          average_order_value: apiData.summary?.average_order_value || (totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0)
         },
         orders_by_date: mappedOrdersByDate
       };
-    } catch (err) {
-      console.error('Error mapping orders detail:', err);
+      
+      return result;
+      
+    } catch {
       return undefined;
     }
   }, []);
 
-  // ============= URL BUILDER =============
   const buildUrl = useCallback((baseUrl: string, params: Record<string, string>): string => {
     const url = new URL(baseUrl, window.location.origin);
     Object.entries(params).forEach(([key, value]) => {
@@ -281,7 +330,6 @@ export const useReports = () => {
     return url.toString();
   }, []);
 
-  // ============= CACHE KEY =============
   const getCacheKey = useCallback((module: string, start: string, end: string) => {
     return `${module}_${start}_${end}`;
   }, []);
@@ -291,7 +339,7 @@ export const useReports = () => {
     const cache = moduleCacheRef.current[cacheKey];
     if (!cache) return null;
     
-    const CACHE_DURATION = 2 * 60 * 1000; // 2 menit
+    const CACHE_DURATION = 2 * 60 * 1000;
     if (Date.now() - cache.timestamp > CACHE_DURATION) {
       delete moduleCacheRef.current[cacheKey];
       return null;
@@ -318,16 +366,16 @@ export const useReports = () => {
     };
   }, [getCacheKey]);
 
-  // ============= FETCH FUNCTIONS =============
-  // ✅ PERBAIKAN: Dashboard sekarang menggunakan filter tanggal
   const fetchDashboard = useCallback(async (token: string, start: string, end: string, module?: string): Promise<DashboardData | null> => {
     try {
-      const params: Record<string, string> = {};
+      const params: Record<string, string> = {
+        start_date: start,
+        end_date: end
+      };
       
-      // Tambahkan filter tanggal ke dashboard
-      if (start) params.start_date = start;
-      if (end) params.end_date = end;
-      if (module && module !== 'general') params.crsd_type = module;
+      if (module && module !== 'general') {
+        params.crsd_type = module;
+      }
       
       const response = await fetch(buildUrl(`${apiUrl}/api/admin/dashboard`, params), {
         headers: { 
@@ -343,21 +391,27 @@ export const useReports = () => {
         return null;
       }
 
-      if (!response.ok) return null;
+      if (!response.ok) {
+        return null;
+      }
 
       const data = await response.json();
       return data.success ? transformDashboardData(data.data) : null;
-    } catch (err) {
+    } catch {
       return null;
     }
   }, [apiUrl, router, transformDashboardData, buildUrl]);
 
   const fetchReports = useCallback(async (token: string, start: string, end: string, module?: string): Promise<ReportsData | null> => {
     try {
-      const params: Record<string, string> = {};
-      if (start) params.start_date = start;
-      if (end) params.end_date = end;
-      if (module && module !== 'general') params.crsd_type = module;
+      const params: Record<string, string> = {
+        start_date: start,
+        end_date: end
+      };
+      
+      if (module && module !== 'general') {
+        params.crsd_type = module;
+      }
       
       const response = await fetch(buildUrl(`${apiUrl}/api/admin/reports`, params), {
         headers: { 
@@ -368,11 +422,20 @@ export const useReports = () => {
         cache: 'no-cache'
       });
 
-      if (!response.ok) return null;
+      if (!response.ok) {
+        return null;
+      }
 
       const data = await response.json();
-      return data.success ? transformReportsData(data.data) : null;
-    } catch (err) {
+      
+      if (data.success && data.data) {
+        return transformReportsData(data.data);
+      } else if (data.success && !data.data) {
+        return transformReportsData(null);
+      }
+      
+      return null;
+    } catch {
       return null;
     }
   }, [apiUrl, transformReportsData, buildUrl]);
@@ -383,7 +446,10 @@ export const useReports = () => {
         start_date: start, 
         end_date: end 
       };
-      if (module && module !== 'general') params.crsd_type = module;
+      
+      if (module) {
+        params.crsd_type = module;
+      }
       
       const response = await fetch(buildUrl(`${apiUrl}/api/admin/orders-detail`, params), {
         headers: { 
@@ -394,18 +460,23 @@ export const useReports = () => {
         cache: 'no-cache'
       });
 
-      if (!response.ok) return undefined;
+      if (!response.ok) {
+        return undefined;
+      }
 
       const data = await response.json();
-      return data.success ? mapToOrdersDetailData(data.data, start, end) : undefined;
-    } catch (err) {
+      
+      if (data.success && data.data) {
+        return mapToOrdersDetailData(data.data, start, end);
+      }
+      
+      return undefined;
+    } catch {
       return undefined;
     }
   }, [apiUrl, mapToOrdersDetailData, buildUrl]);
 
-  // ✅ PERBAIKAN: FetchModuleData sekarang konsisten menggunakan filter tanggal
   const fetchModuleData = useCallback(async (token: string, start: string, end: string, module: string) => {
-    // Cek cache dengan filter tanggal
     const cached = getCachedData(module, start, end);
     if (cached) {
       setDashboardData(cached.dashboardData);
@@ -420,37 +491,37 @@ export const useReports = () => {
     setOrdersDetailData(undefined);
     setAvailableDates([]);
     
-    // ✅ PERBAIKAN: Semua fetch menggunakan parameter start dan end yang sama
-    const [dashboardResult, reportsResult, ordersDetailResult] = await Promise.all([
-      fetchDashboard(token, start, end, module),
-      fetchReports(token, start, end, module),
-      fetchOrdersDetail(token, start, end, module)
-    ]);
+    try {
+      const [dashboardResult, reportsResult, ordersDetailResult] = await Promise.all([
+        fetchDashboard(token, start, end, module),
+        fetchReports(token, start, end, module),
+        fetchOrdersDetail(token, start, end, module)
+      ]);
 
-    // Set available dates dari ordersDetail jika ada
-    let newAvailableDates: AvailableDate[] = [];
-    if (ordersDetailResult?.orders_by_date) {
-      newAvailableDates = ordersDetailResult.orders_by_date.map(day => ({
-        date: day.date,
-        has_data: day.total_orders > 0
-      }));
+      let newAvailableDates: AvailableDate[] = [];
+      if (ordersDetailResult?.orders_by_date) {
+        newAvailableDates = ordersDetailResult.orders_by_date.map(day => ({
+          date: day.date,
+          has_data: day.total_orders > 0
+        }));
+      }
+
+      setDashboardData(dashboardResult);
+      setReportsData(reportsResult);
+      setOrdersDetailData(ordersDetailResult);
+      setAvailableDates(newAvailableDates);
+
+      setCachedData(module, start, end, {
+        dashboardData: dashboardResult,
+        reportsData: reportsResult,
+        ordersDetailData: ordersDetailResult,
+        availableDates: newAvailableDates
+      });
+    } catch {
+      setError('Gagal memuat data module');
     }
-
-    setDashboardData(dashboardResult);
-    setReportsData(reportsResult);
-    setOrdersDetailData(ordersDetailResult);
-    setAvailableDates(newAvailableDates);
-
-    // Simpan ke cache dengan filter tanggal
-    setCachedData(module, start, end, {
-      dashboardData: dashboardResult,
-      reportsData: reportsResult,
-      ordersDetailData: ordersDetailResult,
-      availableDates: newAvailableDates
-    });
   }, [fetchDashboard, fetchReports, fetchOrdersDetail, getCachedData, setCachedData]);
 
-  // ============= MAIN FETCH =============
   const fetchAllData = useCallback(async (start: string, end: string, module?: string, force = false) => {
     if (isFetchingRef.current && !force) return;
 
@@ -501,7 +572,6 @@ export const useReports = () => {
         return;
       }
 
-      // Validasi akses
       if (moduleToUse && moduleToUse !== 'general' && !isSuperadmin && !user.data_access.includes(moduleToUse)) {
         setError('Anda tidak memiliki akses ke modul ini');
         setSelectedModule('');
@@ -514,15 +584,14 @@ export const useReports = () => {
         setShowModuleSelection(false);
       }
 
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Gagal memuat data');
+    } catch {
+      setError('Gagal memuat data');
     } finally {
       setIsLoading(false);
       isFetchingRef.current = false;
     }
   }, [apiUrl, selectedModule, fetchModuleData, getUserDataFromStorage, checkAuth, getAuthToken]);
 
-  // ============= INITIAL LOAD =============
   useEffect(() => {
     if (initialLoadDoneRef.current) return;
 
@@ -550,12 +619,10 @@ export const useReports = () => {
       currentUserIdRef.current = user.id;
       setUserData(user);
       setAvailableModules(user.data_access);
-      setSelectedModule('');
 
       const monthAgo = getMonthAgoDate();
       const today = getTodayDate();
 
-      // Set start date jika belum ada
       if (!activeFilterStartDate) {
         setActiveFilterStartDate(monthAgo);
         setStartDate(monthAgo);
@@ -563,7 +630,6 @@ export const useReports = () => {
         setStartDate(activeFilterStartDate);
       }
 
-      // Set end date jika belum ada
       if (!activeFilterEndDate) {
         setActiveFilterEndDate(today);
         setEndDate(today);
@@ -571,15 +637,17 @@ export const useReports = () => {
         setEndDate(activeFilterEndDate);
       }
 
-      // Superadmin atau multiple access -> show module selection
       if (user.role === 'superadmin' || user.hasMultipleAccess) {
-        setShowModuleSelection(true);
-        setIsLoading(false);
+        if (selectedModule) {
+          await fetchAllData(activeFilterStartDate, activeFilterEndDate, selectedModule, true);
+        } else {
+          setShowModuleSelection(true);
+          setIsLoading(false);
+        }
         initialLoadDoneRef.current = true;
         return;
       }
 
-      // Single access -> auto select module
       const defaultModule = user.data_access.includes('crsd1') ? 'crsd1' : 
                            user.data_access.includes('crsd2') ? 'crsd2' : '';
       
@@ -601,7 +669,6 @@ export const useReports = () => {
     initialize();
   }, []);
 
-  // ============= HANDLERS =============
   const handleModuleSelect = useCallback(async (module: string) => {
     setIsLoading(true);
     setError(null);
@@ -636,24 +703,18 @@ export const useReports = () => {
       true
     );
 
-    setSuccessMessage(
-      module === 'general'
-        ? 'Dashboard umum berhasil dimuat'
-        : `Dashboard ${module === 'crsd1' ? 'CRSD 1' : 'CRSD 2'} berhasil dimuat`
-    );
+    const moduleName = module === 'general' ? 'Umum' : 
+                      module === 'crsd1' ? 'CRSD 1' : 'CRSD 2';
+    
+    setSuccessMessage(`Dashboard ${moduleName} berhasil dimuat`);
     setTimeout(() => setSuccessMessage(null), 3000);
   }, [apiUrl, activeFilterStartDate, activeFilterEndDate, startDate, endDate, fetchAllData, getUserDataFromStorage, checkAuth, getAuthToken]);
 
   const handleChangeModule = useCallback(() => {
     setSelectedModule('');
     setShowModuleSelection(true);
-    setDashboardData(null);
-    setReportsData(null);
-    setOrdersDetailData(undefined);
-    setAvailableDates([]);
-    setError(null);
-    setSuccessMessage(null);
-  }, []);
+    resetAllData();
+  }, [resetAllData]);
 
   const handleApplyFilter = useCallback(() => {
     if (!startDate || !endDate) {
@@ -669,7 +730,6 @@ export const useReports = () => {
     setActiveFilterStartDate(startDate);
     setActiveFilterEndDate(endDate);
     
-    // Clear cache untuk module saat ini dengan filter lama
     if (selectedModule) {
       const prefix = selectedModule;
       Object.keys(moduleCacheRef.current).forEach(key => {
@@ -711,15 +771,14 @@ export const useReports = () => {
 
       setSuccessMessage(`Export ${exportFormat.toUpperCase()} berhasil`);
       setTimeout(() => setSuccessMessage(null), 3000);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Gagal export');
+    } catch {
+      setError('Gagal export');
     } finally {
       setIsExporting(false);
     }
   }, [ordersDetailData, exportFormat]);
 
   const handleRefresh = useCallback(() => {
-    // Clear cache untuk module saat ini
     if (selectedModule) {
       const prefix = selectedModule;
       Object.keys(moduleCacheRef.current).forEach(key => {
