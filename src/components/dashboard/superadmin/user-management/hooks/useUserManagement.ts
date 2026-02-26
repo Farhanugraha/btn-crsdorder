@@ -1,273 +1,316 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { User, AuthData, PaginatedResponse, FilterRole, AlertState } from '../types';
-import { API_ENDPOINTS, MESSAGES } from '../constants';
+import type { UserData, AuthInfo, FetchState, FilterRole } from '../types';
 
-export const useUserManagement = () => {
+// ─────────────────────────── HELPERS ─────────────────────────────────────────
+
+function getApiBaseUrl(): string {
+  const envUrl = process.env.NEXT_PUBLIC_API_URL ?? '';
+  if (envUrl.includes('/api')) return envUrl;
+  if (envUrl) return `${envUrl}/api`;
+  return 'http://localhost:8000/api';
+}
+
+function buildHeaders(token: string): HeadersInit {
+  return {
+    Authorization: `Bearer ${token}`,
+    Accept: 'application/json',
+    'Content-Type': 'application/json'
+  };
+}
+
+function readAuth(): AuthInfo | null {
+  try {
+    const token = localStorage.getItem('auth_token');
+    const raw = localStorage.getItem('auth_user');
+    if (!token || !raw) return null;
+    const user = JSON.parse(raw);
+    return { token, user };
+  } catch {
+    return null;
+  }
+}
+
+export function useUserManagement() {
   const router = useRouter();
+
   const [mounted, setMounted] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [authData, setAuthData] = useState<AuthData | null>(null);
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [auth, setAuth] = useState<AuthInfo | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
+
+  const [users, setUsers] = useState<UserData[]>([]);
+  const [totalUsers, setTotalUsers] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [filterRole, setFilterRole] = useState<FilterRole>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalUsers, setTotalUsers] = useState(0);
-  const [alert, setAlert] = useState<AlertState>({ type: null, message: null });
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState<number | null>(null);
-  const [showMobileMenu, setShowMobileMenu] = useState<number | null>(null);
-  const [showFilterPanel, setShowFilterPanel] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
 
-  const getApiUrl = useCallback((): string => {
-    const envUrl = process.env.NEXT_PUBLIC_API_URL;
-    if (envUrl?.includes('/api')) return envUrl;
-    if (envUrl) return `${envUrl}/api`;
-    return 'http://localhost:8000/api';
-  }, []);
+  const [fetchState, setFetchState] = useState<FetchState>({
+    loading: false,
+    error: null
+  });
+  const [processingId, setProcessingId] = useState<number | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
+  const [mobileMenuId, setMobileMenuId] = useState<number | null>(null);
 
-  const getAuthToken = useCallback((): string | null => {
-    try {
-      if (typeof window === 'undefined') return null;
-      return localStorage.getItem('auth_token');
-    } catch {
-      return null;
-    }
-  }, []);
+  const abortRef = useRef<AbortController | null>(null);
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const showAlert = useCallback((type: 'success' | 'error', message: string) => {
-    setAlert({ type, message });
-    setTimeout(() => setAlert({ type: null, message: null }), 3000);
-  }, []);
-
-  const checkAuthentication = useCallback(() => {
-    try {
-      if (typeof window === 'undefined') return;
-
-      const token = localStorage.getItem('auth_token');
-      const userStr = localStorage.getItem('auth_user');
-
-      if (!token || !userStr) {
-        setIsAuthenticated(false);
-        showAlert('error', MESSAGES.UNAUTHORIZED);
-        setTimeout(() => router.push('/auth/login'), 2000);
-        return;
-      }
-
-      const userData = JSON.parse(userStr);
-      if (userData.role !== 'superadmin') {
-        setIsAuthenticated(false);
-        showAlert('error', MESSAGES.FORBIDDEN);
-        setTimeout(() => router.push('/dashboard'), 2000);
-        return;
-      }
-
-      setAuthData({ token, user: userData });
-      setIsAuthenticated(true);
-    } catch {
-      setIsAuthenticated(false);
-      showAlert('error', 'Terjadi kesalahan pada autentikasi');
-      setTimeout(() => router.push('/auth/login'), 2000);
-    }
-  }, [router, showAlert]);
-
-  const fetchUsers = useCallback(async () => {
-    try {
-      setLoading(true);
-      
-      const token = getAuthToken();
-      if (!token) {
-        showAlert('error', 'Token tidak ditemukan');
-        setIsAuthenticated(false);
-        setTimeout(() => router.push('/auth/login'), 2000);
-        return;
-      }
-
-      const apiUrl = getApiUrl();
-      const queryParams = new URLSearchParams({
-        page: currentPage.toString(),
-        per_page: perPage.toString()
-      });
-
-      if (searchTerm) queryParams.append('search', searchTerm);
-      if (filterRole !== 'all') queryParams.append('role', filterRole);
-
-      const response = await fetch(`${apiUrl}${API_ENDPOINTS.USERS}?${queryParams}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          localStorage.removeItem('auth_token');
-          localStorage.removeItem('auth_user');
-          setIsAuthenticated(false);
-          router.push('/auth/login');
-          return;
-        }
-        throw new Error(MESSAGES.FETCH_ERROR);
-      }
-
-      const result: PaginatedResponse = await response.json();
-      
-      if (result.success) {
-        setUsers(result.data.data);
-        setTotalPages(result.data.last_page);
-        setTotalUsers(result.data.total);
-      }
-    } catch (err) {
-      showAlert('error', err instanceof Error ? err.message : MESSAGES.FETCH_ERROR);
-    } finally {
-      setLoading(false);
-    }
-  }, [currentPage, perPage, searchTerm, filterRole, getAuthToken, getApiUrl, router, showAlert]);
-
-  const handleDeleteUser = useCallback(async (id: number) => {
-    try {
-      setIsProcessing(true);
-      const token = getAuthToken();
-      if (!token) return;
-
-      const response = await fetch(`${getApiUrl()}${API_ENDPOINTS.DELETE(id)}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) throw new Error(data.message);
-
-      showAlert('success', MESSAGES.DELETE_SUCCESS);
-      setShowDeleteConfirm(null);
-      setShowMobileMenu(null);
-      
-      // Optimistic update
-      setUsers(prev => prev.filter(user => user.id !== id));
-      setTotalUsers(prev => prev - 1);
-      
-      // Refresh jika halaman kosong
-      if (users.length === 1 && currentPage > 1) {
-        setCurrentPage(prev => prev - 1);
-      } else {
-        await fetchUsers();
-      }
-    } catch (err) {
-      showAlert('error', err instanceof Error ? err.message : 'Gagal menghapus user');
-    } finally {
-      setIsProcessing(false);
-    }
-  }, [getAuthToken, getApiUrl, fetchUsers, showAlert, users.length, currentPage]);
-
-  const handleActivateUser = useCallback(async (id: number) => {
-    try {
-      setIsProcessing(true);
-      const token = getAuthToken();
-      if (!token) return;
-
-      const response = await fetch(`${getApiUrl()}${API_ENDPOINTS.ACTIVATE(id)}`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message);
-
-      showAlert('success', MESSAGES.ACTIVATE_SUCCESS);
-      setShowMobileMenu(null);
-      
-      // Optimistic update
-      setUsers(prev => prev.map(user => 
-        user.id === id 
-          ? { ...user, email_verified_at: new Date().toISOString() }
-          : user
-      ));
-      
-      await fetchUsers();
-    } catch (err) {
-      showAlert('error', err instanceof Error ? err.message : 'Gagal mengaktifkan user');
-    } finally {
-      setIsProcessing(false);
-    }
-  }, [getAuthToken, getApiUrl, fetchUsers, showAlert]);
-
-  const handleDeactivateUser = useCallback(async (id: number) => {
-    try {
-      setIsProcessing(true);
-      const token = getAuthToken();
-      if (!token) return;
-
-      const response = await fetch(`${getApiUrl()}${API_ENDPOINTS.DEACTIVATE(id)}`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message);
-
-      showAlert('success', MESSAGES.DEACTIVATE_SUCCESS);
-      setShowMobileMenu(null);
-      
-      // Optimistic update
-      setUsers(prev => prev.map(user => 
-        user.id === id 
-          ? { ...user, email_verified_at: null }
-          : user
-      ));
-      
-      await fetchUsers();
-    } catch (err) {
-      showAlert('error', err instanceof Error ? err.message : 'Gagal menonaktifkan user');
-    } finally {
-      setIsProcessing(false);
-    }
-  }, [getAuthToken, getApiUrl, fetchUsers, showAlert]);
-
+  // ─── INIT ────────────────────────────────────────────────────────────────
   useEffect(() => {
     setMounted(true);
-    checkAuthentication();
-  }, [checkAuthentication]);
+    const info = readAuth();
+    if (!info) {
+      setTimeout(() => router.push('/auth/login'), 1500);
+    } else if (info.user.role !== 'superadmin') {
+      setTimeout(() => router.push('/dashboard'), 1500);
+    } else {
+      setAuth(info);
+    }
+    setAuthChecked(true);
+  }, [router]);
+
+  // ─── DEBOUNCE SEARCH ─────────────────────────────────────────────────────
+  useEffect(() => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    searchTimeoutRef.current = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+      setCurrentPage(1);
+    }, 500);
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [searchTerm]);
+
+  // ─── FETCH ───────────────────────────────────────────────────────────────
+  const fetchUsers = useCallback(async () => {
+    if (!auth) return;
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setFetchState({ loading: true, error: null });
+    try {
+      const params = new URLSearchParams({
+        page: String(currentPage),
+        per_page: String(perPage)
+      });
+      if (debouncedSearch.trim())
+        params.append('search', debouncedSearch.trim());
+      if (filterRole !== 'all') params.append('role', filterRole);
+
+      const res = await fetch(
+        `${getApiBaseUrl()}/superadmin/users?${params}`,
+        {
+          headers: buildHeaders(auth.token),
+          signal: controller.signal
+        }
+      );
+
+      if (res.status === 401) {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('auth_user');
+        router.push('/auth/login');
+        return;
+      }
+      if (res.status === 403) {
+        setFetchState({ loading: false, error: 'Akses ditolak.' });
+        return;
+      }
+      if (res.status === 404) {
+        setUsers([]);
+        setTotalPages(1);
+        setTotalUsers(0);
+        setFetchState({ loading: false, error: null });
+        return;
+      }
+      if (!res.ok) {
+        const b = await res.json().catch(() => ({}));
+        throw new Error(b.message ?? `HTTP ${res.status}`);
+      }
+
+      const json = await res.json();
+      if (!json.success)
+        throw new Error(json.message ?? 'Gagal mengambil data');
+
+      const rawList: UserData[] = json.data?.data ?? json.data ?? [];
+      setUsers(Array.isArray(rawList) ? rawList : []);
+      setTotalPages(json.data?.last_page ?? json.last_page ?? 1);
+      setTotalUsers(json.data?.total ?? json.total ?? 0);
+      setFetchState({ loading: false, error: null });
+    } catch (err: any) {
+      if (err?.name === 'AbortError') return;
+      setFetchState({
+        loading: false,
+        error: err?.message ?? 'Gagal terhubung ke server'
+      });
+    }
+  }, [auth, currentPage, perPage, debouncedSearch, filterRole, router]);
 
   useEffect(() => {
-    if (mounted && isAuthenticated) {
-      fetchUsers();
+    if (mounted && auth) fetchUsers();
+    return () => {
+      abortRef.current?.abort();
+    };
+  }, [mounted, auth, currentPage, perPage, debouncedSearch, filterRole, fetchUsers]);
+
+  // ─── TOAST ───────────────────────────────────────────────────────────────
+  const showSuccess = (msg: string) => {
+    setSuccessMsg(msg);
+    setActionError(null);
+    setTimeout(() => setSuccessMsg(null), 3500);
+  };
+
+  const showError = (msg: string) => {
+    setActionError(msg);
+    setSuccessMsg(null);
+    setTimeout(() => setActionError(null), 4000);
+  };
+
+  // ─── ACTIONS ─────────────────────────────────────────────────────────────
+  async function handleActivate(id: number) {
+    if (!auth || processingId !== null) return;
+    setProcessingId(id);
+    try {
+      const res = await fetch(
+        `${getApiBaseUrl()}/superadmin/users/${id}/activate`,
+        { method: 'POST', headers: buildHeaders(auth.token) }
+      );
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok)
+        throw new Error(json.message ?? 'Gagal mengaktifkan user');
+      setUsers((prev) =>
+        prev.map((u) => {
+          if (u.id !== id) return u;
+          if (json.data && typeof json.data === 'object')
+            return json.data as UserData;
+          return {
+            ...u,
+            email_verified_at: new Date().toISOString()
+          };
+        })
+      );
+      showSuccess('User berhasil diaktifkan');
+    } catch (err: any) {
+      showError(err?.message ?? 'Gagal mengaktifkan user');
+    } finally {
+      setProcessingId(null);
+      setMobileMenuId(null);
     }
-  }, [mounted, isAuthenticated, fetchUsers]);
+  }
+
+  async function handleDeactivate(id: number) {
+    if (!auth || processingId !== null) return;
+    setProcessingId(id);
+    try {
+      const res = await fetch(
+        `${getApiBaseUrl()}/superadmin/users/${id}/deactivate`,
+        { method: 'POST', headers: buildHeaders(auth.token) }
+      );
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok)
+        throw new Error(json.message ?? 'Gagal menonaktifkan user');
+      setUsers((prev) =>
+        prev.map((u) => {
+          if (u.id !== id) return u;
+          if (json.data && typeof json.data === 'object')
+            return json.data as UserData;
+          return { ...u, email_verified_at: null };
+        })
+      );
+      showSuccess('User berhasil dinonaktifkan');
+    } catch (err: any) {
+      showError(err?.message ?? 'Gagal menonaktifkan user');
+    } finally {
+      setProcessingId(null);
+      setMobileMenuId(null);
+    }
+  }
+
+  async function handleDelete(id: number) {
+    if (!auth || processingId !== null) return;
+    setProcessingId(id);
+    try {
+      const res = await fetch(
+        `${getApiBaseUrl()}/superadmin/users/${id}`,
+        { method: 'DELETE', headers: buildHeaders(auth.token) }
+      );
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok)
+        throw new Error(json.message ?? 'Gagal menghapus user');
+      setUsers((prev) => prev.filter((u) => u.id !== id));
+      setTotalUsers((prev) => Math.max(0, prev - 1));
+      showSuccess('User berhasil dihapus');
+    } catch (err: any) {
+      showError(err?.message ?? 'Gagal menghapus user');
+    } finally {
+      setProcessingId(null);
+      setDeleteConfirmId(null);
+      setMobileMenuId(null);
+    }
+  }
+
+  const resetFilters = () => {
+    setSearchTerm('');
+    setDebouncedSearch('');
+    setFilterRole('all');
+    setPerPage(10);
+    setCurrentPage(1);
+  };
+
+  // Hitung statistik
+  const superadminCount = users.filter((u) => u.role === 'superadmin').length;
+  const adminCount = users.filter((u) => u.role === 'admin').length;
+  const userCount = users.filter((u) => u.role === 'user').length;
 
   return {
     // State
     mounted,
-    isAuthenticated,
-    authData,
+    authChecked,
+    auth,
     users,
-    loading,
+    totalUsers,
+    totalPages,
     searchTerm,
     filterRole,
     currentPage,
     perPage,
-    totalPages,
-    totalUsers,
-    alert,
-    isProcessing,
-    showDeleteConfirm,
-    showMobileMenu,
-    showFilterPanel,
-    
+    showFilters,
+    fetchState,
+    processingId,
+    successMsg,
+    actionError,
+    deleteConfirmId,
+    mobileMenuId,
+    superadminCount,
+    adminCount,
+    userCount,
+
     // Setters
     setSearchTerm,
     setFilterRole,
     setCurrentPage,
     setPerPage,
-    setShowDeleteConfirm,
-    setShowMobileMenu,
-    setShowFilterPanel,
-    
-    // Handlers
-    handleDeleteUser,
-    handleActivateUser,
-    handleDeactivateUser,
+    setShowFilters,
+    setDeleteConfirmId,
+    setMobileMenuId,
+
+    // Actions
     fetchUsers,
-    showAlert
+    handleActivate,
+    handleDeactivate,
+    handleDelete,
+    resetFilters,
+    showSuccess,
+    showError
   };
-};
+}
