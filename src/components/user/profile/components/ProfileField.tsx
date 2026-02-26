@@ -4,7 +4,7 @@ import { ReactNode } from 'react';
 
 interface ProfileFieldProps {
   label: string;
-  value: string | ReactNode;
+  value?: string | ReactNode;
   icon?: ReactNode;
   isEditing?: boolean;
   name?: string;
@@ -14,6 +14,7 @@ interface ProfileFieldProps {
   error?: string[];
   onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   type?: string;
+  children?: ReactNode;
 }
 
 export const ProfileField = ({
@@ -27,7 +28,8 @@ export const ProfileField = ({
   disabled = false,
   error,
   onChange,
-  type = 'text'
+  type = 'text',
+  children
 }: ProfileFieldProps) => {
   return (
     <div className="mb-4">
@@ -38,30 +40,43 @@ export const ProfileField = ({
       {isEditing ? (
         <>
           <div className="relative">
+            {/* Icon tetap ditampilkan di posisi yang sama untuk semua mode edit */}
             {icon && (
-              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+              <div className="pointer-events-none absolute inset-y-0 left-0 z-10 flex items-center pl-3">
                 <span className="text-gray-400 dark:text-gray-500">
                   {icon}
                 </span>
               </div>
             )}
-            <input
-              type={type}
-              name={name}
-              value={inputValue}
-              onChange={onChange}
-              placeholder={placeholder}
-              disabled={disabled}
-              className={`w-full rounded-lg border border-gray-300 bg-white py-2 text-sm text-gray-900 placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 ${
-                icon ? 'pl-10' : 'px-3'
-              }`}
-            />
+
+            {children ? (
+              // Jika ada children, render children dengan styling yang konsisten
+              <div className="w-full">{children}</div>
+            ) : (
+              // Jika tidak ada children, render input biasa
+              <input
+                type={type}
+                name={name}
+                value={inputValue}
+                onChange={onChange}
+                placeholder={placeholder}
+                disabled={disabled}
+                className={`w-full rounded-lg border bg-white py-2 text-sm text-gray-900 placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 ${
+                  icon ? 'pl-10' : 'px-3'
+                } ${
+                  error && error.length > 0
+                    ? 'border-red-500 dark:border-red-500'
+                    : 'border-gray-300 dark:border-gray-600'
+                }`}
+              />
+            )}
           </div>
           {error && error.length > 0 && (
             <p className="mt-1 text-xs text-red-500">{error[0]}</p>
           )}
         </>
       ) : (
+        // Mode view
         <div className="flex items-center gap-2 rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 dark:border-gray-600 dark:bg-gray-700/50">
           {icon && (
             <div className="text-gray-400 dark:text-gray-500">

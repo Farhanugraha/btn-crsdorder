@@ -1,6 +1,11 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useRef
+} from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -15,7 +20,6 @@ import {
   Shield,
   Building,
   CheckCircle,
-  XCircle,
   MoreVertical,
   ChevronLeft,
   ChevronRight,
@@ -25,10 +29,13 @@ import {
   AlertTriangle,
   Eye,
   Calendar,
-  Loader2
+  Loader2,
+  RefreshCw
 } from 'lucide-react';
 
-interface User {
+// ─────────────────────────── TYPES ───────────────────────────────────────────
+
+interface UserData {
   id: number;
   name: string;
   email: string;
@@ -40,19 +47,7 @@ interface User {
   created_at: string;
 }
 
-interface PaginatedResponse {
-  success: boolean;
-  message: string;
-  data: {
-    data: User[];
-    current_page: number;
-    per_page: number;
-    total: number;
-    last_page: number;
-  };
-}
-
-interface AuthData {
+interface AuthInfo {
   token: string;
   user: {
     id: number;
@@ -62,521 +57,436 @@ interface AuthData {
   };
 }
 
+interface FetchState {
+  loading: boolean;
+  error: string | null;
+}
+
+// ─────────────────────────── HELPERS ─────────────────────────────────────────
+
+function getApiBaseUrl(): string {
+  const envUrl = process.env.NEXT_PUBLIC_API_URL ?? '';
+  if (envUrl.includes('/api')) return envUrl;
+  if (envUrl) return `${envUrl}/api`;
+  return 'http://localhost:8000/api';
+}
+
+function buildHeaders(token: string): HeadersInit {
+  return {
+    Authorization: `Bearer ${token}`,
+    Accept: 'application/json',
+    'Content-Type': 'application/json'
+  };
+}
+
+function readAuth(): AuthInfo | null {
+  try {
+    const token = localStorage.getItem('auth_token');
+    const raw = localStorage.getItem('auth_user');
+    if (!token || !raw) return null;
+    const user = JSON.parse(raw);
+    return { token, user };
+  } catch {
+    return null;
+  }
+}
+
+// consistent avatar palette per user id
+const AVATAR_PALETTES = [
+  {
+    bg: 'bg-blue-100 dark:bg-blue-900/50',
+    text: 'text-blue-700 dark:text-blue-300'
+  },
+  {
+    bg: 'bg-indigo-100 dark:bg-indigo-900/50',
+    text: 'text-indigo-700 dark:text-indigo-300'
+  },
+  {
+    bg: 'bg-sky-100 dark:bg-sky-900/50',
+    text: 'text-sky-700 dark:text-sky-300'
+  },
+  {
+    bg: 'bg-cyan-100 dark:bg-cyan-900/50',
+    text: 'text-cyan-700 dark:text-cyan-300'
+  },
+  {
+    bg: 'bg-violet-100 dark:bg-violet-900/50',
+    text: 'text-violet-700 dark:text-violet-300'
+  }
+];
+function avatarPalette(id: number) {
+  return AVATAR_PALETTES[id % AVATAR_PALETTES.length];
+}
+
+// ─────────────────────────── COMPONENT ───────────────────────────────────────
+
 export default function UserManagement() {
   const router = useRouter();
+
   const [mounted, setMounted] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [authData, setAuthData] = useState<AuthData | null>(null);
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [auth, setAuth] = useState<AuthInfo | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
+
+  const [users, setUsers] = useState<UserData[]>([]);
+  const [totalUsers, setTotalUsers] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState<
     'all' | 'user' | 'admin' | 'superadmin'
   >('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalUsers, setTotalUsers] = useState(0);
-  const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(
+
+  const [fetchState, setFetchState] = useState<FetchState>({
+    loading: false,
+    error: null
+  });
+  const [processingId, setProcessingId] = useState<number | null>(
     null
   );
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState<
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<
     number | null
   >(null);
-  const [showMobileMenu, setShowMobileMenu] = useState<number | null>(
+  const [mobileMenuId, setMobileMenuId] = useState<number | null>(
     null
   );
   const [showFilterPanel, setShowFilterPanel] = useState(false);
 
-  const getApiUrl = useCallback(() => {
-    const envUrl = process.env.NEXT_PUBLIC_API_URL;
+  const abortRef = useRef<AbortController | null>(null);
 
-    if (envUrl && envUrl.includes('/api')) {
-      return envUrl;
-    }
-
-    if (envUrl) {
-      return `${envUrl}/api`;
-    }
-
-    return 'http://localhost:8000/api';
-  }, []);
-
-  const getAuthToken = useCallback((): string | null => {
-    try {
-      if (typeof window === 'undefined') return null;
-
-      const token = localStorage.getItem('auth_token');
-      return token;
-    } catch (error) {
-      console.error('Error getting token:', error);
-      return null;
-    }
-  }, []);
-
-  const checkAuthentication = useCallback(() => {
-    try {
-      if (typeof window === 'undefined') return;
-
-      const token = localStorage.getItem('auth_token');
-      const userStr = localStorage.getItem('auth_user');
-
-      if (!token || !userStr) {
-        setIsAuthenticated(false);
-        setAuthData(null);
-        setError('Silakan login terlebih dahulu');
-
-        setTimeout(() => {
-          router.push('/auth/login');
-        }, 2000);
-        return;
-      }
-
-      const userData = JSON.parse(userStr);
-
-      if (userData.role !== 'superadmin') {
-        setIsAuthenticated(false);
-        setAuthData(null);
-        setError('Hanya superadmin yang dapat mengakses halaman ini');
-
-        setTimeout(() => {
-          router.push('/dashboard');
-        }, 2000);
-        return;
-      }
-
-      setAuthData({
-        token,
-        user: userData
-      });
-      setIsAuthenticated(true);
-      setError(null);
-    } catch (error) {
-      console.error('Error checking authentication:', error);
-      setIsAuthenticated(false);
-      setAuthData(null);
-      setError('Terjadi kesalahan pada autentikasi');
-
-      setTimeout(() => {
-        router.push('/auth/login');
-      }, 2000);
-    }
-  }, [router]);
-
+  // ─── INIT ────────────────────────────────────────────────────────────────
   useEffect(() => {
     setMounted(true);
-    checkAuthentication();
-  }, [checkAuthentication]);
+    const info = readAuth();
+    if (!info) {
+      setTimeout(() => router.push('/auth/login'), 1500);
+    } else if (info.user.role !== 'superadmin') {
+      setTimeout(() => router.push('/dashboard'), 1500);
+    } else {
+      setAuth(info);
+    }
+    setAuthChecked(true);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ─── FETCH ───────────────────────────────────────────────────────────────
   const fetchUsers = useCallback(async () => {
+    if (!auth) return;
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setFetchState({ loading: true, error: null });
     try {
-      setLoading(true);
-      setError(null);
+      const params = new URLSearchParams({
+        page: String(currentPage),
+        per_page: String(perPage)
+      });
+      if (searchTerm.trim())
+        params.append('search', searchTerm.trim());
+      if (filterRole !== 'all') params.append('role', filterRole);
 
-      const token = getAuthToken();
+      const res = await fetch(
+        `${getApiBaseUrl()}/superadmin/users?${params}`,
+        {
+          headers: buildHeaders(auth.token),
+          signal: controller.signal
+        }
+      );
 
-      if (!token) {
-        setError('Token tidak ditemukan. Silakan login kembali.');
-        setIsAuthenticated(false);
-        setTimeout(() => router.push('/auth/login'), 2000);
+      if (res.status === 401) {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('auth_user');
+        router.push('/auth/login');
         return;
       }
+      if (res.status === 403) {
+        setFetchState({ loading: false, error: 'Akses ditolak.' });
+        return;
+      }
+      if (res.status === 404) {
+        setUsers([]);
+        setTotalPages(1);
+        setTotalUsers(0);
+        setFetchState({ loading: false, error: null });
+        return;
+      }
+      if (!res.ok) {
+        const b = await res.json().catch(() => ({}));
+        throw new Error(b.message ?? `HTTP ${res.status}`);
+      }
 
-      const apiUrl = getApiUrl();
+      const json = await res.json();
+      if (!json.success)
+        throw new Error(json.message ?? 'Gagal mengambil data');
 
-      const queryParams = new URLSearchParams({
-        page: currentPage.toString(),
-        per_page: perPage.toString()
+      const rawList: UserData[] = json.data?.data ?? json.data ?? [];
+      setUsers(Array.isArray(rawList) ? rawList : []);
+      setTotalPages(json.data?.last_page ?? json.last_page ?? 1);
+      setTotalUsers(json.data?.total ?? json.total ?? 0);
+      setFetchState({ loading: false, error: null });
+    } catch (err: any) {
+      if (err?.name === 'AbortError') return;
+      setFetchState({
+        loading: false,
+        error: err?.message ?? 'Gagal terhubung ke server'
       });
-
-      if (searchTerm) {
-        queryParams.append('search', searchTerm);
-      }
-
-      if (filterRole !== 'all') {
-        queryParams.append('role', filterRole);
-      }
-
-      const url = `${apiUrl}/superadmin/users?${queryParams.toString()}`;
-
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: 'application/json',
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          setError(
-            'Token Anda telah kadaluarsa. Silakan login kembali.'
-          );
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          setIsAuthenticated(false);
-          setTimeout(() => router.push('/auth/login'), 2000);
-          return;
-        }
-
-        if (response.status === 403) {
-          setError('Anda tidak memiliki akses ke halaman ini.');
-          setIsAuthenticated(false);
-          return;
-        }
-
-        if (response.status === 404) {
-          setUsers([]);
-          setTotalPages(1);
-          setTotalUsers(0);
-          return;
-        }
-
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.message || `HTTP Error: ${response.status}`
-        );
-      }
-
-      const result = await response.json();
-
-      if (!result.success) {
-        throw new Error(
-          result.message || 'Gagal mengambil data pengguna'
-        );
-      }
-
-      const userData = result.data?.data || result.data || [];
-      const lastPage =
-        result.data?.last_page || result.last_page || 1;
-      const total = result.data?.total || result.total || 0;
-
-      setUsers(Array.isArray(userData) ? userData : []);
-      setTotalPages(lastPage);
-      setTotalUsers(total);
-    } catch (err) {
-      console.error('Fetch error:', err);
-      const errorMsg =
-        err instanceof Error
-          ? err.message
-          : 'Terjadi kesalahan koneksi';
-      setError(errorMsg);
-    } finally {
-      setLoading(false);
     }
-  }, [
-    currentPage,
-    perPage,
-    searchTerm,
-    filterRole,
-    getAuthToken,
-    getApiUrl,
-    router
-  ]);
+  }, [auth, currentPage, perPage, searchTerm, filterRole, router]);
 
   useEffect(() => {
-    if (mounted && isAuthenticated) {
-      fetchUsers();
-    }
-  }, [mounted, isAuthenticated, fetchUsers]);
+    if (mounted && auth) fetchUsers();
+    return () => {
+      abortRef.current?.abort();
+    };
+  }, [mounted, auth, currentPage, perPage, searchTerm, filterRole]); // eslint-disable-line
 
-  const handleDeleteUser = useCallback(
-    async (id: number) => {
-      try {
-        setIsProcessing(true);
-        const token = getAuthToken();
-
-        if (!token) {
-          setError('Token tidak ditemukan');
-          return;
-        }
-
-        const apiUrl = getApiUrl();
-        const url = `${apiUrl}/superadmin/users/${id}`;
-
-        const response = await fetch(url, {
-          method: 'DELETE',
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: 'application/json',
-            'Content-Type': 'application/json'
-          }
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.message || 'Gagal menghapus pengguna');
-        }
-
-        setSuccessMessage('User berhasil dihapus');
-        setShowDeleteConfirm(null);
-        setShowMobileMenu(null);
-        setTimeout(() => setSuccessMessage(null), 3000);
-        await fetchUsers();
-      } catch (error) {
-        console.error('Delete error:', error);
-        setError(
-          error instanceof Error
-            ? error.message
-            : 'Gagal menghapus pengguna'
-        );
-        setTimeout(() => setError(null), 3000);
-      } finally {
-        setIsProcessing(false);
-      }
+  // ─── TOAST ───────────────────────────────────────────────────────────────
+  const toast = {
+    success(msg: string) {
+      setSuccessMsg(msg);
+      setActionError(null);
+      setTimeout(() => setSuccessMsg(null), 3500);
     },
-    [getAuthToken, getApiUrl, fetchUsers]
-  );
-
-  const handleActivateUser = useCallback(
-    async (id: number) => {
-      try {
-        setIsProcessing(true);
-        const token = getAuthToken();
-
-        if (!token) {
-          setError('Token tidak ditemukan');
-          return;
-        }
-
-        const apiUrl = getApiUrl();
-        const url = `${apiUrl}/superadmin/users/${id}/activate`;
-
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: 'application/json',
-            'Content-Type': 'application/json'
-          }
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(
-            data.message || 'Gagal mengaktifkan pengguna'
-          );
-        }
-
-        setSuccessMessage('User berhasil diaktifkan');
-        setTimeout(() => setSuccessMessage(null), 3000);
-        setShowMobileMenu(null);
-        await fetchUsers();
-      } catch (error) {
-        console.error('Activate error:', error);
-        setError(
-          error instanceof Error
-            ? error.message
-            : 'Gagal mengaktifkan pengguna'
-        );
-        setTimeout(() => setError(null), 3000);
-      } finally {
-        setIsProcessing(false);
-      }
-    },
-    [getAuthToken, getApiUrl, fetchUsers]
-  );
-
-  const handleDeactivateUser = useCallback(
-    async (id: number) => {
-      try {
-        setIsProcessing(true);
-        const token = getAuthToken();
-
-        if (!token) {
-          setError('Token tidak ditemukan');
-          return;
-        }
-
-        const apiUrl = getApiUrl();
-        const url = `${apiUrl}/superadmin/users/${id}/deactivate`;
-
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: 'application/json',
-            'Content-Type': 'application/json'
-          }
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(
-            data.message || 'Gagal menonaktifkan pengguna'
-          );
-        }
-
-        setSuccessMessage('User berhasil dinonaktifkan');
-        setTimeout(() => setSuccessMessage(null), 3000);
-        setShowMobileMenu(null);
-        await fetchUsers();
-      } catch (error) {
-        console.error('Deactivate error:', error);
-        setError(
-          error instanceof Error
-            ? error.message
-            : 'Gagal menonaktifkan pengguna'
-        );
-        setTimeout(() => setError(null), 3000);
-      } finally {
-        setIsProcessing(false);
-      }
-    },
-    [getAuthToken, getApiUrl, fetchUsers]
-  );
-
-  const getRoleLabel = (role: string) => {
-    switch (role) {
-      case 'superadmin':
-        return 'Super Admin';
-      case 'admin':
-        return 'Admin';
-      case 'user':
-        return 'User';
-      default:
-        return role;
+    error(msg: string) {
+      setActionError(msg);
+      setSuccessMsg(null);
+      setTimeout(() => setActionError(null), 4000);
     }
   };
 
-  const getRoleColor = (role: string) => {
-    switch (role) {
-      case 'superadmin':
-        return 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800';
-      case 'admin':
-        return 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800';
-      case 'user':
-        return 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700';
-      default:
-        return 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700';
+  // ─── ACTIONS ─────────────────────────────────────────────────────────────
+  async function handleActivate(id: number) {
+    if (!auth || processingId !== null) return;
+    setProcessingId(id);
+    try {
+      const res = await fetch(
+        `${getApiBaseUrl()}/superadmin/users/${id}/activate`,
+        { method: 'POST', headers: buildHeaders(auth.token) }
+      );
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok)
+        throw new Error(json.message ?? 'Gagal mengaktifkan user');
+      setUsers((prev) =>
+        prev.map((u) => {
+          if (u.id !== id) return u;
+          if (json.data && typeof json.data === 'object')
+            return json.data as UserData;
+          return {
+            ...u,
+            email_verified_at: new Date().toISOString()
+          };
+        })
+      );
+      toast.success('User berhasil diaktifkan');
+    } catch (err: any) {
+      toast.error(err?.message ?? 'Gagal mengaktifkan user');
+    } finally {
+      setProcessingId(null);
+      setMobileMenuId(null);
     }
-  };
+  }
 
-  const getStatusColor = (isActive: boolean) => {
-    return isActive
-      ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
-      : 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800';
-  };
+  async function handleDeactivate(id: number) {
+    if (!auth || processingId !== null) return;
+    setProcessingId(id);
+    try {
+      const res = await fetch(
+        `${getApiBaseUrl()}/superadmin/users/${id}/deactivate`,
+        { method: 'POST', headers: buildHeaders(auth.token) }
+      );
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok)
+        throw new Error(json.message ?? 'Gagal menonaktifkan user');
+      setUsers((prev) =>
+        prev.map((u) => {
+          if (u.id !== id) return u;
+          if (json.data && typeof json.data === 'object')
+            return json.data as UserData;
+          return { ...u, email_verified_at: null };
+        })
+      );
+      toast.success('User berhasil dinonaktifkan');
+    } catch (err: any) {
+      toast.error(err?.message ?? 'Gagal menonaktifkan user');
+    } finally {
+      setProcessingId(null);
+      setMobileMenuId(null);
+    }
+  }
 
-  const formatDate = (dateString: string | null) => {
-    if (!dateString) return '-';
-    const date = new Date(dateString);
+  async function handleDelete(id: number) {
+    if (!auth || processingId !== null) return;
+    setProcessingId(id);
+    try {
+      const res = await fetch(
+        `${getApiBaseUrl()}/superadmin/users/${id}`,
+        { method: 'DELETE', headers: buildHeaders(auth.token) }
+      );
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok)
+        throw new Error(json.message ?? 'Gagal menghapus user');
+      setUsers((prev) => prev.filter((u) => u.id !== id));
+      setTotalUsers((prev) => Math.max(0, prev - 1));
+      toast.success('User berhasil dihapus');
+    } catch (err: any) {
+      toast.error(err?.message ?? 'Gagal menghapus user');
+    } finally {
+      setProcessingId(null);
+      setDeleteConfirmId(null);
+      setMobileMenuId(null);
+    }
+  }
+
+  // ─── UI HELPERS ──────────────────────────────────────────────────────────
+  function roleLabel(role: string) {
+    return role === 'superadmin'
+      ? 'Super Admin'
+      : role === 'admin'
+        ? 'Admin'
+        : 'User';
+  }
+  function roleStyle(role: string) {
+    if (role === 'superadmin')
+      return 'bg-blue-50 text-blue-700 ring-1 ring-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:ring-blue-700/50';
+    if (role === 'admin')
+      return 'bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-300 dark:ring-indigo-700/50';
+    return 'bg-slate-100 text-slate-600 ring-1 ring-slate-200 dark:bg-slate-700/50 dark:text-slate-300 dark:ring-slate-600/50';
+  }
+  function statusStyle(active: boolean) {
+    return active
+      ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:ring-emerald-700/50'
+      : 'bg-amber-50 text-amber-700 ring-1 ring-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:ring-amber-700/50';
+  }
+  function fmtDate(s: string | null) {
+    if (!s) return '—';
     return new Intl.DateTimeFormat('id-ID', {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
-    }).format(date);
-  };
+    }).format(new Date(s));
+  }
+  function paginationPages(): (number | '...')[] {
+    if (totalPages <= 5)
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    if (currentPage <= 3) return [1, 2, 3, 4, '...', totalPages];
+    if (currentPage >= totalPages - 2)
+      return [
+        1,
+        '...',
+        totalPages - 3,
+        totalPages - 2,
+        totalPages - 1,
+        totalPages
+      ];
+    return [
+      1,
+      '...',
+      currentPage - 1,
+      currentPage,
+      currentPage + 1,
+      '...',
+      totalPages
+    ];
+  }
 
-  const getPaginationNumbers = () => {
-    const pages = [];
-    const maxPages = 5;
-
-    if (totalPages <= maxPages) {
-      for (let i = 1; i <= totalPages; i++) {
-        pages.push(i);
-      }
-    } else {
-      if (currentPage <= 3) {
-        for (let i = 1; i <= 4; i++) {
-          pages.push(i);
-        }
-        pages.push('...');
-        pages.push(totalPages);
-      } else if (currentPage >= totalPages - 2) {
-        pages.push(1);
-        pages.push('...');
-        for (let i = totalPages - 3; i <= totalPages; i++) {
-          pages.push(i);
-        }
-      } else {
-        pages.push(1);
-        pages.push('...');
-        for (let i = currentPage - 1; i <= currentPage + 1; i++) {
-          pages.push(i);
-        }
-        pages.push('...');
-        pages.push(totalPages);
-      }
-    }
-    return pages;
-  };
-
-  if (!mounted) {
+  // ─── RENDER GUARDS ────────────────────────────────────────────────────────
+  if (!mounted || !authChecked) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-sm dark:bg-gray-900/80">
-        <div className="flex flex-col items-center">
-          <div className="relative">
-            <div className="h-16 w-16 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600 dark:border-blue-900 dark:border-t-blue-400"></div>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/90 backdrop-blur-sm dark:bg-slate-950/90">
+        <div className="flex flex-col items-center gap-5">
+          <div className="relative h-14 w-14">
+            <div className="h-14 w-14 animate-spin rounded-full border-[3px] border-blue-100 border-t-blue-600 dark:border-blue-900 dark:border-t-blue-400" />
             <div className="absolute inset-0 flex items-center justify-center">
-              <User className="h-8 w-8 animate-pulse text-blue-600 dark:text-blue-400" />
+              <User className="h-6 w-6 text-blue-600 dark:text-blue-400" />
             </div>
           </div>
-          <div className="mt-6 text-center">
-            <p className="text-lg font-semibold text-gray-800 dark:text-gray-200">
-              Memuat User
-            </p>
-            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-              Sedang mengambil data user...
-            </p>
-          </div>
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+            Memuat halaman…
+          </p>
         </div>
       </div>
     );
   }
 
-  if (!isAuthenticated) {
+  if (!auth) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4 dark:bg-slate-900">
-        <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-8 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-          <div className="mb-4 flex justify-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full border border-blue-200 bg-blue-100 dark:border-blue-800 dark:bg-blue-900/30">
-              <AlertTriangle className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+        <div className="w-full max-w-sm overflow-hidden rounded-2xl border border-slate-200 bg-white text-center shadow-lg dark:border-slate-700 dark:bg-slate-800">
+          <div className="h-1 w-full bg-gradient-to-r from-red-500 to-rose-500" />
+          <div className="p-8">
+            <div className="mb-4 flex justify-center">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50 ring-1 ring-red-100 dark:bg-red-900/20 dark:ring-red-800/40">
+                <AlertTriangle className="h-7 w-7 text-red-500" />
+              </div>
             </div>
-          </div>
-          <h2 className="mb-2 text-center text-xl font-bold text-slate-900 dark:text-white">
-            Autentikasi Diperlukan
-          </h2>
-          <p className="mb-4 text-center text-slate-600 dark:text-slate-300">
-            {error || 'Silakan login untuk melanjutkan'}
-          </p>
-          <div className="flex justify-center">
-            <div className="h-1 w-8 rounded-full bg-blue-200 dark:bg-blue-800"></div>
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+              Autentikasi Diperlukan
+            </h2>
+            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+              Mengalihkan ke halaman login…
+            </p>
           </div>
         </div>
       </div>
     );
   }
 
+  const superadminCount = users.filter(
+    (u) => u.role === 'superadmin'
+  ).length;
+  const adminCount = users.filter((u) => u.role === 'admin').length;
+  const userCount = users.filter((u) => u.role === 'user').length;
+
+  // ─── MAIN RENDER ─────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
-      {/* Header */}
-      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/80 backdrop-blur-sm dark:border-slate-700 dark:bg-slate-800/80">
-        <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-blue-900 dark:text-white sm:text-3xl">
-                Kelola User
-              </h1>
-              <p className="mt-1 text-sm text-blue-600 dark:text-slate-400">
-                Kelola semua pengguna di sistem
-              </p>
-            </div>
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+      {/* top accent line */}
+      <div className="h-0.5 w-full bg-gradient-to-r from-blue-600 via-indigo-500 to-sky-400" />
+
+      {/* ── HEADER ──────────────────────────────────────────────────────────── */}
+      <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/90 shadow-sm backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/90">
+        <div className="mx-auto max-w-7xl px-4 py-3.5 sm:px-6 lg:px-8">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 shadow-md shadow-blue-200 dark:shadow-blue-950">
+                <Users className="h-[18px] w-[18px] text-white" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-2xl">
+                  Kelola Pengguna
+                </h1>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Manajemen akun &amp; hak akses sistem
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
               <button
-                onClick={() => setShowFilterPanel(!showFilterPanel)}
-                className="rounded-lg border border-slate-200 bg-white p-2 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 sm:hidden"
+                onClick={() => fetchUsers()}
+                disabled={fetchState.loading}
+                title="Refresh data"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 shadow-sm transition-all hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"
               >
-                <Filter className="h-5 w-5 text-slate-600 dark:text-slate-400" />
+                <RefreshCw
+                  className={`h-4 w-4 ${
+                    fetchState.loading ? 'animate-spin' : ''
+                  }`}
+                />
+              </button>
+              <button
+                onClick={() => setShowFilterPanel((v) => !v)}
+                className={`inline-flex h-9 w-9 items-center justify-center rounded-lg border shadow-sm transition-all sm:hidden ${
+                  showFilterPanel
+                    ? 'border-blue-300 bg-blue-50 text-blue-600 dark:border-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                    : 'border-slate-200 bg-white text-slate-600 dark:border-slate-700 dark:bg-slate-800'
+                }`}
+              >
+                <Filter className="h-4 w-4" />
               </button>
               <Link href="/dashboard/user-management/create">
-                <button className="flex items-center gap-2 rounded-lg bg-blue-600 px-2 py-2 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-blue-700 hover:shadow">
+                <button className="inline-flex h-9 items-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-4 text-sm font-semibold text-white shadow-md shadow-blue-200/60 transition-all hover:from-blue-700 hover:to-indigo-700 hover:shadow-lg active:scale-[.98] dark:shadow-blue-950/50">
                   <Plus className="h-4 w-4" />
                   <span>Tambah User</span>
                 </button>
@@ -586,691 +496,682 @@ export default function UserManagement() {
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        {/* Alerts */}
-        {successMessage && (
-          <div className="animate-fade-in mb-6">
-            <div className="flex items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-800 dark:bg-emerald-900/20">
-              <CheckCircle className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-              <p className="font-medium text-emerald-700 dark:text-emerald-300">
-                {successMessage}
-              </p>
+      <main className="mx-auto max-w-7xl px-4 py-7 sm:px-6 lg:px-8">
+        {/* ── TOASTS ──────────────────────────────────────────────────────────── */}
+        {successMsg && (
+          <div className="mb-5 flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3.5 shadow-sm dark:border-emerald-800/50 dark:bg-emerald-950/40">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/60">
+              <CheckCircle className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
             </div>
+            <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+              {successMsg}
+            </p>
+          </div>
+        )}
+        {(actionError || fetchState.error) && (
+          <div className="mb-5 flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3.5 shadow-sm dark:border-red-800/50 dark:bg-red-950/40">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-red-100 dark:bg-red-900/60">
+              <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400" />
+            </div>
+            <p className="text-sm font-semibold text-red-700 dark:text-red-300">
+              {actionError || fetchState.error}
+            </p>
           </div>
         )}
 
-        {error && (
-          <div className="animate-fade-in mb-6">
-            <div className="flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-900/20">
-              <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
-              <p className="font-medium text-red-700 dark:text-red-300">
-                {error}
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Filter Panel untuk Mobile */}
+        {/* ── MOBILE FILTER ───────────────────────────────────────────────────── */}
         {showFilterPanel && (
-          <div className="animate-slide-down mb-6 sm:hidden">
-            <div className="rounded-lg border border-slate-200 bg-white p-4 shadow dark:border-slate-700 dark:bg-slate-800">
-              <div className="space-y-3">
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                    Cari User
-                  </label>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 transform text-slate-400" />
-                    <input
-                      type="text"
-                      placeholder="Nama, email, atau telepon..."
-                      value={searchTerm}
-                      onChange={(e) => {
-                        setSearchTerm(e.target.value);
-                        setCurrentPage(1);
-                      }}
-                      className="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-slate-900 placeholder-slate-500 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:placeholder-slate-400"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                    Filter Role
-                  </label>
-                  <select
-                    value={filterRole}
-                    onChange={(e) => {
-                      setFilterRole(e.target.value as any);
-                      setCurrentPage(1);
-                    }}
-                    className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-slate-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
-                  >
-                    <option value="all">Semua Role</option>
-                    <option value="superadmin">Super Admin</option>
-                    <option value="admin">Admin</option>
-                    <option value="user">User</option>
-                  </select>
-                </div>
-                <button
-                  onClick={() => setShowFilterPanel(false)}
-                  className="w-full rounded-lg bg-blue-600 px-4 py-2.5 font-medium text-white transition-colors hover:bg-blue-700"
-                >
-                  Terapkan Filter
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Statistics Cards */}
-        <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                  Total User
-                </p>
-                <p className="mt-2 text-3xl font-bold text-slate-900 dark:text-white">
-                  {totalUsers}
-                </p>
-              </div>
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-blue-200 bg-blue-100 dark:border-blue-800 dark:bg-blue-900/30">
-                <Users className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-              </div>
-            </div>
-            <div className="mt-4 border-t border-slate-100 pt-4 dark:border-slate-700">
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Semua role pengguna
+          <div className="mb-5 overflow-hidden rounded-xl border border-blue-200/70 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-800 sm:hidden">
+            <div className="border-b border-slate-100 bg-gradient-to-r from-blue-50 to-indigo-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/80">
+              <p className="text-xs font-bold uppercase tracking-widest text-blue-600 dark:text-blue-400">
+                Filter &amp; Pencarian
               </p>
             </div>
-          </div>
-
-          <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-            <div className="flex items-center justify-between">
+            <div className="space-y-3 p-4">
               <div>
-                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                  Super Admin
-                </p>
-                <p className="mt-2 text-3xl font-bold text-slate-900 dark:text-white">
-                  {
-                    users.filter((u) => u.role === 'superadmin')
-                      .length
-                  }
-                </p>
-              </div>
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-blue-200 bg-blue-100 dark:border-blue-800 dark:bg-blue-900/30">
-                <Shield className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-              </div>
-            </div>
-            <div className="mt-4 border-t border-slate-100 pt-4 dark:border-slate-700">
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Admin tingkat tinggi
-              </p>
-            </div>
-          </div>
-
-          <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                  Admin
-                </p>
-                <p className="mt-2 text-3xl font-bold text-slate-900 dark:text-white">
-                  {users.filter((u) => u.role === 'admin').length}
-                </p>
-              </div>
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-indigo-200 bg-indigo-100 dark:border-indigo-800 dark:bg-indigo-900/30">
-                <UserCheck className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
-              </div>
-            </div>
-            <div className="mt-4 border-t border-slate-100 pt-4 dark:border-slate-700">
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Admin biasa
-              </p>
-            </div>
-          </div>
-
-          <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                  User
-                </p>
-                <p className="mt-2 text-3xl font-bold text-slate-900 dark:text-white">
-                  {users.filter((u) => u.role === 'user').length}
-                </p>
-              </div>
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-700">
-                <User className="h-6 w-6 text-slate-600 dark:text-slate-400" />
-              </div>
-            </div>
-            <div className="mt-4 border-t border-slate-100 pt-4 dark:border-slate-700">
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                User biasa
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Search and Filter Section - Compact */}
-        <div className="mb-6 rounded-lg border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
-          <div className="border-b border-slate-200 p-4 dark:border-slate-700">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              {/* Search Input */}
-              <div className="flex-1">
+                <label className="mb-1.5 block text-xs font-semibold text-slate-600 dark:text-slate-400">
+                  Cari User
+                </label>
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-slate-400" />
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                   <input
                     type="text"
-                    placeholder="Cari pengguna..."
+                    placeholder="Nama, email…"
                     value={searchTerm}
                     onChange={(e) => {
                       setSearchTerm(e.target.value);
                       setCurrentPage(1);
                     }}
-                    className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-4 text-sm text-slate-900 placeholder-slate-500 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:placeholder-slate-400"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-4 text-sm text-slate-900 placeholder-slate-400 transition-all focus:border-blue-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
                   />
                 </div>
               </div>
-
-              {/* Filter Controls */}
-              <div className="flex items-center gap-2">
-                <div className="hidden sm:block">
-                  <select
-                    value={filterRole}
-                    onChange={(e) => {
-                      setFilterRole(e.target.value as any);
-                      setCurrentPage(1);
-                    }}
-                    className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
-                  >
-                    <option value="all">Semua Role</option>
-                    <option value="superadmin">Super Admin</option>
-                    <option value="admin">Admin</option>
-                    <option value="user">User</option>
-                  </select>
-                </div>
-                <div className="hidden sm:block">
-                  <select
-                    value={perPage}
-                    onChange={(e) => {
-                      setPerPage(Number(e.target.value));
-                      setCurrentPage(1);
-                    }}
-                    className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
-                  >
-                    <option value={5}>5</option>
-                    <option value={10}>10</option>
-                    <option value={15}>15</option>
-                    <option value={25}>25</option>
-                  </select>
-                </div>
-
-                {/* Mobile Filter Button */}
-                <button
-                  onClick={() => setShowFilterPanel(!showFilterPanel)}
-                  className="rounded-lg border border-slate-200 bg-slate-50 p-2 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800 sm:hidden"
-                  title="Filter"
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-slate-600 dark:text-slate-400">
+                  Filter Role
+                </label>
+                <select
+                  value={filterRole}
+                  onChange={(e) => {
+                    setFilterRole(e.target.value as any);
+                    setCurrentPage(1);
+                  }}
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
                 >
-                  <Filter className="h-4 w-4 text-slate-600 dark:text-slate-400" />
-                </button>
+                  <option value="all">Semua Role</option>
+                  <option value="superadmin">Super Admin</option>
+                  <option value="admin">Admin</option>
+                  <option value="user">User</option>
+                </select>
               </div>
-            </div>
-
-            {/* Quick Filter Tags - Mobile */}
-            <div className="mt-3 flex flex-wrap gap-2 sm:hidden">
-              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                Filter:
-              </span>
               <button
-                onClick={() => {
-                  setFilterRole('all');
-                  setCurrentPage(1);
-                }}
-                className={`rounded-full px-2 py-1 text-xs ${
-                  filterRole === 'all'
-                    ? 'border border-blue-200 bg-blue-100 text-blue-600 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
-                    : 'border border-slate-200 bg-slate-100 text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400'
-                }`}
+                onClick={() => setShowFilterPanel(false)}
+                className="w-full rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 py-2.5 text-sm font-bold text-white hover:from-blue-700 hover:to-indigo-700"
               >
-                Semua
-              </button>
-              <button
-                onClick={() => {
-                  setFilterRole('superadmin');
-                  setCurrentPage(1);
-                }}
-                className={`rounded-full px-2 py-1 text-xs ${
-                  filterRole === 'superadmin'
-                    ? 'border border-blue-200 bg-blue-100 text-blue-600 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
-                    : 'border border-slate-200 bg-slate-100 text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400'
-                }`}
-              >
-                Super Admin
-              </button>
-              <button
-                onClick={() => {
-                  setFilterRole('admin');
-                  setCurrentPage(1);
-                }}
-                className={`rounded-full px-2 py-1 text-xs ${
-                  filterRole === 'admin'
-                    ? 'border border-blue-200 bg-blue-100 text-blue-600 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
-                    : 'border border-slate-200 bg-slate-100 text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400'
-                }`}
-              >
-                Admin
-              </button>
-              <button
-                onClick={() => {
-                  setFilterRole('user');
-                  setCurrentPage(1);
-                }}
-                className={`rounded-full px-2 py-1 text-xs ${
-                  filterRole === 'user'
-                    ? 'border border-blue-200 bg-blue-100 text-blue-600 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
-                    : 'border border-slate-200 bg-slate-100 text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400'
-                }`}
-              >
-                User
+                Terapkan Filter
               </button>
             </div>
           </div>
+        )}
 
-          {/* Table Section */}
-          {loading ? (
-            <div className="flex items-center justify-center py-16">
-              <div className="text-center">
-                <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-slate-200 border-t-blue-500 dark:border-slate-700"></div>
-                <p className="mt-4 font-medium text-slate-600 dark:text-slate-400">
-                  Memuat data pengguna...
+        {/* ── STAT CARDS ──────────────────────────────────────────────────────── */}
+        <div className="mb-7 grid grid-cols-2 gap-4 lg:grid-cols-4">
+          {[
+            {
+              label: 'Total Pengguna',
+              count: totalUsers,
+              Icon: Users,
+              gradient: 'from-blue-500 to-blue-600',
+              iconBg: 'bg-blue-50 dark:bg-blue-900/40',
+              iconRing: 'ring-blue-100 dark:ring-blue-800/50',
+              iconColor: 'text-blue-600 dark:text-blue-400',
+              barFrom: 'from-blue-500',
+              barTo: 'to-blue-400'
+            },
+            {
+              label: 'Super Admin',
+              count: superadminCount,
+              Icon: Shield,
+              gradient: 'from-indigo-500 to-indigo-600',
+              iconBg: 'bg-indigo-50 dark:bg-indigo-900/40',
+              iconRing: 'ring-indigo-100 dark:ring-indigo-800/50',
+              iconColor: 'text-indigo-600 dark:text-indigo-400',
+              barFrom: 'from-indigo-500',
+              barTo: 'to-indigo-400'
+            },
+            {
+              label: 'Admin',
+              count: adminCount,
+              Icon: UserCheck,
+              gradient: 'from-sky-500 to-sky-600',
+              iconBg: 'bg-sky-50 dark:bg-sky-900/40',
+              iconRing: 'ring-sky-100 dark:ring-sky-800/50',
+              iconColor: 'text-sky-600 dark:text-sky-400',
+              barFrom: 'from-sky-500',
+              barTo: 'to-sky-400'
+            },
+            {
+              label: 'User Biasa',
+              count: userCount,
+              Icon: User,
+              gradient: 'from-slate-400 to-slate-500',
+              iconBg: 'bg-slate-100 dark:bg-slate-700/60',
+              iconRing: 'ring-slate-200 dark:ring-slate-600/50',
+              iconColor: 'text-slate-600 dark:text-slate-300',
+              barFrom: 'from-slate-400',
+              barTo: 'to-slate-300'
+            }
+          ].map(
+            ({
+              label,
+              count,
+              Icon,
+              iconBg,
+              iconRing,
+              iconColor,
+              barFrom,
+              barTo
+            }) => (
+              <div
+                key={label}
+                className="group relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:border-slate-700/60 dark:bg-slate-800/80"
+              >
+                <div
+                  className={`h-0.5 w-full bg-gradient-to-r ${barFrom} ${barTo}`}
+                />
+                <div className="p-5">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                        {label}
+                      </p>
+                      <p className="mt-1.5 text-3xl font-bold tabular-nums text-slate-900 dark:text-white">
+                        {count}
+                      </p>
+                    </div>
+                    <div
+                      className={`flex h-10 w-10 items-center justify-center rounded-xl ring-1 transition-transform duration-200 group-hover:scale-110 ${iconBg} ${iconRing}`}
+                    >
+                      <Icon className={`h-5 w-5 ${iconColor}`} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )
+          )}
+        </div>
+
+        {/* ── TABLE CARD ──────────────────────────────────────────────────────── */}
+        <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-700/60 dark:bg-slate-800/80">
+          {/* toolbar */}
+          <div className="border-b border-slate-100 bg-white px-5 py-4 dark:border-slate-700/60 dark:bg-slate-800">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="relative max-w-sm flex-1">
+                <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Cari pengguna…"
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pl-10 pr-4 text-sm text-slate-900 placeholder-slate-400 shadow-sm transition-all focus:border-blue-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100 dark:border-slate-600 dark:bg-slate-700/80 dark:text-white dark:placeholder-slate-500 dark:focus:border-blue-500 dark:focus:ring-blue-900/30"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                {/* segmented role filter */}
+                <div className="hidden items-center gap-0.5 rounded-xl border border-slate-200 bg-slate-50 p-1 shadow-sm dark:border-slate-600 dark:bg-slate-700/60 sm:flex">
+                  {(
+                    ['all', 'superadmin', 'admin', 'user'] as const
+                  ).map((r) => (
+                    <button
+                      key={r}
+                      onClick={() => {
+                        setFilterRole(r);
+                        setCurrentPage(1);
+                      }}
+                      className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+                        filterRole === r
+                          ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm'
+                          : 'text-slate-500 hover:bg-white hover:text-slate-700 hover:shadow-sm dark:text-slate-400 dark:hover:bg-slate-600 dark:hover:text-slate-200'
+                      }`}
+                    >
+                      {r === 'all'
+                        ? 'Semua'
+                        : r === 'superadmin'
+                          ? 'Super Admin'
+                          : r === 'admin'
+                            ? 'Admin'
+                            : 'User'}
+                    </button>
+                  ))}
+                </div>
+                <select
+                  value={perPage}
+                  onChange={(e) => {
+                    setPerPage(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  className="hidden h-9 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 shadow-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-300 sm:block"
+                >
+                  {[5, 10, 15, 25].map((n) => (
+                    <option key={n} value={n}>
+                      {n} / hal
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            {/* mobile role pills */}
+            <div className="mt-3 flex flex-wrap gap-1.5 sm:hidden">
+              {(['all', 'superadmin', 'admin', 'user'] as const).map(
+                (r) => (
+                  <button
+                    key={r}
+                    onClick={() => {
+                      setFilterRole(r);
+                      setCurrentPage(1);
+                    }}
+                    className={`rounded-lg px-3 py-1 text-xs font-semibold transition-all ${
+                      filterRole === r
+                        ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm'
+                        : 'border border-slate-200 bg-white text-slate-500 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-400'
+                    }`}
+                  >
+                    {r === 'all' ? 'Semua' : roleLabel(r)}
+                  </button>
+                )
+              )}
+            </div>
+          </div>
+
+          {/* ── LOADING ── */}
+          {fetchState.loading ? (
+            <div className="flex items-center justify-center py-24">
+              <div className="flex flex-col items-center gap-4">
+                <div className="h-11 w-11 animate-spin rounded-full border-[3px] border-blue-100 border-t-blue-600 dark:border-blue-900 dark:border-t-blue-400" />
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  Memuat data pengguna…
                 </p>
               </div>
             </div>
           ) : users.length === 0 ? (
-            <div className="flex items-center justify-center py-16">
-              <div className="max-w-md text-center">
-                <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-700">
-                  <UserX className="h-10 w-10 text-slate-400" />
+            <div className="flex items-center justify-center py-24">
+              <div className="text-center">
+                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-700/60">
+                  <UserX className="h-8 w-8 text-slate-400" />
                 </div>
-                <p className="mb-2 font-semibold text-slate-900 dark:text-white">
-                  Tidak ada pengguna ditemukan
+                <p className="font-semibold text-slate-700 dark:text-white">
+                  Tidak ada pengguna
                 </p>
-                <p className="text-sm text-slate-600 dark:text-slate-400">
-                  Coba sesuaikan pencarian atau filter Anda
+                <p className="mt-1 text-sm text-slate-400">
+                  Coba ubah filter atau kata kunci pencarian
                 </p>
               </div>
             </div>
           ) : (
             <>
-              <div className="overflow-x-auto">
-                {/* Desktop Table */}
-                <table className="hidden w-full lg:table">
+              {/* ── DESKTOP TABLE ── */}
+              <div className="hidden overflow-x-auto lg:block">
+                <table className="w-full">
                   <thead>
-                    <tr className="border-b border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900">
-                      <th className="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider text-slate-700 dark:text-slate-400">
-                        User
-                      </th>
-                      <th className="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider text-slate-700 dark:text-slate-400">
-                        Role
-                      </th>
-                      <th className="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider text-slate-700 dark:text-slate-400">
-                        Divisi
-                      </th>
-                      <th className="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider text-slate-700 dark:text-slate-400">
-                        Status
-                      </th>
-                      <th className="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider text-slate-700 dark:text-slate-400">
-                        Tanggal Bergabung
-                      </th>
-                      <th className="px-6 py-4 text-right text-xs font-medium uppercase tracking-wider text-slate-700 dark:text-slate-400">
-                        Aksi
-                      </th>
+                    <tr className="border-b border-slate-100 bg-slate-50/70 dark:border-slate-700/60 dark:bg-slate-800/60">
+                      {[
+                        'Pengguna',
+                        'Role',
+                        'Divisi',
+                        'Status',
+                        'Bergabung',
+                        ''
+                      ].map((h, i) => (
+                        <th
+                          key={h + i}
+                          className={`px-5 py-3 text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 ${
+                            i === 5 ? 'text-right' : 'text-left'
+                          }`}
+                        >
+                          {h}
+                        </th>
+                      ))}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-                    {users.map((user) => (
-                      <tr
-                        key={user.id}
-                        className="transition-colors duration-150 hover:bg-slate-50 dark:hover:bg-slate-900/50"
-                      >
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className="flex h-10 w-10 items-center justify-center rounded-full border border-blue-200 bg-blue-100 font-semibold text-blue-600 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
-                              {user.name.charAt(0).toUpperCase()}
-                            </div>
-                            <div className="min-w-0">
-                              <p className="truncate text-sm font-medium text-slate-900 dark:text-white">
-                                {user.name}
-                              </p>
-                              <div className="mt-1 flex items-center gap-2">
-                                <Mail className="h-3 w-3 text-slate-400" />
-                                <p className="truncate text-xs text-slate-500 dark:text-slate-400">
-                                  {user.email}
-                                </p>
+                  <tbody className="divide-y divide-slate-50 dark:divide-slate-700/30">
+                    {users.map((user) => {
+                      const busy = processingId === user.id;
+                      const active = !!user.email_verified_at;
+                      const pal = avatarPalette(user.id);
+                      return (
+                        <tr
+                          key={user.id}
+                          className="group transition-colors duration-150 hover:bg-blue-50/50 dark:hover:bg-blue-950/20"
+                        >
+                          {/* Pengguna */}
+                          <td className="px-5 py-3.5">
+                            <div className="flex items-center gap-3">
+                              <div
+                                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-sm font-bold shadow-sm ${pal.bg} ${pal.text}`}
+                              >
+                                {user.name.charAt(0).toUpperCase()}
                               </div>
-                              {user.phone && (
-                                <div className="mt-1 flex items-center gap-2">
-                                  <Phone className="h-3 w-3 text-slate-400" />
-                                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                                    {user.phone}
+                              <div className="min-w-0">
+                                <p className="truncate text-sm font-semibold text-slate-800 dark:text-white">
+                                  {user.name}
+                                </p>
+                                <div className="mt-0.5 flex items-center gap-1.5">
+                                  <Mail className="h-3 w-3 shrink-0 text-slate-400" />
+                                  <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                                    {user.email}
                                   </p>
                                 </div>
-                              )}
+                                {user.phone && (
+                                  <div className="mt-0.5 flex items-center gap-1.5">
+                                    <Phone className="h-3 w-3 shrink-0 text-slate-400" />
+                                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                                      {user.phone}
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span
-                            className={`inline-block rounded-full px-3 py-1.5 text-xs font-medium ${getRoleColor(
-                              user.role
-                            )}`}
-                          >
-                            {getRoleLabel(user.role)}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-2">
-                            <Building className="h-4 w-4 text-slate-400" />
-                            <span className="text-sm text-slate-600 dark:text-slate-300">
-                              {user.divisi || '-'}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span
-                            className={`inline-block rounded-full px-3 py-1.5 text-xs font-medium ${getStatusColor(
-                              !!user.email_verified_at
-                            )}`}
-                          >
-                            {user.email_verified_at
-                              ? 'Aktif'
-                              : 'Pending'}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-2">
-                            <Calendar className="h-4 w-4 text-slate-400" />
-                            <span className="text-sm text-slate-600 dark:text-slate-300">
-                              {formatDate(user.created_at)}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center justify-end gap-2">
-                            <Link
-                              href={`/dashboard/user-management/${user.id}`}
+                          </td>
+
+                          {/* Role */}
+                          <td className="px-5 py-3.5">
+                            <span
+                              className={`inline-block rounded-lg px-2.5 py-1 text-xs font-semibold ${roleStyle(
+                                user.role
+                              )}`}
                             >
-                              <button
-                                className="rounded-lg p-2 text-blue-600 transition-colors duration-200 hover:bg-blue-50 dark:hover:bg-blue-900/30"
-                                title="Detail"
-                              >
-                                <Eye className="h-4 w-4" />
-                              </button>
-                            </Link>
-                            <Link
-                              href={`/dashboard/user-management/${user.id}/edit`}
+                              {roleLabel(user.role)}
+                            </span>
+                          </td>
+
+                          {/* Divisi */}
+                          <td className="px-5 py-3.5">
+                            <div className="flex items-center gap-1.5">
+                              <Building className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                              <span className="text-sm text-slate-500 dark:text-slate-400">
+                                {user.divisi || '—'}
+                              </span>
+                            </div>
+                          </td>
+
+                          {/* Status */}
+                          <td className="px-5 py-3.5">
+                            <span
+                              className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold ${statusStyle(
+                                active
+                              )}`}
                             >
-                              <button
-                                className="rounded-lg p-2 text-slate-600 transition-colors duration-200 hover:bg-slate-50 dark:hover:bg-slate-700"
-                                title="Edit"
+                              <span
+                                className={`h-1.5 w-1.5 rounded-full ${
+                                  active
+                                    ? 'bg-emerald-500'
+                                    : 'bg-amber-400'
+                                }`}
+                              />
+                              {active ? 'Aktif' : 'Pending'}
+                            </span>
+                          </td>
+
+                          {/* Bergabung */}
+                          <td className="px-5 py-3.5">
+                            <div className="flex items-center gap-1.5">
+                              <Calendar className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                              <span className="text-sm text-slate-500 dark:text-slate-400">
+                                {fmtDate(user.created_at)}
+                              </span>
+                            </div>
+                          </td>
+
+                          {/* Actions */}
+                          <td className="px-5 py-3.5">
+                            <div className="flex items-center justify-end gap-1">
+                              <Link
+                                href={`/dashboard/user-management/${user.id}`}
                               >
-                                <Edit className="h-4 w-4" />
-                              </button>
-                            </Link>
-                            {user.email_verified_at ? (
+                                <button
+                                  title="Detail"
+                                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-all hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/30 dark:hover:text-blue-400"
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </button>
+                              </Link>
+                              <Link
+                                href={`/dashboard/user-management/${user.id}/edit`}
+                              >
+                                <button
+                                  title="Edit"
+                                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-all hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </button>
+                              </Link>
+                              {active ? (
+                                <button
+                                  onClick={() =>
+                                    handleDeactivate(user.id)
+                                  }
+                                  disabled={busy}
+                                  title="Nonaktifkan"
+                                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-all hover:bg-amber-50 hover:text-amber-600 disabled:opacity-40 dark:hover:bg-amber-900/30 dark:hover:text-amber-400"
+                                >
+                                  {busy ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <UserX className="h-4 w-4" />
+                                  )}
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() =>
+                                    handleActivate(user.id)
+                                  }
+                                  disabled={busy}
+                                  title="Aktifkan"
+                                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-all hover:bg-emerald-50 hover:text-emerald-600 disabled:opacity-40 dark:hover:bg-emerald-900/30 dark:hover:text-emerald-400"
+                                >
+                                  {busy ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <UserCheck className="h-4 w-4" />
+                                  )}
+                                </button>
+                              )}
                               <button
                                 onClick={() =>
-                                  handleDeactivateUser(user.id)
+                                  setDeleteConfirmId(user.id)
                                 }
-                                className="rounded-lg p-2 text-amber-600 transition-colors duration-200 hover:bg-amber-50 dark:hover:bg-amber-900/30"
-                                title="Nonaktifkan"
+                                disabled={busy}
+                                title="Hapus"
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-all hover:bg-red-50 hover:text-red-600 disabled:opacity-40 dark:hover:bg-red-900/30 dark:hover:text-red-400"
                               >
-                                <UserX className="h-4 w-4" />
+                                <Trash2 className="h-4 w-4" />
                               </button>
-                            ) : (
-                              <button
-                                onClick={() =>
-                                  handleActivateUser(user.id)
-                                }
-                                className="rounded-lg p-2 text-emerald-600 transition-colors duration-200 hover:bg-emerald-50 dark:hover:bg-emerald-900/30"
-                                title="Aktifkan"
-                              >
-                                <UserCheck className="h-4 w-4" />
-                              </button>
-                            )}
-                            <button
-                              onClick={() =>
-                                setShowDeleteConfirm(user.id)
-                              }
-                              className="rounded-lg p-2 text-red-600 transition-colors duration-200 hover:bg-red-50 dark:hover:bg-red-900/30"
-                              title="Hapus"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
+              </div>
 
-                {/* Mobile Cards */}
-                <div className="space-y-3 p-4 lg:hidden">
-                  {users.map((user) => (
+              {/* ── MOBILE CARDS ── */}
+              <div className="space-y-3 p-4 lg:hidden">
+                {users.map((user) => {
+                  const busy = processingId === user.id;
+                  const active = !!user.email_verified_at;
+                  const menuOpen = mobileMenuId === user.id;
+                  const pal = avatarPalette(user.id);
+                  return (
                     <div
                       key={user.id}
-                      className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800"
+                      className="overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-700/60 dark:bg-slate-800"
                     >
-                      <div className="mb-3 flex items-start justify-between">
+                      <div className="flex items-start justify-between p-4">
                         <div className="flex items-center gap-3">
-                          <div className="flex h-12 w-12 items-center justify-center rounded-full border border-blue-200 bg-blue-100 font-semibold text-blue-600 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
+                          <div
+                            className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl font-bold shadow-sm ${pal.bg} ${pal.text}`}
+                          >
                             {user.name.charAt(0).toUpperCase()}
                           </div>
                           <div>
-                            <p className="font-medium text-slate-900 dark:text-white">
+                            <p className="font-semibold text-slate-900 dark:text-white">
                               {user.name}
                             </p>
-                            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
                               {user.email}
                             </p>
                           </div>
                         </div>
                         <button
                           onClick={() =>
-                            setShowMobileMenu(
-                              showMobileMenu === user.id
-                                ? null
-                                : user.id
-                            )
+                            setMobileMenuId(menuOpen ? null : user.id)
                           }
-                          className="rounded-lg p-2 transition-colors hover:bg-slate-50 dark:hover:bg-slate-700"
+                          className={`rounded-lg p-1.5 transition-colors ${
+                            menuOpen
+                              ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
+                              : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
+                          }`}
                         >
-                          <MoreVertical className="h-5 w-5 text-slate-400" />
+                          <MoreVertical className="h-5 w-5" />
                         </button>
                       </div>
 
-                      <div className="mb-4 grid grid-cols-2 gap-3">
-                        <div className="space-y-1">
-                          <p className="text-xs text-slate-500 dark:text-slate-400">
-                            Role
-                          </p>
+                      <div className="border-t border-slate-50 px-4 pb-4 dark:border-slate-700/40">
+                        <div className="flex flex-wrap gap-2 pt-3">
                           <span
-                            className={`inline-block rounded-full px-3 py-1 text-xs font-medium ${getRoleColor(
+                            className={`inline-block rounded-lg px-2.5 py-1 text-xs font-semibold ${roleStyle(
                               user.role
                             )}`}
                           >
-                            {getRoleLabel(user.role)}
+                            {roleLabel(user.role)}
                           </span>
-                        </div>
-                        <div className="space-y-1">
-                          <p className="text-xs text-slate-500 dark:text-slate-400">
-                            Status
-                          </p>
                           <span
-                            className={`inline-block rounded-full px-3 py-1 text-xs font-medium ${getStatusColor(
-                              !!user.email_verified_at
+                            className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold ${statusStyle(
+                              active
                             )}`}
                           >
-                            {user.email_verified_at
-                              ? 'Aktif'
-                              : 'Pending'}
+                            <span
+                              className={`h-1.5 w-1.5 rounded-full ${
+                                active
+                                  ? 'bg-emerald-500'
+                                  : 'bg-amber-400'
+                              }`}
+                            />
+                            {active ? 'Aktif' : 'Pending'}
                           </span>
-                        </div>
-                        <div className="col-span-2 space-y-1">
-                          <div className="flex items-center gap-2">
-                            <Building className="h-4 w-4 text-slate-400" />
-                            <p className="text-sm text-slate-600 dark:text-slate-300">
-                              {user.divisi || '-'}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="col-span-2 space-y-1">
-                          <div className="flex items-center gap-2">
-                            <Calendar className="h-4 w-4 text-slate-400" />
-                            <p className="text-sm text-slate-600 dark:text-slate-300">
-                              {formatDate(user.created_at)}
-                            </p>
-                          </div>
+                          {user.divisi && (
+                            <span className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-500 dark:border-slate-600 dark:bg-slate-700/50 dark:text-slate-400">
+                              <Building className="h-3 w-3" />
+                              {user.divisi}
+                            </span>
+                          )}
+                          <span className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-500 dark:border-slate-600 dark:bg-slate-700/50 dark:text-slate-400">
+                            <Calendar className="h-3 w-3" />
+                            {fmtDate(user.created_at)}
+                          </span>
                         </div>
                       </div>
 
-                      {/* Mobile Action Menu */}
-                      {showMobileMenu === user.id && (
-                        <div className="mt-4 border-t border-slate-200 pt-4 dark:border-slate-700">
+                      {menuOpen && (
+                        <div className="border-t border-slate-100 bg-slate-50/80 p-3 dark:border-slate-700/60 dark:bg-slate-800/60">
                           <div className="grid grid-cols-2 gap-2">
                             <Link
                               href={`/dashboard/user-management/${user.id}`}
+                              className="col-span-1"
                             >
-                              <button className="flex items-center justify-center gap-2 rounded-lg bg-blue-50 px-3 py-2 font-medium text-blue-600 transition-colors hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-800/30">
-                                <Eye className="h-4 w-4" />
-                                Lihat
+                              <button className="flex w-full items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 py-2.5 text-sm font-semibold text-blue-700 transition-all hover:bg-blue-100 dark:border-blue-800/50 dark:bg-blue-900/30 dark:text-blue-400">
+                                <Eye className="h-4 w-4" /> Detail
                               </button>
                             </Link>
                             <Link
                               href={`/dashboard/user-management/${user.id}/edit`}
+                              className="col-span-1"
                             >
-                              <button className="flex items-center justify-center gap-2 rounded-lg bg-slate-50 px-3 py-2 font-medium text-slate-600 transition-colors hover:bg-slate-100 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600">
-                                <Edit className="h-4 w-4" />
-                                Edit
+                              <button className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-2.5 text-sm font-semibold text-slate-700 transition-all hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                                <Edit className="h-4 w-4" /> Edit
                               </button>
                             </Link>
-                            {user.email_verified_at ? (
+                            {active ? (
                               <button
                                 onClick={() =>
-                                  handleDeactivateUser(user.id)
+                                  handleDeactivate(user.id)
                                 }
-                                className="flex items-center justify-center gap-2 rounded-lg bg-amber-50 px-3 py-2 font-medium text-amber-600 transition-colors hover:bg-amber-100 dark:bg-amber-900/30 dark:text-amber-400 dark:hover:bg-amber-800/30"
+                                disabled={busy}
+                                className="flex items-center justify-center gap-2 rounded-xl border border-amber-200 bg-amber-50 py-2.5 text-sm font-semibold text-amber-700 transition-all hover:bg-amber-100 disabled:opacity-50 dark:border-amber-800/50 dark:bg-amber-900/30 dark:text-amber-400"
                               >
-                                <UserX className="h-4 w-4" />
+                                {busy ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <UserX className="h-4 w-4" />
+                                )}
                                 Nonaktifkan
                               </button>
                             ) : (
                               <button
                                 onClick={() =>
-                                  handleActivateUser(user.id)
+                                  handleActivate(user.id)
                                 }
-                                className="flex items-center justify-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 font-medium text-emerald-600 transition-colors hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 dark:hover:bg-emerald-800/30"
+                                disabled={busy}
+                                className="flex items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 py-2.5 text-sm font-semibold text-emerald-700 transition-all hover:bg-emerald-100 disabled:opacity-50 dark:border-emerald-800/50 dark:bg-emerald-900/30 dark:text-emerald-400"
                               >
-                                <UserCheck className="h-4 w-4" />
+                                {busy ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <UserCheck className="h-4 w-4" />
+                                )}
                                 Aktifkan
                               </button>
                             )}
                             <button
                               onClick={() =>
-                                setShowDeleteConfirm(user.id)
+                                setDeleteConfirmId(user.id)
                               }
-                              className="col-span-2 flex items-center justify-center gap-2 rounded-lg bg-red-50 px-3 py-2 font-medium text-red-600 transition-colors hover:bg-red-100 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-800/30"
+                              disabled={busy}
+                              className="col-span-2 flex items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 py-2.5 text-sm font-semibold text-red-600 transition-all hover:bg-red-100 disabled:opacity-50 dark:border-red-800/50 dark:bg-red-900/30 dark:text-red-400"
                             >
-                              <Trash2 className="h-4 w-4" />
-                              Hapus User
+                              <Trash2 className="h-4 w-4" /> Hapus
+                              User
                             </button>
                           </div>
                         </div>
                       )}
                     </div>
-                  ))}
-                </div>
+                  );
+                })}
               </div>
 
-              {/* Pagination */}
+              {/* ── PAGINATION ── */}
               {totalPages > 1 && (
-                <div className="border-t border-slate-200 p-6 dark:border-slate-700">
-                  <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
-                    <div className="text-sm text-slate-600 dark:text-slate-400">
+                <div className="border-t border-slate-100 bg-slate-50/60 px-5 py-4 dark:border-slate-700/60 dark:bg-slate-800/40">
+                  <div className="flex flex-col items-center justify-between gap-3 sm:flex-row">
+                    <p className="text-sm text-slate-500 dark:text-slate-400">
                       Menampilkan{' '}
-                      <span className="font-medium text-slate-900 dark:text-white">
-                        {(currentPage - 1) * perPage + 1}
-                      </span>{' '}
-                      -{' '}
-                      <span className="font-medium text-slate-900 dark:text-white">
+                      <span className="font-bold text-slate-700 dark:text-slate-200">
+                        {(currentPage - 1) * perPage + 1}–
                         {Math.min(currentPage * perPage, totalUsers)}
                       </span>{' '}
                       dari{' '}
-                      <span className="font-medium text-slate-900 dark:text-white">
+                      <span className="font-bold text-slate-700 dark:text-slate-200">
                         {totalUsers}
                       </span>{' '}
                       pengguna
-                    </div>
-
-                    <div className="flex items-center gap-2">
+                    </p>
+                    <div className="flex items-center gap-1">
                       <button
                         onClick={() =>
-                          setCurrentPage(Math.max(1, currentPage - 1))
+                          setCurrentPage((p) => Math.max(1, p - 1))
                         }
-                        disabled={currentPage === 1 || isProcessing}
-                        className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 font-medium text-slate-700 transition-colors duration-200 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                        disabled={currentPage === 1 || !!processingId}
+                        className="inline-flex h-8 items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 shadow-sm transition-all hover:bg-slate-50 disabled:opacity-40 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-300"
                       >
-                        <ChevronLeft className="h-4 w-4" />
+                        <ChevronLeft className="h-3.5 w-3.5" />
                         <span className="hidden sm:inline">
                           Sebelumnya
                         </span>
                       </button>
-
-                      <div className="flex items-center gap-1">
-                        {getPaginationNumbers().map((pageNum, idx) =>
-                          pageNum === '...' ? (
-                            <span
-                              key={`dots-${idx}`}
-                              className="px-3 py-2 text-slate-400"
-                            >
-                              ...
-                            </span>
-                          ) : (
-                            <button
-                              key={pageNum}
-                              onClick={() =>
-                                setCurrentPage(pageNum as number)
-                              }
-                              disabled={isProcessing}
-                              className={`rounded-lg px-4 py-2 font-medium transition-colors duration-200 ${
-                                currentPage === pageNum
-                                  ? 'bg-blue-600 text-white'
-                                  : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
-                              }`}
-                            >
-                              {pageNum}
-                            </button>
-                          )
-                        )}
-                      </div>
-
+                      {paginationPages().map((p, i) =>
+                        p === '...' ? (
+                          <span
+                            key={`d${i}`}
+                            className="px-1 text-sm text-slate-400"
+                          >
+                            …
+                          </span>
+                        ) : (
+                          <button
+                            key={p}
+                            onClick={() =>
+                              setCurrentPage(p as number)
+                            }
+                            className={`inline-flex h-8 min-w-[2rem] items-center justify-center rounded-lg px-2.5 text-sm font-semibold transition-all ${
+                              currentPage === p
+                                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm shadow-blue-200/70 dark:shadow-blue-950/50'
+                                : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600'
+                            }`}
+                          >
+                            {p}
+                          </button>
+                        )
+                      )}
                       <button
                         onClick={() =>
-                          setCurrentPage(
-                            Math.min(totalPages, currentPage + 1)
+                          setCurrentPage((p) =>
+                            Math.min(totalPages, p + 1)
                           )
                         }
                         disabled={
-                          currentPage === totalPages || isProcessing
+                          currentPage === totalPages || !!processingId
                         }
-                        className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 font-medium text-slate-700 transition-colors duration-200 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                        className="inline-flex h-8 items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 shadow-sm transition-all hover:bg-slate-50 disabled:opacity-40 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-300"
                       >
                         <span className="hidden sm:inline">
                           Selanjutnya
                         </span>
-                        <ChevronRight className="h-4 w-4" />
+                        <ChevronRight className="h-3.5 w-3.5" />
                       </button>
                     </div>
                   </div>
@@ -1281,46 +1182,65 @@ export default function UserManagement() {
         </div>
       </main>
 
-      {/* Delete Confirmation Modal */}
-      {showDeleteConfirm && (
-        <div className="animate-fade-in fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="animate-scale-up w-full max-w-md transform rounded-lg bg-white p-6 shadow-xl dark:bg-slate-800">
-            <div className="mb-4 flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-red-200 bg-red-100 dark:border-red-800 dark:bg-red-900/30">
-                <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400" />
+      {/* ── DELETE MODAL ──────────────────────────────────────────────────────── */}
+      {deleteConfirmId !== null && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 backdrop-blur-sm sm:items-center"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !processingId) {
+              setDeleteConfirmId(null);
+              setMobileMenuId(null);
+            }
+          }}
+        >
+          <div className="w-full max-w-sm overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-slate-800">
+            <div className="h-1 w-full bg-gradient-to-r from-red-500 to-rose-500" />
+            <div className="p-6">
+              <div className="mb-5 flex items-start gap-4">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-red-50 ring-1 ring-red-100 dark:bg-red-900/30 dark:ring-red-800/40">
+                  <AlertTriangle className="h-6 w-6 text-red-500" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 dark:text-white">
+                    Hapus Pengguna?
+                  </h3>
+                  <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                    Tindakan ini tidak dapat dibatalkan.
+                  </p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white">
-                  Hapus User
-                </h3>
-                <p className="text-sm text-slate-600 dark:text-slate-400">
-                  Tindakan ini tidak dapat dibatalkan
-                </p>
+              <p className="rounded-xl bg-slate-50 p-3.5 text-sm leading-relaxed text-slate-600 dark:bg-slate-700/50 dark:text-slate-300">
+                Semua data terkait pengguna ini akan dihapus secara
+                permanen dari sistem dan tidak dapat dipulihkan.
+              </p>
+              <div className="mt-5 flex gap-3">
+                <button
+                  onClick={() => handleDelete(deleteConfirmId)}
+                  disabled={!!processingId}
+                  className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-red-500 to-rose-600 py-2.5 text-sm font-bold text-white shadow-md shadow-red-200/60 transition-all hover:from-red-600 hover:to-rose-700 hover:shadow-lg active:scale-[.98] disabled:opacity-50 dark:shadow-red-950/30"
+                >
+                  {processingId === deleteConfirmId ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />{' '}
+                      Menghapus…
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="h-4 w-4" /> Ya, Hapus
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={() => {
+                    setDeleteConfirmId(null);
+                    setMobileMenuId(null);
+                  }}
+                  disabled={!!processingId}
+                  className="flex-1 rounded-xl border border-slate-200 bg-white py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition-all hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
+                >
+                  Batal
+                </button>
               </div>
-            </div>
-
-            <p className="mb-6 text-slate-700 dark:text-slate-300">
-              Apakah Anda yakin ingin menghapus pengguna ini? Semua
-              data terkait akan dihapus secara permanen.
-            </p>
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => handleDeleteUser(showDeleteConfirm)}
-                disabled={isProcessing}
-                className="flex-1 rounded-lg bg-red-600 px-4 py-3 font-semibold text-white transition-colors duration-200 hover:bg-red-700 disabled:opacity-50"
-              >
-                {isProcessing ? 'Menghapus...' : 'Ya, Hapus'}
-              </button>
-              <button
-                onClick={() => {
-                  setShowDeleteConfirm(null);
-                  setShowMobileMenu(null);
-                }}
-                className="flex-1 rounded-lg bg-slate-100 px-4 py-3 font-semibold text-slate-700 transition-colors duration-200 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
-              >
-                Batal
-              </button>
             </div>
           </div>
         </div>
