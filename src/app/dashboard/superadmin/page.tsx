@@ -533,7 +533,7 @@ export default function SuperadminDashboard() {
                     <div className="col-span-2 mt-1 flex items-center gap-1 text-xs">
                       <div className="h-1.5 w-1.5 rounded-full bg-blue-500"></div>
                       <span className="text-blue-600 dark:text-blue-400">
-                        User Biasa:{' '}
+                        Pengguna:{' '}
                         {dashboardData.total_users -
                           dashboardData.total_admins -
                           dashboardData.total_superadmins}
@@ -597,7 +597,7 @@ export default function SuperadminDashboard() {
                         <option value="all">Semua Role</option>
                         <option value="superadmin">SuperAdmin</option>
                         <option value="admin">Admin</option>
-                        <option value="user">User</option>
+                        <option value="user">Pengguna</option>
                       </select>
                     </div>
                   </div>
@@ -944,7 +944,7 @@ function UserListItem({
       case 'admin':
         return 'Admin';
       case 'user':
-        return 'User';
+        return 'Pengguna';
       default:
         return role;
     }

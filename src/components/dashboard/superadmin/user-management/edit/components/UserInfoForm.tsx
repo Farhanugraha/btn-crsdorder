@@ -162,7 +162,6 @@ export const UserInfoForm = ({
           </div>
         </div>
 
-        {/* Division Input (untuk user biasa) */}
         {formData.role !== 'admin' && (
           <DivisionInput
             value={formData.divisi}

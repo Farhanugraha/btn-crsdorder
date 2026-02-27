@@ -151,7 +151,6 @@ export const MobileNav = ({
               )}
             </>
           ) : (
-            // Menu untuk user biasa (baik login maupun belum)
             <>
               <Link
                 href="/areas"

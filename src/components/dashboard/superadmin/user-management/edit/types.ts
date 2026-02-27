@@ -58,7 +58,6 @@ export interface DivisionInputState {
   isCustomDivisi: boolean;
 }
 
-// Untuk dropdown divisi di form user biasa
 export const DIVISI_OPTIONS = [
   { value: 'CRSD 1', label: 'CRSD 1' },
   { value: 'CRSD 2', label: 'CRSD 2' },
