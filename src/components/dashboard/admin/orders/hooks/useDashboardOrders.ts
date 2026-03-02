@@ -34,9 +34,10 @@ export const useDashboardOrders = () => {
   const [expandedOrder, setExpandedOrder] = useState<number | null>(null);
   const [userRole, setUserRole] = useState<string>('');
   const [userDivisi, setUserDivisi] = useState<string>('');
+  const [userDataAccess, setUserDataAccess] = useState<string[]>([]);
 
   // ============= API CALLS =============
-  const fetchOrders = useCallback(async () => {
+  const fetchOrders = useCallback(async (selectedCrsdFilter?: CrsdFilterType) => {
     setLoading(true);
     setError(null);
     
@@ -50,6 +51,7 @@ export const useDashboardOrders = () => {
 
       let role = userRole;
       let divisi = userDivisi;
+      let dataAccess = userDataAccess;
       
       if (!role || !divisi) {
         try {
@@ -59,8 +61,10 @@ export const useDashboardOrders = () => {
             const user = JSON.parse(userData);
             role = user.role || '';
             divisi = user.divisi || '';
+            dataAccess = user.data_access || [];
             setUserRole(role);
             setUserDivisi(divisi);
+            setUserDataAccess(dataAccess);
           } else {
             // Fallback ke 'auth_user'
             const authUser = localStorage.getItem('auth_user');
@@ -68,29 +72,48 @@ export const useDashboardOrders = () => {
               const user = JSON.parse(authUser);
               role = user.role || '';
               divisi = user.divisi || '';
+              dataAccess = user.data_access || [];
               setUserRole(role);
               setUserDivisi(divisi);
+              setUserDataAccess(dataAccess);
             }
           }
         } catch (err) {
-          console.error('Error parsing user data:', err);
+          // Silent error
         }
       }
 
+      // Gunakan filter yang dipilih atau default
+      const activeCrsdFilter = selectedCrsdFilter !== undefined ? selectedCrsdFilter : crsdFilter;
+      
       let endpoint;
       
       if (role === 'superadmin') {
         // Superadmin bisa pilih semua CRSD
-        if (crsdFilter === 'crsd1') {
+        if (activeCrsdFilter === 'crsd1') {
           endpoint = `${process.env.NEXT_PUBLIC_API_URL}/api/admin/crsd1/orders`;
-        } else if (crsdFilter === 'crsd2') {
+        } else if (activeCrsdFilter === 'crsd2') {
           endpoint = `${process.env.NEXT_PUBLIC_API_URL}/api/admin/crsd2/orders`;
         } else {
           endpoint = `${process.env.NEXT_PUBLIC_API_URL}/api/admin/orders`;
         }
       } else {
         // Admin biasa - filter berdasarkan divisi mereka
-        if (divisi === 'CRSD 1' || divisi === 'crsd1') {
+        const hasAccessToAllCrsd = dataAccess && 
+                                   dataAccess.length === 2 && 
+                                   dataAccess.includes('crsd1') && 
+                                   dataAccess.includes('crsd2');
+        
+        if (hasAccessToAllCrsd) {
+          // Admin dengan akses semua CRSD bisa memilih
+          if (activeCrsdFilter === 'crsd1') {
+            endpoint = `${process.env.NEXT_PUBLIC_API_URL}/api/admin/crsd1/orders`;
+          } else if (activeCrsdFilter === 'crsd2') {
+            endpoint = `${process.env.NEXT_PUBLIC_API_URL}/api/admin/crsd2/orders`;
+          } else {
+            endpoint = `${process.env.NEXT_PUBLIC_API_URL}/api/admin/orders`;
+          }
+        } else if (divisi === 'CRSD 1' || divisi === 'crsd1') {
           endpoint = `${process.env.NEXT_PUBLIC_API_URL}/api/admin/crsd1/orders`;
           if (crsdFilter !== 'crsd1') {
             setCrsdFilter('crsd1');
@@ -105,11 +128,6 @@ export const useDashboardOrders = () => {
         }
       }
 
-      console.log('Fetching orders from:', endpoint);
-      console.log('User Role:', role);
-      console.log('User Divisi:', divisi);
-      console.log('CRSD Filter:', crsdFilter);
-      
       const res = await fetch(endpoint, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -145,13 +163,12 @@ export const useDashboardOrders = () => {
         throw new Error(data.message || 'Gagal mengambil data pesanan');
       }
     } catch (err: any) {
-      console.error('Error fetching orders:', err);
       setError(err.message || 'Gagal memuat pesanan');
     } finally {
       setLoading(false);
       setIsRefreshing(false);
     }
-  }, [userRole, userDivisi, crsdFilter]); 
+  }, [userRole, userDivisi, userDataAccess, crsdFilter]);
 
   const fetchUserInfo = useCallback(() => {
     try {
@@ -161,7 +178,12 @@ export const useDashboardOrders = () => {
         const user = JSON.parse(userData);
         setUserRole(user.role || '');
         setUserDivisi(user.divisi || '');
-        return { role: user.role || '', divisi: user.divisi || '' };
+        setUserDataAccess(user.data_access || []);
+        return { 
+          role: user.role || '', 
+          divisi: user.divisi || '',
+          data_access: user.data_access || [] 
+        };
       }
       
       // Fallback ke 'auth_user'
@@ -170,24 +192,39 @@ export const useDashboardOrders = () => {
         const user = JSON.parse(authUser);
         setUserRole(user.role || '');
         setUserDivisi(user.divisi || '');
-        return { role: user.role || '', divisi: user.divisi || '' };
+        setUserDataAccess(user.data_access || []);
+        return { 
+          role: user.role || '', 
+          divisi: user.divisi || '',
+          data_access: user.data_access || [] 
+        };
       }
     } catch (err) {
-      console.error('Error fetching user info:', err);
+      // Silent error
     }
-    return { role: '', divisi: '' };
+    return { role: '', divisi: '', data_access: [] };
   }, []);
 
   // ============= INITIAL LOAD =============
   useEffect(() => {
-    const { role, divisi } = fetchUserInfo();
+    const { role, divisi, data_access } = fetchUserInfo();
   
     if (role !== 'superadmin') {
-      if (divisi === 'CRSD 1' || divisi === 'crsd1') {
-        setCrsdFilter('crsd1');
-      } else if (divisi === 'CRSD 2' || divisi === 'crsd2') {
-        setCrsdFilter('crsd2');
+      // Cek apakah admin memiliki akses ke semua CRSD
+      const hasAccessToAllCrsd = data_access && 
+                                 data_access.length === 2 && 
+                                 data_access.includes('crsd1') && 
+                                 data_access.includes('crsd2');
+      
+      if (!hasAccessToAllCrsd) {
+        // Hanya set filter otomatis jika tidak punya akses semua
+        if (divisi === 'CRSD 1' || divisi === 'crsd1') {
+          setCrsdFilter('crsd1');
+        } else if (divisi === 'CRSD 2' || divisi === 'crsd2') {
+          setCrsdFilter('crsd2');
+        }
       }
+      // Jika punya akses semua, biarkan filter 'all' (default)
     }
     
     if (role) {
@@ -198,28 +235,73 @@ export const useDashboardOrders = () => {
     }
   }, []);
 
-  // ============= FIXED STATISTICS =============
-const filteredStats = useMemo<FilteredStats>(() => {
-  // Step 1: Ambil semua pesanan yang sudah dibayar
-  let filtered = orders.filter(order => order.status === 'paid');
+  // ============= FILTERED STATISTICS UNTUK CARDS =============
   
-  // Step 2: Filter berdasarkan tanggal SAJA (bukan status)
-  filtered = OrderUtils.filterOrdersByDate(filtered, dateFilter);
-  
-  // Step 3: Filter berdasarkan CRSD (jika superadmin)
-  filtered = OrderUtils.filterOrdersByCRSD(filtered, crsdFilter);
-  
-  const totalOrders = filtered.length;
-  const totalRevenue = filtered.reduce((sum, order) => sum + order.total_price, 0);
-  
-  return { totalOrders, totalRevenue };
-}, [orders, dateFilter, crsdFilter]); 
+  // Statistik berdasarkan filter yang aktif (untuk cards)
+  const filteredStatsByActiveFilters = useMemo(() => {
+    // Mulai dengan semua pesanan paid
+    let filtered = orders.filter(order => order.status === 'paid');
+    
+    // Terapkan filter tanggal
+    filtered = OrderUtils.filterOrdersByDate(filtered, dateFilter);
+    
+    // Terapkan filter CRSD
+    filtered = OrderUtils.filterOrdersByCRSD(filtered, crsdFilter);
+    
+    // Terapkan filter search
+    filtered = OrderUtils.filterOrdersBySearch(filtered, search);
+    
+    // Filter berdasarkan area (jika ada)
+    if (areaFilter !== 'all') {
+      filtered = filtered.filter(order => 
+        OrderUtils.getOrderAreas(order).some(area => area.id.toString() === areaFilter)
+      );
+    }
+    
+    // Filter berdasarkan restaurant (jika ada)
+    if (restaurantFilter !== 'all') {
+      filtered = filtered.filter(order => 
+        OrderUtils.getOrderRestaurants(order).some(
+          restaurant => restaurant.id.toString() === restaurantFilter
+        )
+      );
+    }
+    
+    // Hitung berdasarkan status
+    const processingOrders = filtered.filter(order => order.order_status === 'processing');
+    const completedOrders = filtered.filter(order => order.order_status === 'completed');
+    
+    const totalOrders = filtered.length;
+    const totalRevenue = filtered.reduce((sum, order) => sum + order.total_price, 0);
+    const processingOrdersCount = processingOrders.length;
+    const completedOrdersCount = completedOrders.length;
+    
+    return { 
+      totalOrders, 
+      totalRevenue,
+      processingOrdersCount,
+      completedOrdersCount
+    };
+  }, [orders, dateFilter, crsdFilter, search, areaFilter, restaurantFilter]);
 
-const weeklyRevenue = useMemo<number>(() => {
-  return OrderUtils.calculateWeeklyRevenue(orders);
-}, [orders]);
+  // Statistik untuk overview (tanpa filter status, area, restaurant, search)
+  const overviewStats = useMemo(() => {
+    let filtered = orders.filter(order => order.status === 'paid');
+    filtered = OrderUtils.filterOrdersByDate(filtered, dateFilter);
+    filtered = OrderUtils.filterOrdersByCRSD(filtered, crsdFilter);
+    
+    const totalOrders = filtered.length;
+    const totalRevenue = filtered.reduce((sum, order) => sum + order.total_price, 0);
+    
+    return { totalOrders, totalRevenue };
+  }, [orders, dateFilter, crsdFilter]);
 
-  // ============= FILTERED ORDERS =============
+  // Pendapatan mingguan (selalu minggu ini, tidak terpengaruh filter)
+  const weeklyRevenue = useMemo<number>(() => {
+    return OrderUtils.calculateWeeklyRevenue(orders);
+  }, [orders]);
+
+  // ============= FILTERED ORDERS (untuk tabel) =============
   const filteredOrders = useMemo(() => {
     let filtered = orders.filter(order => order.status === 'paid');
     
@@ -247,21 +329,21 @@ const weeklyRevenue = useMemo<number>(() => {
     return filtered;
   }, [orders, statusFilter, dateFilter, crsdFilter, search, areaFilter, restaurantFilter]);
 
-// ============= COUNT FUNCTIONS =============
-const getProcessingOrderCountByStatus = useCallback((status: string) => {
-  if (status === 'processing') {
-    return OrderUtils.getProcessingOrderCountByStatus(orders, 'processing');
-  }
-  return 0;
-}, [orders]);
+  // ============= COUNT FUNCTIONS =============
+  const getProcessingOrderCountByStatus = useCallback((status: string) => {
+    if (status === 'processing') {
+      return OrderUtils.getProcessingOrderCountByStatus(orders, 'processing');
+    }
+    return 0;
+  }, [orders]);
 
-const getOrderCountByArea = useCallback((areaId: number) => {
-  return OrderUtils.getOrderCountByArea(orders, areaId);
-}, [orders]);
+  const getOrderCountByArea = useCallback((areaId: number) => {
+    return OrderUtils.getOrderCountByArea(orders, areaId);
+  }, [orders]);
 
-const getOrderCountByRestaurant = useCallback((restaurantId: number) => {
-  return OrderUtils.getOrderCountByRestaurant(orders, restaurantId);
-}, [orders]);
+  const getOrderCountByRestaurant = useCallback((restaurantId: number) => {
+    return OrderUtils.getOrderCountByRestaurant(orders, restaurantId);
+  }, [orders]);
 
   // ============= PAGINATION =============
   const pages = Math.ceil(filteredOrders.length / PER_PAGE);
@@ -274,24 +356,6 @@ const getOrderCountByRestaurant = useCallback((restaurantId: number) => {
     setIsRefreshing(true);
     await fetchOrders();
   }, [fetchOrders]);
-
-  const handleResetFilters = useCallback(() => {
-    setSearch('');
-    setStatusFilter('processing');
-    setAreaFilter('all');
-    setRestaurantFilter('all');
-    setDateFilter('today');
-    
-    if (userRole === 'superadmin') {
-      setCrsdFilter('all');
-    } else if (userDivisi === 'CRSD 1' || userDivisi === 'crsd1') {
-      setCrsdFilter('crsd1');
-    } else if (userDivisi === 'CRSD 2' || userDivisi === 'crsd2') {
-      setCrsdFilter('crsd2');
-    }
-    
-    setPage(1);
-  }, [userRole, userDivisi]);
 
   const handleStatusChange = useCallback((value: OrderStatusFilter) => {
     setStatusFilter(value);
@@ -308,12 +372,20 @@ const getOrderCountByRestaurant = useCallback((restaurantId: number) => {
   }, []);
 
   const handleCrsdChange = useCallback((value: CrsdFilterType) => {
-    if (userRole === 'superadmin') {
+    const hasAccessToAllCrsd = userDataAccess && 
+                               userDataAccess.length === 2 && 
+                               userDataAccess.includes('crsd1') && 
+                               userDataAccess.includes('crsd2');
+    
+    if (userRole === 'superadmin' || hasAccessToAllCrsd) {
       setCrsdFilter(value);
       setPage(1);
-      fetchOrders();
+      
+      setTimeout(() => {
+        fetchOrders(value);
+      }, 0);
     }
-  }, [userRole, fetchOrders]);
+  }, [userRole, userDataAccess, fetchOrders]);
 
   const handleSearchChange = useCallback((value: string) => {
     setSearch(value);
@@ -342,6 +414,45 @@ const getOrderCountByRestaurant = useCallback((restaurantId: number) => {
     return filteredOrders;
   }, [filteredOrders]);
 
+  const handleResetFilters = useCallback(() => {
+    setSearch('');
+    setStatusFilter('processing');
+    setAreaFilter('all');
+    setRestaurantFilter('all');
+    setDateFilter('today');
+    
+    if (userRole === 'superadmin') {
+      setCrsdFilter('all');
+      setTimeout(() => {
+        fetchOrders('all');
+      }, 0);
+    } else {
+      const hasAccessToAllCrsd = userDataAccess && 
+                                 userDataAccess.length === 2 && 
+                                 userDataAccess.includes('crsd1') && 
+                                 userDataAccess.includes('crsd2');
+      
+      if (hasAccessToAllCrsd) {
+        setCrsdFilter('all');
+        setTimeout(() => {
+          fetchOrders('all');
+        }, 0);
+      } else if (userDivisi === 'CRSD 1' || userDivisi === 'crsd1') {
+        setCrsdFilter('crsd1');
+        setTimeout(() => {
+          fetchOrders('crsd1');
+        }, 0);
+      } else if (userDivisi === 'CRSD 2' || userDivisi === 'crsd2') {
+        setCrsdFilter('crsd2');
+        setTimeout(() => {
+          fetchOrders('crsd2');
+        }, 0);
+      }
+    }
+    
+    setPage(1);
+  }, [userRole, userDivisi, userDataAccess, fetchOrders]);
+
   // ============= COMPUTED VALUES =============
   const hasActiveFilters = useMemo(() => {
     return search !== '' || 
@@ -359,10 +470,14 @@ const getOrderCountByRestaurant = useCallback((restaurantId: number) => {
   const isSuperAdmin = userRole === 'superadmin';
   const isAdmin = userRole === 'admin' || userRole === 'superadmin';
   
-
   const isCrsd1Admin = userDivisi === 'CRSD 1' || userDivisi === 'crsd1';
   const isCrsd2Admin = userDivisi === 'CRSD 2' || userDivisi === 'crsd2';
   const isCrsdAdmin = isCrsd1Admin || isCrsd2Admin;
+  
+  const hasAccessToAllCrsd = userDataAccess && 
+                             userDataAccess.length === 2 && 
+                             userDataAccess.includes('crsd1') && 
+                             userDataAccess.includes('crsd2');
 
   return {
     // Data
@@ -372,9 +487,15 @@ const getOrderCountByRestaurant = useCallback((restaurantId: number) => {
     filteredOrders,
     paginatedOrders,
     
-    // Statistics - FIXED!
-    filteredStats,
+    // Statistics untuk cards
+    overviewStats,
     weeklyRevenue,
+    
+    // Data spesifik untuk OrdersStatsSection
+    filteredProcessingOrders: filteredStatsByActiveFilters.processingOrdersCount,
+    filteredCompletedOrders: filteredStatsByActiveFilters.completedOrdersCount,
+    filteredTotalOrders: filteredStatsByActiveFilters.totalOrders,
+    filteredTotalRevenue: filteredStatsByActiveFilters.totalRevenue,
     
     // Loading states
     loading,
@@ -395,14 +516,16 @@ const getOrderCountByRestaurant = useCallback((restaurantId: number) => {
     pages,
     expandedOrder,
     userRole,
-    userDivisi, 
+    userDivisi,
+    userDataAccess,
     hasActiveFilters,
     dateDisplayText,
     isSuperAdmin,
     isAdmin,
     isCrsd1Admin, 
     isCrsd2Admin, 
-    isCrsdAdmin,  
+    isCrsdAdmin,
+    hasAccessToAllCrsd,
     
     // Count functions
     getProcessingOrderCountByStatus,

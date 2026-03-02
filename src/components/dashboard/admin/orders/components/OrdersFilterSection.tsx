@@ -27,6 +27,7 @@ interface OrdersFilterSectionProps {
   restaurants: Restaurant[];
   userRole: string;
   userDivisi?: string;
+  userDataAccess?: string[];
   hasActiveFilters: boolean;
   isAdmin: boolean;
   isSuperAdmin?: boolean;
@@ -60,6 +61,7 @@ export const OrdersFilterSection = ({
   restaurants,
   userRole,
   userDivisi,
+  userDataAccess = [],
   hasActiveFilters,
   isAdmin,
   isSuperAdmin,
@@ -77,11 +79,19 @@ export const OrdersFilterSection = ({
   onCrsdChange,
   onResetFilters
 }: OrdersFilterSectionProps) => {
-  const showCrsdFilter = isSuperAdmin === true;
+  // PERBAIKAN: Superadmin ATAU admin dengan akses ke semua CRSD (data_access length 2)
+  const hasAccessToAllCrsd =
+    userDataAccess.length === 2 &&
+    userDataAccess.includes('crsd1') &&
+    userDataAccess.includes('crsd2');
+
+  // Filter CRSD muncul untuk superadmin ATAU admin dengan akses semua CRSD
+  const showCrsdFilter = isSuperAdmin === true || hasAccessToAllCrsd;
 
   const getCrsdLabel = () => {
     if (isCrsd1Admin) return 'CRSD 1';
     if (isCrsd2Admin) return 'CRSD 2';
+    if (hasAccessToAllCrsd) return 'Semua CRSD';
     return '';
   };
 
@@ -198,7 +208,7 @@ export const OrdersFilterSection = ({
           </div>
         </div>
 
-        {/* CRSD Filter - HANYA UNTUK SUPERADMIN */}
+        {/* CRSD Filter - UNTUK SUPERADMIN ATAU ADMIN DENGAN AKSES SEMUA CRSD */}
         {showCrsdFilter && (
           <div className="mb-4">
             <label className="mb-1.5 block text-xs font-medium text-gray-700 dark:text-gray-300">
@@ -227,25 +237,30 @@ export const OrdersFilterSection = ({
           </div>
         )}
 
-        {/* INFO CRSD untuk Admin Biasa */}
-        {!showCrsdFilter && isCrsdAdmin && (
-          <div className="mb-4 rounded-lg border border-purple-200 bg-purple-50 p-3 dark:border-purple-800 dark:bg-purple-900/20">
-            <div className="flex items-start gap-2">
-              <div className="flex h-5 w-5 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900/30">
-                <Building2 className="h-3 w-3 text-purple-600 dark:text-purple-400" />
-              </div>
-              <div>
-                <p className="text-xs font-medium text-purple-800 dark:text-purple-300">
-                  Divisi {getCrsdLabel()}
-                </p>
-                <p className="mt-0.5 text-xs text-purple-700 dark:text-purple-400">
-                  Anda hanya dapat melihat pesanan dari divisi{' '}
-                  {getCrsdLabel()}
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* INFO SEDERHANA - HANYA SATU BARIS UNTUK MENUNJUKKAN AKSES USER */}
+        <div className="mb-4 text-xs text-gray-500 dark:text-gray-400">
+          {isSuperAdmin ? (
+            <span className="inline-flex items-center gap-1">
+              <Building2 className="h-3 w-3" />
+              Super Administrator • Akses semua data
+            </span>
+          ) : hasAccessToAllCrsd ? (
+            <span className="inline-flex items-center gap-1">
+              <Building2 className="h-3 w-3" />
+              Admin • Akses CRSD 1 & CRSD 2
+            </span>
+          ) : isCrsd1Admin ? (
+            <span className="inline-flex items-center gap-1">
+              <Building2 className="h-3 w-3" />
+              Admin CRSD 1
+            </span>
+          ) : isCrsd2Admin ? (
+            <span className="inline-flex items-center gap-1">
+              <Building2 className="h-3 w-3" />
+              Admin CRSD 2
+            </span>
+          ) : null}
+        </div>
 
         {/* Area & Restaurant Filters */}
         {(statusFilter === 'processing' ||

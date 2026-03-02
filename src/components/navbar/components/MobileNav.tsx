@@ -121,7 +121,7 @@ export const MobileNav = ({
                     className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
                   >
                     <Users className="h-4 w-4" />
-                    Manajemen User
+                    Manajemen Pengguna
                   </Link>
                   <Link
                     href="/dashboard/areas"

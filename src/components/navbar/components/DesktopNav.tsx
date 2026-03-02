@@ -133,7 +133,7 @@ export const DesktopNav = ({
                     className="flex cursor-pointer items-center gap-2"
                   >
                     <Users className="h-4 w-4" />
-                    Manajemen User
+                    Manajemen Pengguna
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>

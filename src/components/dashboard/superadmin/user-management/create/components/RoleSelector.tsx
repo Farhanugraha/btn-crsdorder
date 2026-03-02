@@ -33,7 +33,7 @@ export const RoleSelector = ({
     },
     {
       value: 'user',
-      label: 'User',
+      label: 'Pengguna',
       icon: Users,
       iconColor: 'text-blue-500',
       description: 'Akses terbatas untuk penggunaan biasa'

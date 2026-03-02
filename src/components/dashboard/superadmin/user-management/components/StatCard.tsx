@@ -82,7 +82,7 @@ export const StatCards = ({
       barTo: 'to-sky-400'
     },
     {
-      label: 'User Biasa',
+      label: 'Pengguna',
       count: userCount,
       Icon: (props) => <User {...props} />,
       gradient: 'from-slate-400 to-slate-500',

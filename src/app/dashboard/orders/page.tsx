@@ -21,9 +21,15 @@ export default function CompactOrdersPage() {
     areas,
     restaurants,
 
-    // Statistics - FIXED!
-    filteredStats,
+    // Statistics
+    overviewStats,
     weeklyRevenue,
+
+    // Data spesifik untuk OrdersStatsSection
+    filteredProcessingOrders,
+    filteredCompletedOrders,
+    filteredTotalOrders,
+    filteredTotalRevenue,
 
     // States
     loading,
@@ -41,6 +47,7 @@ export default function CompactOrdersPage() {
     expandedOrder,
     userRole,
     userDivisi,
+    userDataAccess, // TAMBAHKAN INI
     hasActiveFilters,
     dateDisplayText,
     isSuperAdmin,
@@ -120,6 +127,7 @@ export default function CompactOrdersPage() {
           restaurants={restaurants}
           userRole={userRole}
           userDivisi={userDivisi}
+          userDataAccess={userDataAccess} // SEKARANG TERSEDIA
           hasActiveFilters={hasActiveFilters}
           isAdmin={isAdmin}
           isSuperAdmin={isSuperAdmin}
@@ -143,10 +151,15 @@ export default function CompactOrdersPage() {
         {/* ===== STATISTICS SECTION - FIXED! ===== */}
         <OrdersStatsSection
           title={dateDisplayText}
-          totalOrders={filteredStats.totalOrders}
-          totalRevenue={filteredStats.totalRevenue}
+          totalOrders={overviewStats.totalOrders}
+          totalRevenue={overviewStats.totalRevenue}
           weeklyRevenue={weeklyRevenue}
           statusFilter={statusFilter}
+          dateFilter={dateFilter}
+          filteredProcessingOrders={filteredProcessingOrders}
+          filteredCompletedOrders={filteredCompletedOrders}
+          filteredTotalOrders={filteredTotalOrders}
+          filteredTotalRevenue={filteredTotalRevenue}
         />
 
         {/* ===== ERROR ALERT ===== */}

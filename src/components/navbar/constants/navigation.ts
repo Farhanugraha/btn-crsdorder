@@ -76,7 +76,7 @@ export const ADMIN_NAV_ITEMS: NavigationItem[] = [
 export const SUPERADMIN_NAV_ITEMS: NavigationItem[] = [
   {
     href: '/dashboard/user-management',
-    label: 'Manajemen User',
+    label: 'Manajemen Pengguna',
     icon: 'Users',  
     roles: ['superadmin']
   },

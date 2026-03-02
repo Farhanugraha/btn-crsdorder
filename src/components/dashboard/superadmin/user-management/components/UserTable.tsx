@@ -19,7 +19,7 @@ const roleLabel = (role: string) => {
     ? 'Super Admin'
     : role === 'admin'
       ? 'Admin'
-      : 'User';
+      : 'Pengguna';
 };
 
 const roleStyle = (role: string) => {
