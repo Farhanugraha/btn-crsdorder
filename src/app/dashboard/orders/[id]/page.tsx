@@ -529,7 +529,7 @@ export default function OrderDetailPage({
               <span
                 className={`text-xs font-bold uppercase tracking-wider ${orderBadge.text}`}
               >
-                📦 Status Pesanan
+                Status Pesanan
               </span>
             </div>
             <p

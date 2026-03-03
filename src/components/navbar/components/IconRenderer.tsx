@@ -12,7 +12,6 @@ export const IconRenderer = ({
   name,
   className = 'h-4 w-4'
 }: IconRendererProps) => {
-  // Dynamically get the icon component from lucide-react
   const IconComponent = (Icons as any)[name] as
     | LucideIcon
     | undefined;

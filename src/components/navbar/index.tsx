@@ -17,7 +17,7 @@ import { DesktopNav } from './components/DesktopNav';
 import { MobileNav } from './components/MobileNav';
 import { UserMenu } from './components/UserMenu';
 import { AuthButtons } from './components/AuthButtons';
-import { NotificationsBell } from './components/NotificationsBell';
+// import { NotificationsBell } from './components/NotificationsBell';
 import { LoadingSkeleton } from './components/LoadingSkeleton';
 
 // Dialogs
@@ -100,10 +100,10 @@ const Navbar = () => {
 
             {/* Right Side Actions */}
             <div className="flex items-center gap-2">
-              {/* Notifications */}
+              {/* Notifications
               {user && (
                 <NotificationsBell count={notificationsCount} />
-              )}
+              )} */}
 
               {/* Cart - Only for non-admin logged in users */}
               {user && !isAdmin && (
