@@ -19,7 +19,7 @@ export const useUserProfile = (userId: string) => {
     unit_kerja: ''
   });
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
   useEffect(() => {
     const checkAuth = async () => {

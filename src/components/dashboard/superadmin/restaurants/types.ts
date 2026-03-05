@@ -43,4 +43,4 @@ export interface User {
 export type ViewMode = 'grid' | 'list';
 export type FilterStatus = 'all' | 'open' | 'closed';
 
-export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+export const API_URL = process.env.NEXT_PUBLIC_API_URL;

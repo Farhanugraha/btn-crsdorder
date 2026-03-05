@@ -20,7 +20,7 @@ export const Logo = ({ dashboardLink }: LogoProps) => {
 
         <Image
           src="/logo.png"
-          alt="CRSD OBAMA"
+          alt="CRSD OBBAMA"
           width={64}
           height={44}
           priority

@@ -16,7 +16,7 @@ export function useEditUser(userId: string) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authData, setAuthData] = useState<AuthData | null>(null);
   const [user, setUser] = useState<UserDetail | null>(null);
-  
+
   const [formState, setFormState] = useState<FormState>({
     loading: true,
     updating: false,
@@ -60,11 +60,9 @@ export function useEditUser(userId: string) {
   const getApiUrl = (): string => {
     const envUrl = process.env.NEXT_PUBLIC_API_URL;
     if (envUrl && envUrl.includes('/api')) return envUrl;
-    if (envUrl) return `${envUrl}/api`;
-    return 'http://localhost:8000/api';
+    return `${envUrl}/api`;
   };
 
-  // Helper function untuk mengubah data_access menjadi selected divisions
   const parseDataAccessToSelectedDivisions = (dataAccess: any): string[] => {
     if (!dataAccess) return [];
 
@@ -124,28 +122,20 @@ export function useEditUser(userId: string) {
     }));
 
     if (formData.role !== 'admin') {
-      setDivisionState(prev => ({
-        ...prev,
-        selectedDivisions: []
-      }));
+      setDivisionState(prev => ({ ...prev, selectedDivisions: [] }));
     }
   }, [formData.role]);
-  
+
   useEffect(() => {
     if (formData.divisi) {
       const isCrsd = formData.divisi === 'CRSD 1' || formData.divisi === 'CRSD 2';
-      
       setDivisionState(prev => ({
         ...prev,
         isCustomDivisi: !isCrsd,
         customDivisi: !isCrsd ? formData.divisi : ''
       }));
     } else {
-      setDivisionState(prev => ({
-        ...prev,
-        isCustomDivisi: false,
-        customDivisi: ''
-      }));
+      setDivisionState(prev => ({ ...prev, isCustomDivisi: false, customDivisi: '' }));
     }
   }, [formData.divisi]);
 
@@ -159,15 +149,8 @@ export function useEditUser(userId: string) {
       if (!token || !userStr) {
         setIsAuthenticated(false);
         setAuthData(null);
-        setFormState(prev => ({
-          ...prev,
-          error: 'Silakan login terlebih dahulu',
-          loading: false
-        }));
-
-        setTimeout(() => {
-          router.push('/auth/login');
-        }, 2000);
+        setFormState(prev => ({ ...prev, error: 'Silakan login terlebih dahulu', loading: false }));
+        setTimeout(() => { router.push('/auth/login'); }, 2000);
         return;
       }
 
@@ -181,32 +164,19 @@ export function useEditUser(userId: string) {
           error: 'Hanya superadmin yang dapat mengakses halaman ini',
           loading: false
         }));
-
-        setTimeout(() => {
-          router.push('/dashboard');
-        }, 2000);
+        setTimeout(() => { router.push('/dashboard'); }, 2000);
         return;
       }
 
-      setAuthData({
-        token,
-        user: userData
-      });
+      setAuthData({ token, user: userData });
       setIsAuthenticated(true);
       setFormState(prev => ({ ...prev, error: null }));
     } catch (error) {
       console.error('Error checking authentication:', error);
       setIsAuthenticated(false);
       setAuthData(null);
-      setFormState(prev => ({
-        ...prev,
-        error: 'Terjadi kesalahan pada autentikasi',
-        loading: false
-      }));
-
-      setTimeout(() => {
-        router.push('/auth/login');
-      }, 2000);
+      setFormState(prev => ({ ...prev, error: 'Terjadi kesalahan pada autentikasi', loading: false }));
+      setTimeout(() => { router.push('/auth/login'); }, 2000);
     }
   }, [router]);
 
@@ -217,23 +187,17 @@ export function useEditUser(userId: string) {
       const token = getAuthToken();
 
       if (!token) {
-        setFormState(prev => ({
-          ...prev,
-          error: 'Token tidak ditemukan. Silakan login kembali.',
-          loading: false
-        }));
+        setFormState(prev => ({ ...prev, error: 'Token tidak ditemukan. Silakan login kembali.', loading: false }));
         setIsAuthenticated(false);
         setTimeout(() => router.push('/auth/login'), 2000);
         return;
       }
 
       const apiUrl = getApiUrl();
-      const url = `${apiUrl}/superadmin/users/${userId}`;
-
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-      const response = await fetch(url, {
+      const response = await fetch(`${apiUrl}/superadmin/users/${userId}`, {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -248,9 +212,7 @@ export function useEditUser(userId: string) {
       const data = await response.json();
 
       if (!response.ok) {
-        if (response.status === 404) {
-          throw new Error('Pengguna tidak ditemukan');
-        }
+        if (response.status === 404) throw new Error('Pengguna tidak ditemukan');
         if (response.status === 401) {
           setIsAuthenticated(false);
           setTimeout(() => router.push('/auth/login'), 2000);
@@ -277,22 +239,15 @@ export function useEditUser(userId: string) {
 
       if (userData.data_access) {
         const divisions = parseDataAccessToSelectedDivisions(userData.data_access);
-        setDivisionState(prev => ({
-          ...prev,
-          selectedDivisions: divisions
-        }));
+        setDivisionState(prev => ({ ...prev, selectedDivisions: divisions }));
       }
 
       setFormState(prev => ({ ...prev, loading: false }));
     } catch (err: any) {
       console.error('Fetch user detail error:', err);
-      
+
       if (err.name === 'AbortError') {
-        setFormState(prev => ({ 
-          ...prev, 
-          error: 'Permintaan timeout. Silakan coba lagi.',
-          loading: false 
-        }));
+        setFormState(prev => ({ ...prev, error: 'Permintaan timeout. Silakan coba lagi.', loading: false }));
       } else {
         const errorMsg = err instanceof Error ? err.message : 'Terjadi kesalahan saat mengambil data pengguna';
         setFormState(prev => ({ ...prev, error: errorMsg, loading: false }));
@@ -300,70 +255,36 @@ export function useEditUser(userId: string) {
     }
   }, [userId, router]);
 
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+
+    setFormData(prev => ({ ...prev, [name]: value }));
 
     if (name === 'role' && value !== 'admin' && user?.data_access) {
       const divisions = parseDataAccessToSelectedDivisions(user.data_access);
-      setDivisionState(prev => ({
-        ...prev,
-        selectedDivisions: divisions
-      }));
+      setDivisionState(prev => ({ ...prev, selectedDivisions: divisions }));
     }
   };
 
   const handleDivisiSelect = (value: string) => {
     if (value === 'LAINNYA') {
-      setDivisionState(prev => ({
-        ...prev,
-        isCustomDivisi: true,
-        customDivisi: ''
-      }));
-      setFormData(prev => ({
-        ...prev,
-        divisi: ''
-      }));
+      setDivisionState(prev => ({ ...prev, isCustomDivisi: true, customDivisi: '' }));
+      setFormData(prev => ({ ...prev, divisi: '' }));
     } else {
-
-      setDivisionState(prev => ({
-        ...prev,
-        isCustomDivisi: false,
-        customDivisi: ''
-      }));
-      setFormData(prev => ({
-        ...prev,
-        divisi: value
-      }));
+      setDivisionState(prev => ({ ...prev, isCustomDivisi: false, customDivisi: '' }));
+      setFormData(prev => ({ ...prev, divisi: value }));
     }
   };
 
   const handleCustomDivisiChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    
-    setFormData(prev => ({
-      ...prev,
-      divisi: value
-    }));
-
-    setDivisionState(prev => ({
-      ...prev,
-      customDivisi: value
-    }));
+    setFormData(prev => ({ ...prev, divisi: value }));
+    setDivisionState(prev => ({ ...prev, customDivisi: value }));
   };
 
   const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setPasswordData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setPasswordData(prev => ({ ...prev, [name]: value }));
   };
 
   const handleDivisionToggle = (divisionCode: string) => {
@@ -371,24 +292,17 @@ export function useEditUser(userId: string) {
       let newSelection = [...prev.selectedDivisions];
 
       if (divisionCode === 'all') {
-        if (prev.selectedDivisions.includes('all')) {
-          newSelection = [];
-        } else {
-          newSelection = ['all', 'crsd1', 'crsd2'];
-        }
+        newSelection = prev.selectedDivisions.includes('all') ? [] : ['all', 'crsd1', 'crsd2'];
       } else {
         if (prev.selectedDivisions.includes(divisionCode)) {
           newSelection = prev.selectedDivisions.filter(code => code !== divisionCode);
-          if (newSelection.includes('all') && 
-              !(newSelection.includes('crsd1') && newSelection.includes('crsd2'))) {
+          if (newSelection.includes('all') && !(newSelection.includes('crsd1') && newSelection.includes('crsd2'))) {
             newSelection = newSelection.filter(code => code !== 'all');
           }
         } else {
           newSelection = [...prev.selectedDivisions, divisionCode];
-          if (newSelection.includes('crsd1') && newSelection.includes('crsd2')) {
-            if (!newSelection.includes('all')) {
-              newSelection.push('all');
-            }
+          if (newSelection.includes('crsd1') && newSelection.includes('crsd2') && !newSelection.includes('all')) {
+            newSelection.push('all');
           }
         }
       }
@@ -398,17 +312,11 @@ export function useEditUser(userId: string) {
   };
 
   const handleSelectAllDivisions = () => {
-    setDivisionState(prev => ({
-      ...prev,
-      selectedDivisions: ['all', 'crsd1', 'crsd2']
-    }));
+    setDivisionState(prev => ({ ...prev, selectedDivisions: ['all', 'crsd1', 'crsd2'] }));
   };
 
   const handleClearAllDivisions = () => {
-    setDivisionState(prev => ({
-      ...prev,
-      selectedDivisions: []
-    }));
+    setDivisionState(prev => ({ ...prev, selectedDivisions: [] }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -433,16 +341,11 @@ export function useEditUser(userId: string) {
       const token = getAuthToken();
 
       if (!token) {
-        setFormState(prev => ({
-          ...prev,
-          error: 'Token tidak ditemukan. Silakan login kembali.',
-          updating: false
-        }));
+        setFormState(prev => ({ ...prev, error: 'Token tidak ditemukan. Silakan login kembali.', updating: false }));
         return;
       }
 
       const apiUrl = getApiUrl();
-      const url = `${apiUrl}/superadmin/users/${userId}`;
 
       const payload: any = {
         name: formData.name.trim(),
@@ -450,17 +353,9 @@ export function useEditUser(userId: string) {
         role: formData.role
       };
 
-      if (formData.phone && formData.phone.trim()) {
-        payload.phone = formData.phone.trim();
-      }
-
-      if (formData.divisi && formData.divisi.trim()) {
-        payload.divisi = formData.divisi.trim();
-      }
-
-      if (formData.unit_kerja && formData.unit_kerja.trim()) {
-        payload.unit_kerja = formData.unit_kerja.trim();
-      }
+      if (formData.phone?.trim()) payload.phone = formData.phone.trim();
+      if (formData.divisi?.trim()) payload.divisi = formData.divisi.trim();
+      if (formData.unit_kerja?.trim()) payload.unit_kerja = formData.unit_kerja.trim();
 
       if (formData.role === 'admin') {
         const accessCodes = divisionState.selectedDivisions.filter(code => code !== 'all');
@@ -469,7 +364,7 @@ export function useEditUser(userId: string) {
         payload.data_access = '';
       }
 
-      const response = await fetch(url, {
+      const response = await fetch(`${apiUrl}/superadmin/users/${userId}`, {
         method: 'PUT',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -489,25 +384,14 @@ export function useEditUser(userId: string) {
         throw new Error(data.message || 'Gagal memperbarui pengguna');
       }
 
-      if (!data.success) {
-        throw new Error(data.message || 'Gagal memperbarui pengguna');
-      }
+      if (!data.success) throw new Error(data.message || 'Gagal memperbarui pengguna');
 
-      setFormState(prev => ({ 
-        ...prev, 
-        successMessage: 'Pengguna berhasil diperbarui!',
-        updating: false 
-      }));
-
+      setFormState(prev => ({ ...prev, successMessage: 'Pengguna berhasil diperbarui!', updating: false }));
       await fetchUserDetail();
     } catch (err) {
       console.error('Update user error:', err);
       const errorMsg = err instanceof Error ? err.message : 'Terjadi kesalahan saat memperbarui pengguna';
-      setFormState(prev => ({
-        ...prev,
-        error: errorMsg,
-        updating: false
-      }));
+      setFormState(prev => ({ ...prev, error: errorMsg, updating: false }));
     }
   };
 
@@ -533,18 +417,12 @@ export function useEditUser(userId: string) {
       const token = getAuthToken();
 
       if (!token) {
-        setFormState(prev => ({
-          ...prev,
-          error: 'Token tidak ditemukan. Silakan login kembali.',
-          updating: false
-        }));
+        setFormState(prev => ({ ...prev, error: 'Token tidak ditemukan. Silakan login kembali.', updating: false }));
         return;
       }
 
       const apiUrl = getApiUrl();
-      const url = `${apiUrl}/superadmin/users/${userId}/change-password`;
-
-      const response = await fetch(url, {
+      const response = await fetch(`${apiUrl}/superadmin/users/${userId}/change-password`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -567,25 +445,14 @@ export function useEditUser(userId: string) {
         throw new Error(data.message || 'Gagal mengubah password');
       }
 
-      if (!data.success) {
-        throw new Error(data.message || 'Gagal mengubah password');
-      }
+      if (!data.success) throw new Error(data.message || 'Gagal mengubah password');
 
-      setFormState(prev => ({
-        ...prev,
-        successMessage: 'Password berhasil diubah!',
-        updating: false
-      }));
-      
+      setFormState(prev => ({ ...prev, successMessage: 'Password berhasil diubah!', updating: false }));
       setPasswordData({ password: '', password_confirmation: '' });
     } catch (err) {
       console.error('Change password error:', err);
       const errorMsg = err instanceof Error ? err.message : 'Gagal mengubah password';
-      setFormState(prev => ({
-        ...prev,
-        error: errorMsg,
-        updating: false
-      }));
+      setFormState(prev => ({ ...prev, error: errorMsg, updating: false }));
     }
   };
 
@@ -602,11 +469,9 @@ export function useEditUser(userId: string) {
 
       if (user.data_access) {
         const divisions = parseDataAccessToSelectedDivisions(user.data_access);
-        setDivisionState(prev => ({
-          ...prev,
-          selectedDivisions: divisions
-        }));
+        setDivisionState(prev => ({ ...prev, selectedDivisions: divisions }));
       }
+
       const isCrsd = user.divisi === 'CRSD 1' || user.divisi === 'CRSD 2';
       setDivisionState(prev => ({
         ...prev,
@@ -617,8 +482,32 @@ export function useEditUser(userId: string) {
     setFormState(prev => ({ ...prev, error: null, successMessage: null }));
   };
 
+  const formatDate = (dateString: string | null): string => {
+    if (!dateString) return '-';
+    try {
+      const date = new Date(dateString);
+      return new Intl.DateTimeFormat('id-ID', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      }).format(date);
+    } catch {
+      return '-';
+    }
+  };
+
+  const getRoleLabel = (role: string): string => {
+    switch (role) {
+      case 'superadmin': return 'Super Admin';
+      case 'admin': return 'Admin';
+      case 'user': return 'Pengguna';
+      default: return role;
+    }
+  };
+
   return {
-    // State
     mounted,
     isAuthenticated,
     authData,
@@ -628,11 +517,9 @@ export function useEditUser(userId: string) {
     divisionState,
     passwordData,
     showPassword,
-    
-    // Setters
+
     setShowPassword,
-    
-    // Handlers
+
     handleInputChange,
     handleDivisiSelect,
     handleCustomDivisiChange,
@@ -643,31 +530,8 @@ export function useEditUser(userId: string) {
     handleSubmit,
     handleChangePassword,
     resetForm,
-    
-    // Helpers
-    formatDate: (dateString: string | null) => {
-      if (!dateString) return '-';
-      try {
-        const date = new Date(dateString);
-        return new Intl.DateTimeFormat('id-ID', {
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
-        }).format(date);
-      } catch {
-        return '-';
-      }
-    },
-    
-    getRoleLabel: (role: string) => {
-      switch (role) {
-        case 'superadmin': return 'Super Admin';
-        case 'admin': return 'Admin';
-        case 'user': return 'Pengguna';
-        default: return role;
-      }
-    }
+
+    formatDate,
+    getRoleLabel
   };
 }

@@ -45,13 +45,12 @@ export function useCreateUser() {
     customDivisi: ''
   });
 
-  const [dataAccessState, setDataAccessState] =
-    useState<DataAccessState>({
-      selectedDataTypes: [],
-      showDropdown: false,
-      loadingDataTypes: false,
-      dataTypeOptions: []
-    });
+  const [dataAccessState, setDataAccessState] = useState<DataAccessState>({
+    selectedDataTypes: [],
+    showDropdown: false,
+    loadingDataTypes: false,
+    dataTypeOptions: []
+  });
 
   const getAuthToken = (): string | null => {
     try {
@@ -66,8 +65,7 @@ export function useCreateUser() {
   const getApiUrl = (): string => {
     const envUrl = process.env.NEXT_PUBLIC_API_URL;
     if (envUrl && envUrl.includes('/api')) return envUrl;
-    if (envUrl) return `${envUrl}/api`;
-    return 'http://localhost:8000/api';
+    return `${envUrl}/api`;
   };
 
   useEffect(() => {
@@ -81,38 +79,20 @@ export function useCreateUser() {
     }
 
     if (formData.role !== 'admin') {
-      setDataAccessState(prev => ({
-        ...prev,
-        selectedDataTypes: []
-      }));
+      setDataAccessState(prev => ({ ...prev, selectedDataTypes: [] }));
       setFormData(prev => ({ ...prev, data_access: [] }));
     }
   }, [formData.role]);
 
-  // PERBAIKAN: Effect untuk sync divisi - hanya untuk inisialisasi
   useEffect(() => {
-    // Hanya jalan saat pertama kali atau reset
     if (formData.divisi === 'Other') {
-      setDivisionState(prev => ({
-        ...prev,
-        showCustomInput: true,
-        customDivisi: ''
-      }));
+      setDivisionState(prev => ({ ...prev, showCustomInput: true, customDivisi: '' }));
     } else if (formData.divisi && formData.divisi !== 'CRSD 1' && formData.divisi !== 'CRSD 2') {
-      // Jika divisi adalah custom (bukan CRSD 1/2 dan bukan 'Other')
-      setDivisionState(prev => ({
-        ...prev,
-        showCustomInput: true,
-        customDivisi: formData.divisi
-      }));
+      setDivisionState(prev => ({ ...prev, showCustomInput: true, customDivisi: formData.divisi }));
     } else {
-      setDivisionState(prev => ({
-        ...prev,
-        showCustomInput: false,
-        customDivisi: ''
-      }));
+      setDivisionState(prev => ({ ...prev, showCustomInput: false, customDivisi: '' }));
     }
-  }, []); // Hanya sekali saat mount
+  }, []);
 
   const checkAuthentication = useCallback(() => {
     try {
@@ -124,14 +104,8 @@ export function useCreateUser() {
       if (!token || !userStr) {
         setIsAuthenticated(false);
         setAuthData(null);
-        setFormState(prev => ({
-          ...prev,
-          error: 'Silakan login terlebih dahulu'
-        }));
-
-        setTimeout(() => {
-          router.push('/auth/login');
-        }, 2000);
+        setFormState(prev => ({ ...prev, error: 'Silakan login terlebih dahulu' }));
+        setTimeout(() => { router.push('/auth/login'); }, 2000);
         return;
       }
 
@@ -144,31 +118,19 @@ export function useCreateUser() {
           ...prev,
           error: 'Hanya superadmin yang dapat mengakses halaman ini'
         }));
-
-        setTimeout(() => {
-          router.push('/dashboard');
-        }, 2000);
+        setTimeout(() => { router.push('/dashboard'); }, 2000);
         return;
       }
 
-      setAuthData({
-        token,
-        user: userData
-      });
+      setAuthData({ token, user: userData });
       setIsAuthenticated(true);
       setFormState(prev => ({ ...prev, error: null }));
     } catch (error) {
       console.error('Error checking authentication:', error);
       setIsAuthenticated(false);
       setAuthData(null);
-      setFormState(prev => ({
-        ...prev,
-        error: 'Terjadi kesalahan pada autentikasi'
-      }));
-
-      setTimeout(() => {
-        router.push('/auth/login');
-      }, 2000);
+      setFormState(prev => ({ ...prev, error: 'Terjadi kesalahan pada autentikasi' }));
+      setTimeout(() => { router.push('/auth/login'); }, 2000);
     }
   }, [router]);
 
@@ -190,10 +152,7 @@ export function useCreateUser() {
       if (response.ok) {
         const data = await response.json();
         if (data.success && data.data) {
-          setDataAccessState(prev => ({
-            ...prev,
-            dataTypeOptions: data.data
-          }));
+          setDataAccessState(prev => ({ ...prev, dataTypeOptions: data.data }));
         } else {
           setDefaultDataTypeOptions();
         }
@@ -210,80 +169,33 @@ export function useCreateUser() {
 
   const setDefaultDataTypeOptions = () => {
     const defaultOptions = [
-      {
-        value: 'crsd1',
-        label: 'CRSD 1',
-        description: 'Collection Resources and Asset Sales Data 1'
-      },
-      {
-        value: 'crsd2',
-        label: 'CRSD 2',
-        description: 'Collection Resources and Asset Sales Data 2'
-      }
+      { value: 'crsd1', label: 'CRSD 1', description: 'Collection Resources and Asset Sales Data 1' },
+      { value: 'crsd2', label: 'CRSD 2', description: 'Collection Resources and Asset Sales Data 2' }
     ];
-    setDataAccessState(prev => ({
-      ...prev,
-      dataTypeOptions: defaultOptions
-    }));
+    setDataAccessState(prev => ({ ...prev, dataTypeOptions: defaultOptions }));
   };
 
-  // PERBAIKAN: Handler untuk input biasa (text, email, dll)
-  const handleInputChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLTextAreaElement
-    >
-  ) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  // PERBAIKAN: Handler khusus untuk select divisi
   const handleDivisiSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selectedValue = e.target.value;
-    
+
     if (selectedValue === 'Other') {
-      // Pilih "Lainnya"
-      setDivisionState(prev => ({
-        ...prev,
-        showCustomInput: true,
-        customDivisi: ''
-      }));
-      setFormData(prev => ({
-        ...prev,
-        divisi: '' // Kosongkan dulu
-      }));
+      setDivisionState(prev => ({ ...prev, showCustomInput: true, customDivisi: '' }));
+      setFormData(prev => ({ ...prev, divisi: '' }));
     } else {
-      // Pilih CRSD 1 atau CRSD 2
-      setDivisionState(prev => ({
-        ...prev,
-        showCustomInput: false,
-        customDivisi: ''
-      }));
-      setFormData(prev => ({
-        ...prev,
-        divisi: selectedValue
-      }));
+      setDivisionState(prev => ({ ...prev, showCustomInput: false, customDivisi: '' }));
+      setFormData(prev => ({ ...prev, divisi: selectedValue }));
     }
   };
 
-  // PERBAIKAN: Handler untuk input custom divisi
   const handleCustomDivisiChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    
-    // Update divisionState
-    setDivisionState(prev => ({
-      ...prev,
-      customDivisi: value
-    }));
-    
-    // Update formData.divisi dengan nilai yang sama
-    setFormData(prev => ({
-      ...prev,
-      divisi: value
-    }));
+    setDivisionState(prev => ({ ...prev, customDivisi: value }));
+    setFormData(prev => ({ ...prev, divisi: value }));
   };
 
   const handleDataTypeToggle = (dataType: string) => {
@@ -291,31 +203,18 @@ export function useCreateUser() {
       let newSelectedDataTypes: string[];
 
       if (dataType === 'both') {
-        if (prev.selectedDataTypes.length === 2) {
-          newSelectedDataTypes = [];
-        } else {
-          newSelectedDataTypes = ['crsd1', 'crsd2'];
-        }
+        newSelectedDataTypes = prev.selectedDataTypes.length === 2 ? [] : ['crsd1', 'crsd2'];
       } else {
         if (prev.selectedDataTypes.includes(dataType)) {
-          newSelectedDataTypes = prev.selectedDataTypes.filter(
-            type => type !== dataType
-          );
+          newSelectedDataTypes = prev.selectedDataTypes.filter(type => type !== dataType);
         } else {
           newSelectedDataTypes = [...prev.selectedDataTypes, dataType];
         }
       }
 
-      // Update formData
-      setFormData(prevForm => ({
-        ...prevForm,
-        data_access: newSelectedDataTypes
-      }));
+      setFormData(prevForm => ({ ...prevForm, data_access: newSelectedDataTypes }));
 
-      return {
-        ...prev,
-        selectedDataTypes: newSelectedDataTypes
-      };
+      return { ...prev, selectedDataTypes: newSelectedDataTypes };
     });
   };
 
@@ -325,44 +224,28 @@ export function useCreateUser() {
   };
 
   const toggleShowDropdown = () => {
-    setDataAccessState(prev => ({
-      ...prev,
-      showDropdown: !prev.showDropdown
-    }));
+    setDataAccessState(prev => ({ ...prev, showDropdown: !prev.showDropdown }));
   };
 
   const closeDropdown = () => {
-    setDataAccessState(prev => ({
-      ...prev,
-      showDropdown: false
-    }));
+    setDataAccessState(prev => ({ ...prev, showDropdown: false }));
   };
 
   const handleRoleChange = (role: 'user' | 'admin' | 'superadmin') => {
-    setFormData(prev => ({
-      ...prev,
-      role
-    }));
+    setFormData(prev => ({ ...prev, role }));
   };
 
   const toggleShowPassword = () => {
-    setPasswordState(prev => ({
-      ...prev,
-      showPassword: !prev.showPassword
-    }));
+    setPasswordState(prev => ({ ...prev, showPassword: !prev.showPassword }));
   };
 
   const toggleShowConfirmPassword = () => {
-    setPasswordState(prev => ({
-      ...prev,
-      showConfirmPassword: !prev.showConfirmPassword
-    }));
+    setPasswordState(prev => ({ ...prev, showConfirmPassword: !prev.showConfirmPassword }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validation
     if (!formData.name || !formData.email || !formData.password) {
       setFormState(prev => ({ ...prev, error: 'Nama, email, dan password wajib diisi' }));
       return;
@@ -378,14 +261,8 @@ export function useCreateUser() {
       return;
     }
 
-    if (
-      formData.role === 'admin' &&
-      (!formData.data_access || formData.data_access.length === 0)
-    ) {
-      setFormState(prev => ({
-        ...prev,
-        error: 'Data access wajib dipilih untuk role admin'
-      }));
+    if (formData.role === 'admin' && (!formData.data_access || formData.data_access.length === 0)) {
+      setFormState(prev => ({ ...prev, error: 'Data access wajib dipilih untuk role admin' }));
       return;
     }
 
@@ -417,11 +294,7 @@ export function useCreateUser() {
         unit_kerja: formData.unit_kerja || null
       };
 
-      if (
-        formData.role === 'admin' &&
-        formData.data_access &&
-        formData.data_access.length > 0
-      ) {
+      if (formData.role === 'admin' && formData.data_access && formData.data_access.length > 0) {
         payload.data_access = formData.data_access;
       }
 
@@ -455,7 +328,6 @@ export function useCreateUser() {
         loading: false
       }));
 
-      // Reset form
       setFormData({
         name: '',
         email: '',
@@ -467,29 +339,15 @@ export function useCreateUser() {
         unit_kerja: '',
         data_access: []
       });
-      
-      setDivisionState({
-        showCustomInput: false,
-        customDivisi: ''
-      });
 
-      setDataAccessState(prev => ({
-        ...prev,
-        selectedDataTypes: []
-      }));
+      setDivisionState({ showCustomInput: false, customDivisi: '' });
+      setDataAccessState(prev => ({ ...prev, selectedDataTypes: [] }));
 
-      // Redirect after 2 seconds
-      setTimeout(() => {
-        router.push('/dashboard/user-management');
-      }, 2000);
+      setTimeout(() => { router.push('/dashboard/user-management'); }, 2000);
     } catch (err) {
       console.error('Create user error:', err);
       const errorMsg = err instanceof Error ? err.message : 'Terjadi kesalahan saat membuat pengguna';
-      setFormState(prev => ({
-        ...prev,
-        error: errorMsg,
-        loading: false
-      }));
+      setFormState(prev => ({ ...prev, error: errorMsg, loading: false }));
     }
   };
 
@@ -505,62 +363,38 @@ export function useCreateUser() {
       unit_kerja: '',
       data_access: []
     });
-    setDivisionState({
-      showCustomInput: false,
-      customDivisi: ''
-    });
-    setDataAccessState(prev => ({
-      ...prev,
-      selectedDataTypes: []
-    }));
-    setFormState(prev => ({
-      ...prev,
-      error: null,
-      successMessage: null
-    }));
+    setDivisionState({ showCustomInput: false, customDivisi: '' });
+    setDataAccessState(prev => ({ ...prev, selectedDataTypes: [] }));
+    setFormState(prev => ({ ...prev, error: null, successMessage: null }));
   };
 
   const getRoleIcon = (role: string) => {
     switch (role) {
-      case 'superadmin':
-        return 'superadmin';
-      case 'admin':
-        return 'admin';
-      case 'user':
-        return 'user';
-      default:
-        return 'default';
+      case 'superadmin': return 'superadmin';
+      case 'admin': return 'admin';
+      case 'user': return 'user';
+      default: return 'default';
     }
   };
 
   const getRoleDescription = (role: string) => {
     switch (role) {
-      case 'superadmin':
-        return 'Akses penuh ke semua fitur sistem';
-      case 'admin':
-        return 'Akses terbatas sesuai data yang diizinkan';
-      case 'user':
-        return 'Akses terbatas untuk penggunaan biasa';
-      default:
-        return '';
+      case 'superadmin': return 'Akses penuh ke semua fitur sistem';
+      case 'admin': return 'Akses terbatas sesuai data yang diizinkan';
+      case 'user': return 'Akses terbatas untuk penggunaan biasa';
+      default: return '';
     }
   };
 
   const getSelectedDataTypesDisplay = () => {
     const { selectedDataTypes, dataTypeOptions } = dataAccessState;
-    
-    if (selectedDataTypes.length === 0) {
-      return [];
-    }
+
+    if (selectedDataTypes.length === 0) return [];
 
     if (selectedDataTypes.length === 2) {
       return [
         ...dataTypeOptions.filter(opt => selectedDataTypes.includes(opt.value)),
-        {
-          value: 'both',
-          label: 'All Access',
-          description: 'Akses ke semua data (CRSD 1 dan 2)'
-        }
+        { value: 'both', label: 'All Access', description: 'Akses ke semua data (CRSD 1 dan 2)' }
       ];
     }
 
@@ -568,7 +402,6 @@ export function useCreateUser() {
   };
 
   return {
-    // State
     mounted,
     isAuthenticated,
     authData,
@@ -578,9 +411,8 @@ export function useCreateUser() {
     divisionState,
     dataAccessState,
 
-    // Handlers
     handleInputChange,
-    handleDivisiSelect,        // PERBAIKAN: Tambahkan handler khusus
+    handleDivisiSelect,
     handleCustomDivisiChange,
     handleDataTypeToggle,
     handleRemoveDataType,
@@ -592,7 +424,6 @@ export function useCreateUser() {
     handleSubmit,
     resetForm,
 
-    // Helpers
     getRoleIcon,
     getRoleDescription,
     getSelectedDataTypesDisplay

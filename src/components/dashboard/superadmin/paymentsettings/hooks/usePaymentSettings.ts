@@ -22,7 +22,7 @@ export const usePaymentSettings = () => {
   const [hasChanges, setHasChanges] = useState(false);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
   useEffect(() => {
     if (settings && initialLoadComplete) {
@@ -71,7 +71,7 @@ export const usePaymentSettings = () => {
       });
 
       const data = await response.json();
-      
+
       if (data.success && data.data) {
         setSettings(data.data);
         setFormData({
@@ -117,7 +117,7 @@ export const usePaymentSettings = () => {
       });
 
       const data = await response.json();
-      
+
       if (data.success) {
         showMessage('success', 'Pengaturan pembayaran berhasil diperbarui');
         await fetchSettings();

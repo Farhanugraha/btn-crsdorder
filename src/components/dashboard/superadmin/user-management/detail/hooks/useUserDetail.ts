@@ -41,7 +41,7 @@ export function useUserDetail(userId: string) {
   const [mounted, setMounted] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authData, setAuthData] = useState<AuthData | null>(null);
-  
+
   const [state, setState] = useState<UserDetailState>({
     user: null,
     loading: true,
@@ -66,8 +66,7 @@ export function useUserDetail(userId: string) {
   const getApiUrl = (): string => {
     const envUrl = process.env.NEXT_PUBLIC_API_URL;
     if (envUrl && envUrl.includes('/api')) return envUrl;
-    if (envUrl) return `${envUrl}/api`;
-    return 'http://localhost:8000/api';
+    return `${envUrl}/api`;
   };
 
   useEffect(() => {
@@ -91,15 +90,8 @@ export function useUserDetail(userId: string) {
       if (!token || !userStr) {
         setIsAuthenticated(false);
         setAuthData(null);
-        setState(prev => ({
-          ...prev,
-          error: 'Silakan login terlebih dahulu',
-          loading: false
-        }));
-
-        setTimeout(() => {
-          router.push('/auth/login');
-        }, 2000);
+        setState(prev => ({ ...prev, error: 'Silakan login terlebih dahulu', loading: false }));
+        setTimeout(() => { router.push('/auth/login'); }, 2000);
         return;
       }
 
@@ -113,32 +105,19 @@ export function useUserDetail(userId: string) {
           error: 'Hanya superadmin yang dapat mengakses halaman ini',
           loading: false
         }));
-
-        setTimeout(() => {
-          router.push('/dashboard');
-        }, 2000);
+        setTimeout(() => { router.push('/dashboard'); }, 2000);
         return;
       }
 
-      setAuthData({
-        token,
-        user: userData
-      });
+      setAuthData({ token, user: userData });
       setIsAuthenticated(true);
       setState(prev => ({ ...prev, error: null }));
     } catch (error) {
       console.error('Error checking authentication:', error);
       setIsAuthenticated(false);
       setAuthData(null);
-      setState(prev => ({
-        ...prev,
-        error: 'Terjadi kesalahan pada autentikasi',
-        loading: false
-      }));
-
-      setTimeout(() => {
-        router.push('/auth/login');
-      }, 2000);
+      setState(prev => ({ ...prev, error: 'Terjadi kesalahan pada autentikasi', loading: false }));
+      setTimeout(() => { router.push('/auth/login'); }, 2000);
     }
   }, [router]);
 
@@ -149,11 +128,7 @@ export function useUserDetail(userId: string) {
       const token = getAuthToken();
 
       if (!token) {
-        setState(prev => ({
-          ...prev,
-          error: 'Token tidak ditemukan. Silakan login kembali.',
-          loading: false
-        }));
+        setState(prev => ({ ...prev, error: 'Token tidak ditemukan. Silakan login kembali.', loading: false }));
         setIsAuthenticated(false);
         setTimeout(() => router.push('/auth/login'), 2000);
         return;
@@ -180,43 +155,28 @@ export function useUserDetail(userId: string) {
       const data = await response.json();
 
       if (!response.ok) {
-        if (response.status === 404) {
-          throw new Error('Pengguna tidak ditemukan');
-        }
+        if (response.status === 404) throw new Error('Pengguna tidak ditemukan');
         if (response.status === 401) {
           setIsAuthenticated(false);
           setTimeout(() => router.push('/auth/login'), 2000);
           throw new Error('Sesi telah berakhir. Silakan login kembali.');
         }
-        if (response.status === 403) {
-          throw new Error('Anda tidak memiliki akses ke data ini');
-        }
-        throw new Error(
-          data.message || 'Gagal mengambil detail pengguna'
-        );
+        if (response.status === 403) throw new Error('Anda tidak memiliki akses ke data ini');
+        throw new Error(data.message || 'Gagal mengambil detail pengguna');
       }
 
       if (!data.success) {
-        throw new Error(
-          data.message || 'Gagal mengambil detail pengguna'
-        );
+        throw new Error(data.message || 'Gagal mengambil detail pengguna');
       }
 
       setState(prev => ({ ...prev, user: data.data, loading: false }));
     } catch (err: any) {
       console.error('Fetch user detail error:', err);
-      
+
       if (err.name === 'AbortError') {
-        setState(prev => ({ 
-          ...prev, 
-          error: 'Permintaan timeout. Silakan coba lagi.',
-          loading: false 
-        }));
+        setState(prev => ({ ...prev, error: 'Permintaan timeout. Silakan coba lagi.', loading: false }));
       } else {
-        const errorMsg =
-          err instanceof Error
-            ? err.message
-            : 'Terjadi kesalahan saat mengambil data pengguna';
+        const errorMsg = err instanceof Error ? err.message : 'Terjadi kesalahan saat mengambil data pengguna';
         setState(prev => ({ ...prev, error: errorMsg, loading: false }));
       }
     }
@@ -229,18 +189,12 @@ export function useUserDetail(userId: string) {
       const token = getAuthToken();
 
       if (!token) {
-        setState(prev => ({ 
-          ...prev, 
-          error: 'Token tidak ditemukan',
-          activateLoading: false 
-        }));
+        setState(prev => ({ ...prev, error: 'Token tidak ditemukan', activateLoading: false }));
         return;
       }
 
       const apiUrl = getApiUrl();
-      const url = `${apiUrl}/superadmin/users/${userId}/activate`;
-
-      const response = await fetch(url, {
+      const response = await fetch(`${apiUrl}/superadmin/users/${userId}/activate`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -252,24 +206,15 @@ export function useUserDetail(userId: string) {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(
-          data.message || 'Gagal mengaktifkan pengguna'
-        );
+        throw new Error(data.message || 'Gagal mengaktifkan pengguna');
       }
 
       await fetchUserDetail();
       setState(prev => ({ ...prev, error: null, activateLoading: false }));
     } catch (err) {
       console.error('Activate user error:', err);
-      const errorMsg =
-        err instanceof Error
-          ? err.message
-          : 'Gagal mengaktifkan pengguna';
-      setState(prev => ({ 
-        ...prev, 
-        error: errorMsg,
-        activateLoading: false 
-      }));
+      const errorMsg = err instanceof Error ? err.message : 'Gagal mengaktifkan pengguna';
+      setState(prev => ({ ...prev, error: errorMsg, activateLoading: false }));
     }
   };
 
@@ -280,18 +225,12 @@ export function useUserDetail(userId: string) {
       const token = getAuthToken();
 
       if (!token) {
-        setState(prev => ({ 
-          ...prev, 
-          error: 'Token tidak ditemukan',
-          deactivateLoading: false 
-        }));
+        setState(prev => ({ ...prev, error: 'Token tidak ditemukan', deactivateLoading: false }));
         return;
       }
 
       const apiUrl = getApiUrl();
-      const url = `${apiUrl}/superadmin/users/${userId}/deactivate`;
-
-      const response = await fetch(url, {
+      const response = await fetch(`${apiUrl}/superadmin/users/${userId}/deactivate`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -303,24 +242,15 @@ export function useUserDetail(userId: string) {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(
-          data.message || 'Gagal menonaktifkan pengguna'
-        );
+        throw new Error(data.message || 'Gagal menonaktifkan pengguna');
       }
 
       await fetchUserDetail();
       setState(prev => ({ ...prev, error: null, deactivateLoading: false }));
     } catch (err) {
       console.error('Deactivate user error:', err);
-      const errorMsg =
-        err instanceof Error
-          ? err.message
-          : 'Gagal menonaktifkan pengguna';
-      setState(prev => ({ 
-        ...prev, 
-        error: errorMsg,
-        deactivateLoading: false 
-      }));
+      const errorMsg = err instanceof Error ? err.message : 'Gagal menonaktifkan pengguna';
+      setState(prev => ({ ...prev, error: errorMsg, deactivateLoading: false }));
     }
   };
 
@@ -331,19 +261,12 @@ export function useUserDetail(userId: string) {
       const token = getAuthToken();
 
       if (!token) {
-        setState(prev => ({
-          ...prev,
-          error: 'Token tidak ditemukan',
-          isDeleting: false,
-          showDeleteConfirm: false
-        }));
+        setState(prev => ({ ...prev, error: 'Token tidak ditemukan', isDeleting: false, showDeleteConfirm: false }));
         return;
       }
 
       const apiUrl = getApiUrl();
-      const url = `${apiUrl}/superadmin/users/${userId}`;
-
-      const response = await fetch(url, {
+      const response = await fetch(`${apiUrl}/superadmin/users/${userId}`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -354,28 +277,15 @@ export function useUserDetail(userId: string) {
 
       const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(data.message || 'Gagal menghapus pengguna');
-      }
-
-      if (!data.success) {
-        throw new Error(data.message || 'Gagal menghapus pengguna');
-      }
+      if (!response.ok) throw new Error(data.message || 'Gagal menghapus pengguna');
+      if (!data.success) throw new Error(data.message || 'Gagal menghapus pengguna');
 
       router.push('/dashboard/user-management');
       router.refresh();
     } catch (err) {
       console.error('Delete user error:', err);
-      const errorMsg =
-        err instanceof Error
-          ? err.message
-          : 'Gagal menghapus pengguna';
-      setState(prev => ({
-        ...prev,
-        error: errorMsg,
-        isDeleting: false,
-        showDeleteConfirm: false
-      }));
+      const errorMsg = err instanceof Error ? err.message : 'Gagal menghapus pengguna';
+      setState(prev => ({ ...prev, error: errorMsg, isDeleting: false, showDeleteConfirm: false }));
     }
   };
 
@@ -415,14 +325,10 @@ export function useUserDetail(userId: string) {
 
   const getRoleLabel = (role: string): string => {
     switch (role) {
-      case 'superadmin':
-        return 'Super Admin';
-      case 'admin':
-        return 'Admin';
-      case 'user':
-        return 'Pengguna';
-      default:
-        return role;
+      case 'superadmin': return 'Super Admin';
+      case 'admin': return 'Admin';
+      case 'user': return 'Pengguna';
+      default: return role;
     }
   };
 
@@ -432,21 +338,17 @@ export function useUserDetail(userId: string) {
         return 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800';
       case 'admin':
         return 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800';
-      case 'user':
-        return 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700';
       default:
         return 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700';
     }
   };
 
   return {
-    // State
     mounted,
     isAuthenticated,
     authData,
     state,
-    
-    // Actions
+
     handleActivateUser,
     handleDeactivateUser,
     handleDeleteUser,
@@ -454,8 +356,7 @@ export function useUserDetail(userId: string) {
     setShowMobileMenu,
     setError,
     refreshUserData,
-    
-    // Helper functions
+
     formatDate,
     getRoleLabel,
     getRoleColor

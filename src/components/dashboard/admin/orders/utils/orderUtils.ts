@@ -9,7 +9,6 @@ import {
   OrderItem 
 } from '../types';
 
-// ============= FORMATTERS =============
 export const formatCurrency = (amount: number): string => {
   if (amount === 0) return 'Rp 0';
   const formatter = new Intl.NumberFormat('id-ID', {
@@ -37,7 +36,6 @@ export const formatDateTime = (dateString: string): string => {
 };
 
 export const formatDateTimeFull = (dateString: string): string => {
-  const date = new Date(dateString);
   return `${formatDate(dateString)} ${formatDateTime(dateString)}`;
 };
 
@@ -49,7 +47,6 @@ export const formatShortDate = (dateString: string): string => {
   });
 };
 
-// ============= ORDER DATA EXTRACTORS =============
 export const getOrderAreas = (order: Order): Area[] => {
   if (order.all_areas && order.all_areas.length > 0) {
     return order.all_areas;
@@ -85,33 +82,23 @@ export const getOrderRestaurants = (order: Order): Restaurant[] => {
 };
 
 export const getOrderEndpoint = (userRole: string, crsdFilter: string): string => {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-  
-  // Superadmin
-  if (userRole === 'superadmin') {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+
+  if (userRole === 'superadmin' || userRole === 'admin') {
     if (crsdFilter === 'crsd1') return `${apiUrl}/api/admin/crsd1/orders`;
     if (crsdFilter === 'crsd2') return `${apiUrl}/api/admin/crsd2/orders`;
     return `${apiUrl}/api/admin/orders`;
   }
-  
-  // Admin
-  if (userRole === 'admin') {
-    if (crsdFilter === 'crsd1') return `${apiUrl}/api/admin/crsd1/orders`;
-    if (crsdFilter === 'crsd2') return `${apiUrl}/api/admin/crsd2/orders`;
-    return `${apiUrl}/api/admin/orders`;
-  }
-  
-  // Default
+
   return `${apiUrl}/api/admin/orders`;
 };
 
-// ============= FILTER FUNCTIONS =============
 export const filterOrdersByDate = (orders: Order[], dateFilter: DateFilterType): Order[] => {
   if (dateFilter === 'all') return orders;
-  
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  
+
   const yesterday = new Date(today);
   yesterday.setDate(today.getDate() - 1);
 
@@ -131,7 +118,7 @@ export const filterOrdersByDate = (orders: Order[], dateFilter: DateFilterType):
       const diff = today.getDate() - day + (day === 0 ? -6 : 1);
       startOfWeek.setDate(diff);
       startOfWeek.setHours(0, 0, 0, 0);
-      
+
       const orderDateTime = new Date(order.created_at);
       return orderDateTime >= startOfWeek;
     }
@@ -143,7 +130,7 @@ export const filterOrdersByStatus = (orders: Order[], statusFilter: OrderStatusF
   if (statusFilter === 'all') {
     return orders.filter(order => order.status === 'paid');
   }
-  return orders.filter(order => 
+  return orders.filter(order =>
     order.status === 'paid' && order.order_status === statusFilter
   );
 };
@@ -155,15 +142,15 @@ export const filterOrdersByCRSD = (orders: Order[], crsdFilter: CrsdFilterType):
 
 export const filterOrdersBySearch = (orders: Order[], searchQuery: string): Order[] => {
   if (!searchQuery.trim()) return orders;
-  
+
   const query = searchQuery.toLowerCase();
-  return orders.filter(order => 
+  return orders.filter(order =>
     order.order_code.toLowerCase().includes(query) ||
     order.user.name.toLowerCase().includes(query) ||
     order.user.email.toLowerCase().includes(query) ||
     order.user.phone?.toLowerCase().includes(query) ||
     order.items?.some(
-      item => 
+      item =>
         item.menu?.name.toLowerCase().includes(query) ||
         item.menu?.restaurant?.name.toLowerCase().includes(query) ||
         item.menu?.restaurant?.area?.name.toLowerCase().includes(query)
@@ -173,8 +160,8 @@ export const filterOrdersBySearch = (orders: Order[], searchQuery: string): Orde
 
 export const filterOrdersByArea = (orders: Order[], areaId: string): Order[] => {
   if (areaId === 'all') return orders;
-  return orders.filter(order => 
-    order.order_status === 'processing' && 
+  return orders.filter(order =>
+    order.order_status === 'processing' &&
     order.status === 'paid' &&
     getOrderAreas(order).some(area => area.id.toString() === areaId)
   );
@@ -182,32 +169,25 @@ export const filterOrdersByArea = (orders: Order[], areaId: string): Order[] => 
 
 export const filterOrdersByRestaurant = (orders: Order[], restaurantId: string): Order[] => {
   if (restaurantId === 'all') return orders;
-  return orders.filter(order => 
-    order.order_status === 'processing' && 
+  return orders.filter(order =>
+    order.order_status === 'processing' &&
     order.status === 'paid' &&
     getOrderRestaurants(order).some(restaurant => restaurant.id.toString() === restaurantId)
   );
 };
-
-// ============= FIXED STATISTICS FUNCTIONS =============
 
 export const calculateRevenueByDateFilter = (
   orders: Order[],
   dateFilter: DateFilterType,
   crsdFilter: CrsdFilterType
 ): FilteredStats => {
-  // Step 1: Filter hanya pesanan yang sudah dibayar
   let filtered = orders.filter(order => order.status === 'paid');
-  
-  // Step 2: Filter berdasarkan tanggal SAJA
   filtered = filterOrdersByDate(filtered, dateFilter);
-  
-  // Step 3: Filter berdasarkan CRSD
   filtered = filterOrdersByCRSD(filtered, crsdFilter);
-  
+
   const totalOrders = filtered.length;
   const totalRevenue = filtered.reduce((sum, order) => sum + order.total_price, 0);
-  
+
   return { totalOrders, totalRevenue };
 };
 
@@ -217,21 +197,14 @@ export const calculateOrderCountByStatusFilter = (
   dateFilter: DateFilterType,
   crsdFilter: CrsdFilterType
 ): FilteredStats => {
-  // Step 1: Filter hanya pesanan yang sudah dibayar
   let filtered = orders.filter(order => order.status === 'paid');
-  
-  // Step 2: Filter berdasarkan status
   filtered = filterOrdersByStatus(filtered, statusFilter);
-  
-  // Step 3: Filter berdasarkan tanggal
   filtered = filterOrdersByDate(filtered, dateFilter);
-  
-  // Step 4: Filter berdasarkan CRSD
   filtered = filterOrdersByCRSD(filtered, crsdFilter);
-  
+
   const totalOrders = filtered.length;
   const totalRevenue = filtered.reduce((sum, order) => sum + order.total_price, 0);
-  
+
   return { totalOrders, totalRevenue };
 };
 
@@ -247,41 +220,38 @@ export const calculateFilteredStats = (
 export const calculateWeeklyRevenue = (orders: Order[]): number => {
   const today = new Date();
   const day = today.getDay();
-  
-  // Hitung tanggal Senin minggu ini
+
   const startOfWeek = new Date(today);
   const diff = today.getDate() - day + (day === 0 ? -6 : 1);
   startOfWeek.setDate(diff);
   startOfWeek.setHours(0, 0, 0, 0);
-  
-  // Hitung tanggal Minggu minggu ini
+
   const endOfWeek = new Date(startOfWeek);
   endOfWeek.setDate(startOfWeek.getDate() + 6);
   endOfWeek.setHours(23, 59, 59, 999);
-  
+
   const weeklyOrders = orders.filter(order => {
     const orderDate = new Date(order.created_at);
-    return orderDate >= startOfWeek && 
-           orderDate <= endOfWeek && 
+    return orderDate >= startOfWeek &&
+           orderDate <= endOfWeek &&
            order.status === 'paid';
   });
-  
+
   return weeklyOrders.reduce((sum, order) => sum + order.total_price, 0);
 };
 
-// ============= COUNT FUNCTIONS FOR FILTERS =============
 export const getProcessingOrderCountByStatus = (orders: Order[], status: string): number => {
   return orders.filter(
-    order => 
-      order.status === 'paid' && 
+    order =>
+      order.status === 'paid' &&
       order.order_status === 'processing'
   ).length;
 };
 
 export const getOrderCountByArea = (orders: Order[], areaId: number): number => {
   return orders.filter(
-    order => 
-      order.status === 'paid' && 
+    order =>
+      order.status === 'paid' &&
       order.order_status === 'processing' &&
       getOrderAreas(order).some(area => area.id === areaId)
   ).length;
@@ -289,14 +259,13 @@ export const getOrderCountByArea = (orders: Order[], areaId: number): number => 
 
 export const getOrderCountByRestaurant = (orders: Order[], restaurantId: number): number => {
   return orders.filter(
-    order => 
-      order.status === 'paid' && 
+    order =>
+      order.status === 'paid' &&
       order.order_status === 'processing' &&
       getOrderRestaurants(order).some(restaurant => restaurant.id === restaurantId)
   ).length;
 };
 
-// ============= HELPER FUNCTIONS =============
 export const getDateDisplayText = (dateFilter: DateFilterType): string => {
   switch (dateFilter) {
     case 'today': return 'Hari Ini';
@@ -308,11 +277,11 @@ export const getDateDisplayText = (dateFilter: DateFilterType): string => {
 
 export const extractAreasFromOrders = (orders: Order[]): Area[] => {
   const areaMap = new Map<number, Area>();
-  
+
   const processingOrders = orders.filter(
     order => order.order_status === 'processing' && order.status === 'paid'
   );
-  
+
   processingOrders.forEach((order) => {
     if (order.all_areas && order.all_areas.length > 0) {
       order.all_areas.forEach((area) => {
@@ -327,17 +296,17 @@ export const extractAreasFromOrders = (orders: Order[]): Area[] => {
       });
     }
   });
-  
+
   return Array.from(areaMap.values());
 };
 
 export const extractRestaurantsFromOrders = (orders: Order[]): Restaurant[] => {
   const restaurantMap = new Map<number, Restaurant>();
-  
+
   const processingOrders = orders.filter(
     order => order.order_status === 'processing' && order.status === 'paid'
   );
-  
+
   processingOrders.forEach((order) => {
     if (order.all_restaurants && order.all_restaurants.length > 0) {
       order.all_restaurants.forEach((restaurant) => {
@@ -352,7 +321,7 @@ export const extractRestaurantsFromOrders = (orders: Order[]): Restaurant[] => {
       });
     }
   });
-  
+
   return Array.from(restaurantMap.values());
 };
 
@@ -365,7 +334,7 @@ export const getGroupedItemsByRestaurant = (items: OrderItem[]) => {
     const restaurantName = item.menu.restaurant?.name || 'Lainnya';
     const areaName = item.menu.restaurant?.area?.name || 'Tidak Diketahui';
     const key = `${restaurantName}-${areaName}`;
-    
+
     if (!acc[key]) {
       acc[key] = {
         restaurant: item.menu.restaurant,

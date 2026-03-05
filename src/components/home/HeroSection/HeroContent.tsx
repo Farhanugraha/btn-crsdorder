@@ -52,7 +52,7 @@ export const HeroContent = () => {
           className="mt-4 block text-xl font-semibold text-gray-700 dark:text-gray-300 md:text-3xl lg:text-4xl"
           variants={fadeInUp}
         >
-          Orderan Bang Ahmad - Solusi Makan Siang
+          Selamat Datang di OBBAMA
         </motion.span>
       </motion.h1>
 

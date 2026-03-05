@@ -9,7 +9,7 @@ export const useQRISUpload = (
   const [isUploading, setIsUploading] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
   const validateImageFile = (file: File): string | null => {
     const validTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/gif'];

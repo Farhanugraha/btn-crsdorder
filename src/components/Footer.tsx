@@ -1,5 +1,4 @@
 import { Facebook, Instagram } from 'lucide-react';
-import { FaGithub } from 'react-icons/fa';
 import { cn } from '@/lib/utils';
 import { buttonVariants } from '@/components/ui/button';
 
@@ -14,30 +13,24 @@ const Footer = () => {
           </label>
           <ul className="flex flex-col gap-1">
             <li>
-              <a
-                href="#"
-                target="_blank"
-                rel="noreferrer"
+              <span
                 className={cn(
                   buttonVariants({ variant: 'link' }),
-                  'p-0'
+                  'cursor-default p-0 opacity-50'
                 )}
               >
                 For couriers
-              </a>
+              </span>
             </li>
             <li>
-              <a
-                href="#"
-                target="_blank"
-                rel="noreferrer"
+              <span
                 className={cn(
                   buttonVariants({ variant: 'link' }),
-                  'p-0'
+                  'cursor-default p-0 opacity-50'
                 )}
               >
                 For restaurant
-              </a>
+              </span>
             </li>
           </ul>
         </div>
@@ -45,30 +38,24 @@ const Footer = () => {
           <label className="font-bold opacity-60">Useful Links</label>
           <ul className="flex flex-col gap-1">
             <li>
-              <a
-                href="#"
-                target="_blank"
-                rel="noreferrer"
+              <span
                 className={cn(
                   buttonVariants({ variant: 'link' }),
-                  'p-0'
+                  'cursor-default p-0 opacity-50'
                 )}
               >
                 Support
-              </a>
+              </span>
             </li>
             <li>
-              <a
-                href="#"
-                target="_blank"
-                rel="noreferrer"
+              <span
                 className={cn(
                   buttonVariants({ variant: 'link' }),
-                  'p-0'
+                  'cursor-default p-0 opacity-50'
                 )}
               >
                 Developers
-              </a>
+              </span>
             </li>
           </ul>
         </div>
@@ -76,7 +63,7 @@ const Footer = () => {
           <label className="font-bold opacity-60">Follow us</label>
           <div className="flex flex-col items-start gap-1">
             <a
-              href="#"
+              href="https://www.facebook.com/bankbtn/?locale=id_ID"
               target="_blank"
               rel="noreferrer"
               className={cn(
@@ -90,7 +77,7 @@ const Footer = () => {
               </span>
             </a>
             <a
-              href="#"
+              href="https://www.instagram.com/btn/"
               target="_blank"
               rel="noreferrer"
               className={cn(
@@ -112,7 +99,7 @@ const Footer = () => {
             &copy; {currentYear} CRSD BTN. All rights reserved.
           </p>
           <p className="text-sm text-muted-foreground">
-            Made with by CRSD Team
+            Made with ♥ by CRSD Team
           </p>
         </div>
       </div>

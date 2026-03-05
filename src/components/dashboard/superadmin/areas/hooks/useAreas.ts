@@ -35,8 +35,7 @@ export function useAreas() {
 
   const getApiUrl = (): string => {
     if (API_URL && API_URL.includes('/api')) return API_URL;
-    if (API_URL) return `${API_URL}/api`;
-    return 'http://localhost:8000/api';
+    return `${API_URL}/api`;
   };
 
   useEffect(() => {
@@ -73,7 +72,7 @@ export function useAreas() {
     try {
       const token = getAuthToken();
       const apiUrl = getApiUrl();
-      
+
       const response = await fetch(`${apiUrl}/areas`, {
         method: 'GET',
         headers: {
@@ -89,7 +88,6 @@ export function useAreas() {
         );
         setAreas(sortedAreas);
       } else if (Array.isArray(data)) {
-        // Handle jika response langsung array
         const sortedAreas = data.sort(
           (a: Area, b: Area) => a.order - b.order
         );
@@ -149,18 +147,12 @@ export function useAreas() {
       if (response.ok && result.success) {
         showMessage(
           'success',
-          editingId
-            ? 'Area berhasil diperbarui'
-            : 'Area berhasil ditambahkan'
+          editingId ? 'Area berhasil diperbarui' : 'Area berhasil ditambahkan'
         );
         resetForm();
         fetchAreas();
       } else {
-        // Handle jika response.ok tapi success false
-        showMessage(
-          'error',
-          result.message || 'Gagal menyimpan area'
-        );
+        showMessage('error', result.message || 'Gagal menyimpan area');
       }
     } catch (error) {
       console.error('Error submitting:', error);
@@ -181,12 +173,11 @@ export function useAreas() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // PERBAIKAN: Handle delete dengan lebih baik
   const handleDelete = async (id: number) => {
     try {
       const token = getAuthToken();
       const apiUrl = getApiUrl();
-      
+
       const response = await fetch(`${apiUrl}/areas/${id}`, {
         method: 'DELETE',
         headers: {
@@ -195,29 +186,18 @@ export function useAreas() {
         }
       });
 
-      // Cek response status
       if (response.status === 200 || response.status === 204 || response.status === 404) {
-        // Status 200 OK, 204 No Content, atau 404 Not Found (sudah tidak ada)
-        
-        // Coba parse response jika ada
         let result;
         try {
           result = await response.json();
         } catch {
-          // Jika response tidak bisa di-parse JSON, anggap sukses
           result = { success: true };
         }
 
-        // Hapus dari state lokal dulu untuk UX yang lebih cepat
         setAreas(prev => prev.filter(area => area.id !== id));
-        
-        // Tampilkan pesan sukses
         showMessage('success', 'Area berhasil dihapus');
-        
-        // Refresh data dari server (optional, untuk memastikan konsistensi)
         fetchAreas();
       } else {
-        // Status error lainnya
         let errorMessage = 'Gagal menghapus area';
         try {
           const result = await response.json();
@@ -257,7 +237,6 @@ export function useAreas() {
   const nextOrder = areas.length + 1;
 
   return {
-    // State
     user,
     areas,
     isLoading,
@@ -271,7 +250,6 @@ export function useAreas() {
     deleteConfirm,
     nextOrder,
 
-    // Actions
     setShowForm,
     setDeleteConfirm,
     resetForm,

@@ -2,13 +2,10 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import type { UserData, AuthInfo, FetchState, FilterRole } from '../types';
 
-// ─────────────────────────── HELPERS ─────────────────────────────────────────
-
 function getApiBaseUrl(): string {
   const envUrl = process.env.NEXT_PUBLIC_API_URL ?? '';
   if (envUrl.includes('/api')) return envUrl;
-  if (envUrl) return `${envUrl}/api`;
-  return 'http://localhost:8000/api';
+  return `${envUrl}/api`;
 }
 
 function buildHeaders(token: string): HeadersInit {
@@ -62,7 +59,6 @@ export function useUserManagement() {
   const abortRef = useRef<AbortController | null>(null);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // ─── INIT ────────────────────────────────────────────────────────────────
   useEffect(() => {
     setMounted(true);
     const info = readAuth();
@@ -76,23 +72,17 @@ export function useUserManagement() {
     setAuthChecked(true);
   }, [router]);
 
-  // ─── DEBOUNCE SEARCH ─────────────────────────────────────────────────────
   useEffect(() => {
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
-    }
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
     searchTimeoutRef.current = setTimeout(() => {
       setDebouncedSearch(searchTerm);
       setCurrentPage(1);
     }, 500);
     return () => {
-      if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current);
-      }
+      if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
     };
   }, [searchTerm]);
 
-  // ─── FETCH ───────────────────────────────────────────────────────────────
   const fetchUsers = useCallback(async () => {
     if (!auth) return;
     abortRef.current?.abort();
@@ -104,17 +94,13 @@ export function useUserManagement() {
         page: String(currentPage),
         per_page: String(perPage)
       });
-      if (debouncedSearch.trim())
-        params.append('search', debouncedSearch.trim());
+      if (debouncedSearch.trim()) params.append('search', debouncedSearch.trim());
       if (filterRole !== 'all') params.append('role', filterRole);
 
-      const res = await fetch(
-        `${getApiBaseUrl()}/superadmin/users?${params}`,
-        {
-          headers: buildHeaders(auth.token),
-          signal: controller.signal
-        }
-      );
+      const res = await fetch(`${getApiBaseUrl()}/superadmin/users?${params}`, {
+        headers: buildHeaders(auth.token),
+        signal: controller.signal
+      });
 
       if (res.status === 401) {
         localStorage.removeItem('auth_token');
@@ -139,8 +125,7 @@ export function useUserManagement() {
       }
 
       const json = await res.json();
-      if (!json.success)
-        throw new Error(json.message ?? 'Gagal mengambil data');
+      if (!json.success) throw new Error(json.message ?? 'Gagal mengambil data');
 
       const rawList: UserData[] = json.data?.data ?? json.data ?? [];
       setUsers(Array.isArray(rawList) ? rawList : []);
@@ -149,21 +134,15 @@ export function useUserManagement() {
       setFetchState({ loading: false, error: null });
     } catch (err: any) {
       if (err?.name === 'AbortError') return;
-      setFetchState({
-        loading: false,
-        error: err?.message ?? 'Gagal terhubung ke server'
-      });
+      setFetchState({ loading: false, error: err?.message ?? 'Gagal terhubung ke server' });
     }
   }, [auth, currentPage, perPage, debouncedSearch, filterRole, router]);
 
   useEffect(() => {
     if (mounted && auth) fetchUsers();
-    return () => {
-      abortRef.current?.abort();
-    };
+    return () => { abortRef.current?.abort(); };
   }, [mounted, auth, currentPage, perPage, debouncedSearch, filterRole, fetchUsers]);
 
-  // ─── TOAST ───────────────────────────────────────────────────────────────
   const showSuccess = (msg: string) => {
     setSuccessMsg(msg);
     setActionError(null);
@@ -176,27 +155,21 @@ export function useUserManagement() {
     setTimeout(() => setActionError(null), 4000);
   };
 
-  // ─── ACTIONS ─────────────────────────────────────────────────────────────
   async function handleActivate(id: number) {
     if (!auth || processingId !== null) return;
     setProcessingId(id);
     try {
-      const res = await fetch(
-        `${getApiBaseUrl()}/superadmin/users/${id}/activate`,
-        { method: 'POST', headers: buildHeaders(auth.token) }
-      );
+      const res = await fetch(`${getApiBaseUrl()}/superadmin/users/${id}/activate`, {
+        method: 'POST',
+        headers: buildHeaders(auth.token)
+      });
       const json = await res.json().catch(() => ({}));
-      if (!res.ok)
-        throw new Error(json.message ?? 'Gagal mengaktifkan user');
+      if (!res.ok) throw new Error(json.message ?? 'Gagal mengaktifkan user');
       setUsers((prev) =>
         prev.map((u) => {
           if (u.id !== id) return u;
-          if (json.data && typeof json.data === 'object')
-            return json.data as UserData;
-          return {
-            ...u,
-            email_verified_at: new Date().toISOString()
-          };
+          if (json.data && typeof json.data === 'object') return json.data as UserData;
+          return { ...u, email_verified_at: new Date().toISOString() };
         })
       );
       showSuccess('User berhasil diaktifkan');
@@ -212,18 +185,16 @@ export function useUserManagement() {
     if (!auth || processingId !== null) return;
     setProcessingId(id);
     try {
-      const res = await fetch(
-        `${getApiBaseUrl()}/superadmin/users/${id}/deactivate`,
-        { method: 'POST', headers: buildHeaders(auth.token) }
-      );
+      const res = await fetch(`${getApiBaseUrl()}/superadmin/users/${id}/deactivate`, {
+        method: 'POST',
+        headers: buildHeaders(auth.token)
+      });
       const json = await res.json().catch(() => ({}));
-      if (!res.ok)
-        throw new Error(json.message ?? 'Gagal menonaktifkan user');
+      if (!res.ok) throw new Error(json.message ?? 'Gagal menonaktifkan user');
       setUsers((prev) =>
         prev.map((u) => {
           if (u.id !== id) return u;
-          if (json.data && typeof json.data === 'object')
-            return json.data as UserData;
+          if (json.data && typeof json.data === 'object') return json.data as UserData;
           return { ...u, email_verified_at: null };
         })
       );
@@ -240,13 +211,12 @@ export function useUserManagement() {
     if (!auth || processingId !== null) return;
     setProcessingId(id);
     try {
-      const res = await fetch(
-        `${getApiBaseUrl()}/superadmin/users/${id}`,
-        { method: 'DELETE', headers: buildHeaders(auth.token) }
-      );
+      const res = await fetch(`${getApiBaseUrl()}/superadmin/users/${id}`, {
+        method: 'DELETE',
+        headers: buildHeaders(auth.token)
+      });
       const json = await res.json().catch(() => ({}));
-      if (!res.ok)
-        throw new Error(json.message ?? 'Gagal menghapus user');
+      if (!res.ok) throw new Error(json.message ?? 'Gagal menghapus user');
       setUsers((prev) => prev.filter((u) => u.id !== id));
       setTotalUsers((prev) => Math.max(0, prev - 1));
       showSuccess('User berhasil dihapus');
@@ -267,13 +237,11 @@ export function useUserManagement() {
     setCurrentPage(1);
   };
 
-  // Hitung statistik
   const superadminCount = users.filter((u) => u.role === 'superadmin').length;
   const adminCount = users.filter((u) => u.role === 'admin').length;
   const userCount = users.filter((u) => u.role === 'user').length;
 
   return {
-    // State
     mounted,
     authChecked,
     auth,
@@ -295,7 +263,6 @@ export function useUserManagement() {
     adminCount,
     userCount,
 
-    // Setters
     setSearchTerm,
     setFilterRole,
     setCurrentPage,
@@ -304,7 +271,6 @@ export function useUserManagement() {
     setDeleteConfirmId,
     setMobileMenuId,
 
-    // Actions
     fetchUsers,
     handleActivate,
     handleDeactivate,
