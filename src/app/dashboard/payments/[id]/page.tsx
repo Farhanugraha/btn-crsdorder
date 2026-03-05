@@ -641,7 +641,7 @@ export default function PaymentDetailPage({
                 </div>
                 <div className="p-4">
                   <img
-                    src={`http://localhost:8000/storage/${payment.proof_image}`}
+                    src={`${apiUrl}/storage/${payment.proof_image}`}
                     alt="Bukti Pembayaran"
                     className="w-full rounded-lg object-cover"
                     onError={(e) => {

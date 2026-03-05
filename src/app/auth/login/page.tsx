@@ -155,7 +155,7 @@ const Login = () => {
     } catch (error) {
       console.error('Error:', error);
       toast.error(
-        'Terjadi kesalahan koneksi. Pastikan server berjalan di localhost:8000'
+        'Terjadi kesalahan koneksi. Pastikan server berjalan'
       );
       setSubmitting(false);
     }

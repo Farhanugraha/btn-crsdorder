@@ -19,6 +19,7 @@ import {
   FormMessage
 } from '@/components/ui/form';
 
+const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 // Validation schema
 const resetPasswordSchema = z
   .object({
@@ -85,7 +86,7 @@ const ResetPasswordPage = () => {
       setSubmitting(true);
 
       const response = await fetch(
-        'http://localhost:8000/api/auth/reset-password',
+        `${apiUrl}/api/auth/reset-password`,
         {
           method: 'POST',
           headers: {
