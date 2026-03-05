@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import type { StatisticsData, FilterType, FilterDates, ExpandedSections, PieChartData, RechartsPieDataItem } from '../types';
+import type { StatisticsData, FilterType, ExpandedSections, PieChartData, RechartsPieDataItem } from '../types';
 import * as Formatters from '../utils/formatters';
 import { STATUS_COLORS } from '../utils/constants';
 
@@ -31,32 +31,74 @@ export const useStatistics = () => {
   const [isExporting, setIsExporting] = useState(false);
   
   const initialLoadRef = useRef(false);
-  const filterChangeRef = useRef(false);
   const prevFilterTypeRef = useRef<FilterType>('bulan-ini');
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
-  // ============= DATE HELPER FUNCTIONS =============
   const getStartDateByFilter = useCallback((filter: FilterType): string => {
     switch (filter) {
       case 'hari-ini':
         return Formatters.getTodayDate();
-      case 'minggu-ini':
-        return Formatters.getWeekAgoDate();
+        
+      case 'minggu-ini': {
+        const today = new Date();
+        const day = today.getDay();
+        const diffToMonday = day === 0 ? 6 : day - 1;
+        const monday = new Date(today);
+        monday.setDate(today.getDate() - diffToMonday);
+        monday.setHours(0, 0, 0, 0);
+        return Formatters.formatDateForAPI(monday);
+      }
+        
       case 'bulan-ini':
         return Formatters.getFirstDayOfMonth();
+        
       case 'kustom':
         return customStartDate || Formatters.getTodayDate();
+        
       default:
         return Formatters.getTodayDate();
     }
   }, [customStartDate]);
 
-  const getEndDateByFilter = useCallback((): string => {
-    return Formatters.getTodayDate();
+  const getEndDateByFilter = useCallback((filter: FilterType): string => {
+    switch (filter) {
+      case 'hari-ini':
+        return Formatters.getTodayDate();
+        
+      case 'minggu-ini': {
+        const today = new Date();
+        const day = today.getDay();
+        const diffToSunday = day === 0 ? 0 : 7 - day;
+        const sunday = new Date(today);
+        sunday.setDate(today.getDate() + diffToSunday);
+        sunday.setHours(23, 59, 59, 999);
+        return Formatters.formatDateForAPI(sunday);
+      }
+        
+      case 'bulan-ini':
+        return Formatters.getTodayDate();
+        
+      case 'kustom':
+        return customEndDate || Formatters.getTodayDate();
+        
+      default:
+        return Formatters.getTodayDate();
+    }
+  }, [customEndDate]);
+
+  const validateCustomDates = useCallback((start: string, end: string): boolean => {
+    if (!start || !end) {
+      setError('Silakan pilih tanggal mulai dan tanggal selesai');
+      return false;
+    }
+    if (new Date(start) > new Date(end)) {
+      setError('Tanggal mulai harus lebih awal dari tanggal selesai');
+      return false;
+    }
+    return true;
   }, []);
 
-  // ============= FETCH STATISTICS =============
   const fetchStatistics = useCallback(async (startDate?: string, endDate?: string, showError = true) => {
     try {
       if (!statistics) {
@@ -74,7 +116,7 @@ export const useStatistics = () => {
       }
 
       const finalStartDate = startDate || getStartDateByFilter(filterType);
-      const finalEndDate = endDate || getEndDateByFilter();
+      const finalEndDate = endDate || getEndDateByFilter(filterType);
 
       const params = new URLSearchParams({
         start_date: finalStartDate,
@@ -82,7 +124,6 @@ export const useStatistics = () => {
       });
 
       const url = `${apiUrl}/api/admin/statistics?${params.toString()}`;
-      console.log('Fetching statistics from:', url);
 
       const response = await fetch(url, {
         headers: {
@@ -119,7 +160,6 @@ export const useStatistics = () => {
     }
   }, [apiUrl, router, statistics, filterType, getStartDateByFilter, getEndDateByFilter]);
 
-  // ============= INITIAL LOAD =============
   useEffect(() => {
     if (!initialLoadRef.current) {
       initialLoadRef.current = true;
@@ -135,18 +175,15 @@ export const useStatistics = () => {
   }, []); 
 
   useEffect(() => {
-
     if (filterType !== 'kustom' && filterType !== prevFilterTypeRef.current) {
       prevFilterTypeRef.current = filterType;
       
       const startDate = getStartDateByFilter(filterType);
-      const endDate = getEndDateByFilter();
+      const endDate = getEndDateByFilter(filterType);
       fetchStatistics(startDate, endDate, false);
     }
-  }, [filterType]); 
+  }, [filterType, getStartDateByFilter, getEndDateByFilter, fetchStatistics]); 
 
-
-  // ============= PIE CHART DATA =============
   const pieChartData = useMemo<PieChartData>(() => {
     if (!statistics) {
       return {
@@ -182,7 +219,6 @@ export const useStatistics = () => {
 
     const colors = data.map(item => item.color);
     
-    // Data khusus untuk Recharts (dengan index signature)
     const rechartsData: RechartsPieDataItem[] = data.map(item => ({
       name: item.name,
       value: item.value,
@@ -201,23 +237,16 @@ export const useStatistics = () => {
     };
   }, [statistics]);
 
-  // ============= HANDLERS =============
   const handleFilterChange = useCallback((type: FilterType) => {
     setFilterType(type);
     setError(null);
   }, []);
 
   const handleCustomDateFilter = useCallback(() => {
-    if (!customStartDate || !customEndDate) {
-      setError('Silakan pilih tanggal mulai dan tanggal selesai');
-      return;
+    if (validateCustomDates(customStartDate, customEndDate)) {
+      fetchStatistics(customStartDate, customEndDate);
     }
-    if (new Date(customStartDate) > new Date(customEndDate)) {
-      setError('Tanggal mulai harus lebih awal dari tanggal selesai');
-      return;
-    }
-    fetchStatistics(customStartDate, customEndDate);
-  }, [customStartDate, customEndDate, fetchStatistics]);
+  }, [customStartDate, customEndDate, fetchStatistics, validateCustomDates]);
 
   const handleExportData = useCallback(async () => {
     if (!statistics) return;
@@ -230,7 +259,7 @@ export const useStatistics = () => {
           filter: filterType,
           tanggal: {
             mulai: getStartDateByFilter(filterType),
-            selesai: getEndDateByFilter()
+            selesai: getEndDateByFilter(filterType)
           },
           diekspor: new Date().toISOString()
         }
@@ -268,7 +297,6 @@ export const useStatistics = () => {
     setError(null);
   }, []);
 
-  // ============= FORMATTERS =============
   const formatters = useMemo<FormattersType>(() => ({
     currency: Formatters.formatCurrency,
     number: Formatters.formatNumber,
@@ -277,7 +305,6 @@ export const useStatistics = () => {
     percentage: Formatters.formatPercentage
   }), []);
 
-  // ============= COMPUTED VALUES =============
   const completionRate = useMemo(() => {
     if (!statistics || statistics.totalOrders === 0) return 0;
     return (statistics.completedOrders / statistics.totalOrders) * 100;
@@ -297,12 +324,10 @@ export const useStatistics = () => {
   const hasPieData = pieChartData.data.length > 0;
 
   return {
-    // Data
     statistics,
     chartData,
     pieChartData,
     
-    // States
     isLoading,
     isRefreshing,
     isExporting,
@@ -312,7 +337,6 @@ export const useStatistics = () => {
     customEndDate,
     expandedSections,
     
-    // Computed
     formatters,
     completionRate,
     processingRate,
@@ -320,7 +344,6 @@ export const useStatistics = () => {
     hasChartData,
     hasPieData,
     
-    // Handlers
     setCustomStartDate,
     setCustomEndDate,
     handleFilterChange,
@@ -330,10 +353,9 @@ export const useStatistics = () => {
     handleToggleSection,
     handleResetError,
     
-    // Constants
     FILTER_OPTIONS: [
       { key: 'hari-ini', label: 'Hari Ini' },
-      { key: 'minggu-ini', label: 'Minggu Ini' },
+      { key: 'minggu-ini', label: 'Minggu Ini (Senin-Minggu)' },
       { key: 'bulan-ini', label: 'Bulan Ini' },
       { key: 'kustom', label: 'Kustom' }
     ]
