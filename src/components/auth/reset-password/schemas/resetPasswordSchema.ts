@@ -6,7 +6,11 @@ export const resetPasswordSchema = z
     password: z
       .string()
       .min(PASSWORD_MIN_LENGTH, `Password minimal ${PASSWORD_MIN_LENGTH} karakter`)
-      .max(100, 'Password maksimal 100 karakter'),
+      .max(100, 'Password maksimal 100 karakter')
+      .regex(/[A-Z]/, 'Password harus mengandung minimal 1 huruf BESAR')
+      .regex(/[a-z]/, 'Password harus mengandung minimal 1 huruf kecil')
+      .regex(/[0-9]/, 'Password harus mengandung minimal 1 angka')
+      .regex(/[@$!%*?&]/, 'Password harus mengandung minimal 1 simbol (@$!%*?&)'),
     
     password_confirmation: z
       .string()

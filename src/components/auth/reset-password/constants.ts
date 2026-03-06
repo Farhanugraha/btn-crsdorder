@@ -16,5 +16,13 @@ export const RESET_PASSWORD_LINKS = {
   FORGOT_PASSWORD: '/auth/forgot-password'
 } as const;
 
-export const REDIRECT_DELAY = 2000; // 2 detik
+export const REDIRECT_DELAY = 2000;
 export const PASSWORD_MIN_LENGTH = 6;
+
+export const PASSWORD_REQUIREMENTS = [
+  `Minimal ${PASSWORD_MIN_LENGTH} karakter`,
+  'Minimal 1 huruf BESAR (A-Z)',
+  'Minimal 1 huruf kecil (a-z)',
+  'Minimal 1 angka (0-9)',
+  'Minimal 1 simbol (@$!%*?&)'
+] as const;

@@ -22,7 +22,6 @@ export const ResetPasswordForm = () => {
     onSubmit
   } = useResetPassword();
 
-  // Validate URL parameters
   if (!urlParams.email || !urlParams.token) {
     return <InvalidLinkMessage />;
   }
@@ -34,10 +33,8 @@ export const ResetPasswordForm = () => {
       <div className="p-6">
         <Form {...form}>
           <form onSubmit={onSubmit} className="space-y-4">
-            {/* Email Display - Read Only */}
             <EmailDisplay email={urlParams.email} />
 
-            {/* Password Field */}
             <PasswordField
               form={form}
               isSubmitting={isSubmitting}
@@ -46,9 +43,9 @@ export const ResetPasswordForm = () => {
               placeholder="Masukkan password baru"
               showPassword={showPassword}
               onToggleShow={() => setShowPassword(!showPassword)}
+              showRequirements={true}
             />
 
-            {/* Confirm Password Field */}
             <PasswordField
               form={form}
               isSubmitting={isSubmitting}
@@ -61,7 +58,6 @@ export const ResetPasswordForm = () => {
               }
             />
 
-            {/* Submit Button */}
             <SubmitButton isSubmitting={isSubmitting} />
           </form>
         </Form>

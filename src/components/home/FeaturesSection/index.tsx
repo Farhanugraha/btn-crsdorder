@@ -46,7 +46,7 @@ export const FeaturesSection = () => {
             </span>
           </div>
           <h2 className="mb-4 text-3xl font-bold text-gray-900 dark:text-white md:text-4xl">
-            Mengapa BTNERS Memilih Fooder?
+            Mengapa BTNERS Memilih OBBAMA?
           </h2>
           <p className="mx-auto mb-12 max-w-2xl text-gray-600 dark:text-gray-400">
             Solusi lengkap untuk semua kebutuhan kuliner Anda di

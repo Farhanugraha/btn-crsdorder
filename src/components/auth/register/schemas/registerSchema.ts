@@ -17,8 +17,8 @@ export const registerFormSchema = z
       .string()
       .min(6, 'Password minimal 6 karakter')
       .regex(
-        /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{6,}$/,
-        'Password harus mengandung huruf dan angka'
+        /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{6,}$/,
+        'Password harus mengandung huruf besar, huruf kecil, angka, dan simbol (@$!%*?&)'
       ),
     
     password_confirmation: z

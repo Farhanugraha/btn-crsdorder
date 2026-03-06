@@ -39,10 +39,10 @@ const contactChannels = [
     content: (
       <>
         <a
-          href="mailto:support.internal@btn.co.id"
+          href="mailto:primaryobbama@gmail.com"
           className="break-all text-lg font-bold text-green-700 transition-colors hover:text-green-800 dark:text-green-400"
         >
-          support.internal@btn.co.id
+          primaryobbama@gmail.com
         </a>
         <p className="mt-2 text-sm text-muted-foreground">
           Balasan dalam 1-2 jam kerja

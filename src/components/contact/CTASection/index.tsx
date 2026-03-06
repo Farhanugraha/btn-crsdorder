@@ -23,7 +23,7 @@ export const CTASection = () => {
               Telepon Sekarang
             </Button>
           </a>
-          <a href="mailto:support.internal@btn.co.id">
+          <a href="mailto:primaryobbama@gmail.com">
             <Button
               size="lg"
               variant="outline"

@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm } from "react-hook-form";
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { loginFormSchema, LoginFormType } from '../schemas/loginSchema';
@@ -80,7 +80,7 @@ export const useLogin = () => {
         : errors[field];
       
       form.setError(fieldName, {
-        message: message
+        message: message as string
       });
     });
     toast.error(LOGIN_MESSAGES.ERROR_VALIDATION);

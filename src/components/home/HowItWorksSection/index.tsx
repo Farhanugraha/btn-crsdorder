@@ -8,15 +8,13 @@ const steps = [
   {
     step: 1,
     title: 'Pilih Area',
-    description:
-      'Tentukan lokasi pengiriman atau pickup sesuai area kantor Anda',
+    description: 'Tentukan lokasi pemesanan sesuai area kantor Anda',
     color: 'blue'
   },
   {
     step: 2,
     title: 'Pilih Menu',
-    description:
-      'Jelajahi ratusan pilihan menu dan tambahkan ke keranjang',
+    description: 'Jelajahi  pilihan menu dan tambahkan ke keranjang',
     color: 'purple'
   },
   {
@@ -40,7 +38,7 @@ export const HowItWorksSection = () => {
           className="text-center"
         >
           <h2 className="mb-4 text-3xl font-bold text-gray-900 dark:text-white">
-            Cara Kerja Fooder
+            Cara Kerja Obbama
           </h2>
           <p className="mx-auto mb-12 max-w-2xl text-gray-600 dark:text-gray-400">
             Hanya 3 langkah sederhana untuk mendapatkan makanan

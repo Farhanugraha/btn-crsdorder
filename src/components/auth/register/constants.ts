@@ -17,6 +17,8 @@ export const REGISTER_MESSAGES = {
 
 export const PASSWORD_REQUIREMENTS = [
   'Minimal 6 karakter',
-  'Huruf besar dan kecil',
-  'Angka atau simbol'
+  'Minimal 1 huruf BESAR (A-Z)',
+  'Minimal 1 huruf kecil (a-z)',
+  'Minimal 1 angka (0-9)',
+  'Minimal 1 simbol (@$!%*?&)'
 ] as const;

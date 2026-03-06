@@ -42,8 +42,8 @@ export const CTASection = () => {
           Siap Mengubah Waktu Makan Menjadi Lebih Produktif?
         </h2>
         <p className="mx-auto mb-10 max-w-2xl text-lg text-blue-100">
-          Bergabunglah dengan ribuan BTNERS yang sudah merasakan
-          kemudahan OBAMA
+          Bergabunglah dengan BTNERS yang sudah merasakan kemudahan
+          OBAMA
         </p>
 
         <motion.div

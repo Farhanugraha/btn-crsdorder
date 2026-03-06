@@ -1,13 +1,25 @@
 'use client';
 
+import { User } from 'lucide-react';
+
 export const LoadingState = () => {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-900">
-      <div className="text-center">
-        <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-slate-200 border-t-blue-500 dark:border-slate-700"></div>
-        <p className="mt-4 font-medium text-slate-600 dark:text-slate-400">
-          Menyiapkan halaman...
-        </p>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-sm dark:bg-gray-900/80">
+      <div className="flex flex-col items-center">
+        <div className="relative">
+          <div className="h-16 w-16 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600 dark:border-blue-900 dark:border-t-blue-400"></div>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <User className="h-8 w-8 animate-pulse text-blue-600 dark:text-blue-400" />
+          </div>
+        </div>
+        <div className="mt-6 text-center">
+          <p className="text-lg font-semibold text-gray-800 dark:text-gray-200">
+            Memuat data formulir
+          </p>
+          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+            Sedang mengambil data formulir...
+          </p>
+        </div>
       </div>
     </div>
   );

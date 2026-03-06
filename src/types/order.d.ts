@@ -1,23 +1,33 @@
-import { CartItem } from '@/lib/store';
-import { Order, User } from '@prisma/client';
-import { CartItem as CartItemModel } from '@prisma/client';
-import { ExtendedMenu } from './menu';
+import { CartItem } from '@/lib/store'
+import { ExtendedMenu } from './menu'
 
 export type OrderSchema = {
-  cart: CartItem[];
-  userId: string;
-  customerName: string;
-  email: string;
-  street: string;
-  city: string;
-  phone: string;
-};
-
-interface ExtendedCartItemModel extends CartItemModel {
-  menu: ExtendedMenu;
+  cart: CartItem[]
+  userId: string
+  customerName: string
+  email: string
+  street: string
+  city: string
+  phone: string
 }
 
-export interface ExtendedOrder extends Order {
-  cartItems: ExtendedCartItemModel[];
-  user: User;
+export interface ExtendedCartItemModel {
+  id: string
+  quantity: number
+  menu: ExtendedMenu
+}
+
+export interface ExtendedUser {
+  id: string
+  name: string
+  email: string
+}
+
+export interface ExtendedOrder {
+  id: string
+  userId: string
+  createdAt: string | Date
+  paid: boolean
+  cartItems: ExtendedCartItemModel[]
+  user: ExtendedUser
 }

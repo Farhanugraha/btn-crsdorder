@@ -27,7 +27,7 @@ export const HeroImage = () => {
         />
         <div className="relative overflow-hidden rounded-2xl shadow-2xl">
           <Image
-            src="/mainpage.png" // Langsung dari public folder
+            src="/obbamadashboard.png"
             alt="Fooder - Platform Pemesanan Makanan"
             width={500}
             height={500}

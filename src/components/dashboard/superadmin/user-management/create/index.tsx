@@ -37,6 +37,21 @@ export default function CreateUserPage() {
     getSelectedDataTypesDisplay
   } = useCreateUser();
 
+  // Hitung validasi password
+  const password = formData.password || '';
+  const confirmPassword = formData.password_confirmation || '';
+
+  const passwordValid =
+    password.length >= 6 &&
+    /[A-Z]/.test(password) &&
+    /[a-z]/.test(password) &&
+    /[0-9]/.test(password) &&
+    /[@$!%*?&]/.test(password);
+
+  const passwordMatch = password === confirmPassword;
+  const passwordFilled =
+    password.length > 0 && confirmPassword.length > 0;
+
   if (!mounted) {
     return <LoadingState />;
   }
@@ -128,6 +143,10 @@ export default function CreateUserPage() {
               selectedDataTypesLength={
                 dataAccessState.selectedDataTypes.length
               }
+              // PERBAIKAN: Tambahkan props untuk validasi password
+              passwordValid={passwordValid}
+              passwordMatch={passwordMatch}
+              passwordFilled={passwordFilled}
             />
           </form>
         </div>

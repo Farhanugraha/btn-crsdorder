@@ -1,6 +1,13 @@
-import { Menu } from '@prisma/client';
+export interface ExtendedMenu {
+  id: string;
+  name: string;
+  description?: string;
+  price: number;
+  categoryId?: string;
+  available?: boolean;
+  createdAt?: string | Date;
+  updatedAt?: string | Date;
 
-export interface ExtendedMenu extends Menu {
   images: {
     id: string;
     url: string;
