@@ -2,7 +2,12 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Area, FormData, Message, User, ViewMode } from '../types';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+// FIXED: pakai endsWith agar tidak salah detect /api di tengah URL
+const getApiUrl = (): string => {
+  const envUrl = (process.env.NEXT_PUBLIC_API_URL ?? '').replace(/\/$/, '');
+  if (envUrl.endsWith('/api')) return envUrl;
+  return `${envUrl}/api`;
+};
 
 export function useAreas() {
   const router = useRouter();
@@ -31,11 +36,6 @@ export function useAreas() {
       console.error('Error getting token:', error);
       return null;
     }
-  };
-
-  const getApiUrl = (): string => {
-    if (API_URL && API_URL.includes('/api')) return API_URL;
-    return `${API_URL}/api`;
   };
 
   useEffect(() => {
