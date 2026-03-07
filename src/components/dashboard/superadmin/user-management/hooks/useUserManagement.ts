@@ -3,8 +3,8 @@ import { useRouter } from 'next/navigation';
 import type { UserData, AuthInfo, FetchState, FilterRole } from '../types';
 
 function getApiBaseUrl(): string {
-  const envUrl = process.env.NEXT_PUBLIC_API_URL ?? '';
-  if (envUrl.includes('/api')) return envUrl;
+  const envUrl = (process.env.NEXT_PUBLIC_API_URL ?? '').replace(/\/$/, '');
+  if (envUrl.endsWith('/api')) return envUrl;
   return `${envUrl}/api`;
 }
 
@@ -90,6 +90,7 @@ export function useUserManagement() {
     abortRef.current = controller;
     setFetchState({ loading: true, error: null });
     try {
+      const base = getApiBaseUrl();
       const params = new URLSearchParams({
         page: String(currentPage),
         per_page: String(perPage)
@@ -97,7 +98,7 @@ export function useUserManagement() {
       if (debouncedSearch.trim()) params.append('search', debouncedSearch.trim());
       if (filterRole !== 'all') params.append('role', filterRole);
 
-      const res = await fetch(`${getApiBaseUrl()}/superadmin/users?${params}`, {
+      const res = await fetch(`${base}/superadmin/users?${params}`, {
         headers: buildHeaders(auth.token),
         signal: controller.signal
       });
@@ -159,7 +160,8 @@ export function useUserManagement() {
     if (!auth || processingId !== null) return;
     setProcessingId(id);
     try {
-      const res = await fetch(`${getApiBaseUrl()}/superadmin/users/${id}/activate`, {
+      const base = getApiBaseUrl();
+      const res = await fetch(`${base}/superadmin/users/${id}/activate`, {
         method: 'POST',
         headers: buildHeaders(auth.token)
       });
@@ -185,7 +187,8 @@ export function useUserManagement() {
     if (!auth || processingId !== null) return;
     setProcessingId(id);
     try {
-      const res = await fetch(`${getApiBaseUrl()}/superadmin/users/${id}/deactivate`, {
+      const base = getApiBaseUrl();
+      const res = await fetch(`${base}/superadmin/users/${id}/deactivate`, {
         method: 'POST',
         headers: buildHeaders(auth.token)
       });
@@ -211,7 +214,8 @@ export function useUserManagement() {
     if (!auth || processingId !== null) return;
     setProcessingId(id);
     try {
-      const res = await fetch(`${getApiBaseUrl()}/superadmin/users/${id}`, {
+      const base = getApiBaseUrl();
+      const res = await fetch(`${base}/superadmin/users/${id}`, {
         method: 'DELETE',
         headers: buildHeaders(auth.token)
       });
