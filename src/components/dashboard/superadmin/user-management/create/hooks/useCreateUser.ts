@@ -62,9 +62,10 @@ export function useCreateUser() {
     }
   };
 
+  // FIXED: pakai endsWith agar tidak salah detect /api di tengah URL
   const getApiUrl = (): string => {
-    const envUrl = process.env.NEXT_PUBLIC_API_URL;
-    if (envUrl && envUrl.includes('/api')) return envUrl;
+    const envUrl = (process.env.NEXT_PUBLIC_API_URL ?? '').replace(/\/$/, '');
+    if (envUrl.endsWith('/api')) return envUrl;
     return `${envUrl}/api`;
   };
 
