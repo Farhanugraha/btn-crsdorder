@@ -11,8 +11,8 @@ export interface Order {
   order_id: number;
   order_number: string;
   customer: string;
-  order_status: string;  // ✅ Ubah dari 'status' ke 'order_status'
-  payment_status: string; // ✅ Tambahkan field baru
+  order_status: string;  
+  payment_status: string;
   items: OrderItem[];
   total: number;
   created_at: string;
@@ -488,8 +488,8 @@ export const generateOrdersAuditExcel = async (
           'No.',
           'Nomor Pesanan',
           'Pelanggan',
-          'Status Order', // ✅ Ubah dari 'Status' ke 'Status Order'
-          'Status Payment', // ✅ Tambahkan kolom baru
+          'Status Order', 
+          'Status Payment',
           'Nama Produk',
           'Qty',
           'Harga Satuan',
@@ -505,8 +505,8 @@ export const generateOrdersAuditExcel = async (
             isFirstItem ? orderIdx + 1 : '',
             isFirstItem ? order.order_number : '',
             isFirstItem ? order.customer : '',
-            isFirstItem ? order.order_status : '', // ✅ Gunakan order_status
-            isFirstItem ? order.payment_status : '', // ✅ Gunakan payment_status
+            isFirstItem ? order.order_status : '', 
+            isFirstItem ? order.payment_status : '', 
             item.name,
             item.quantity,
             item.price,
@@ -1496,8 +1496,8 @@ export const generateOrdersAuditCSV = (
           orderIdx + 1,
           order.order_number,
           order.customer,
-          order.order_status, // ✅ Gunakan order_status
-          order.payment_status, // ✅ Gunakan payment_status
+          order.order_status, 
+          order.payment_status, 
           item.name,
           item.quantity,
           item.price,

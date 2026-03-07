@@ -111,8 +111,8 @@ export interface OrderByDate {
     order_id: number;
     order_number: string;
     customer: string;
-    order_status: string; // ✅ Ubah dari 'status' ke 'order_status'
-    payment_status: string; // ✅ Tambahkan field baru
+    order_status: string; 
+    payment_status: string; 
     created_at: string;
     total: number;
     items: Array<{
