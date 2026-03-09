@@ -1,20 +1,24 @@
 'use client';
 
-import Link from 'next/link';
-import { MapPin, ArrowLeft } from 'lucide-react';
+import { MapPin, ArrowLeft, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import type { Restaurant } from '../types';
 
 interface RestaurantHeaderProps {
   restaurant: Restaurant;
   areaId: number | null;
   onBack: () => void;
+  searchQuery: string;
+  onSearchChange: (query: string) => void;
 }
 
 export const RestaurantHeader = ({
   restaurant,
   areaId,
-  onBack
+  onBack,
+  searchQuery,
+  onSearchChange
 }: RestaurantHeaderProps) => {
   return (
     <header className="sticky top-0 z-30 border-b border-slate-200/60 bg-white/70 backdrop-blur-xl dark:border-slate-800/60 dark:bg-slate-900/70">
@@ -79,6 +83,20 @@ export const RestaurantHeader = ({
                 Tutup
               </div>
             )}
+          </div>
+        </div>
+
+        {/* Search Bar */}
+        <div className="mt-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Input
+              type="text"
+              placeholder="Cari menu makanan atau minuman..."
+              value={searchQuery}
+              onChange={(e) => onSearchChange(e.target.value)}
+              className="w-full border-slate-200 bg-white pl-9 pr-4 focus:border-emerald-500 focus:ring-emerald-500 dark:border-slate-800 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-500"
+            />
           </div>
         </div>
       </div>

@@ -18,6 +18,7 @@ export default function RestaurantMenuPage() {
     isLoading,
     restaurant,
     menuList,
+    searchQuery,
     error,
     dialogOpen,
     selectedQuantity,
@@ -30,7 +31,8 @@ export default function RestaurantMenuPage() {
     handleBack,
     handleLoginRedirect,
     setSelectedQuantity,
-    setNotes
+    setNotes,
+    handleSearchChange
   } = useRestaurantMenu(restaurantId);
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
@@ -45,11 +47,50 @@ export default function RestaurantMenuPage() {
         restaurant={restaurant}
         areaId={areaId}
         onBack={handleBack}
+        searchQuery={searchQuery}
+        onSearchChange={handleSearchChange}
       />
 
       <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
+        {/* Search info */}
+        {searchQuery && (
+          <div className="mb-4 flex items-center justify-between">
+            <p className="text-sm text-slate-600 dark:text-slate-400">
+              Menampilkan{' '}
+              <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                {menuList.length}
+              </span>{' '}
+              menu untuk pencarian "{searchQuery}"
+            </p>
+            {menuList.length === 0 && (
+              <button
+                onClick={() => handleSearchChange('')}
+                className="text-sm font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
+              >
+                Reset pencarian
+              </button>
+            )}
+          </div>
+        )}
+
         {menuList.length === 0 ? (
-          <EmptyState />
+          <div className="relative">
+            <EmptyState />
+            {searchQuery && (
+              <div className="mt-4 text-center">
+                <p className="mb-3 text-sm text-slate-500 dark:text-slate-400">
+                  Tidak ada menu yang cocok dengan pencarian "
+                  {searchQuery}"
+                </p>
+                <button
+                  onClick={() => handleSearchChange('')}
+                  className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600"
+                >
+                  Tampilkan semua menu
+                </button>
+              </div>
+            )}
+          </div>
         ) : (
           <div className="space-y-6">
             <div className="border-b border-slate-200 pb-4 dark:border-slate-800">
@@ -57,7 +98,9 @@ export default function RestaurantMenuPage() {
                 Daftar Menu
               </h2>
               <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">
-                {menuList.length} pilihan menu spesial
+                {menuList.length} dari{' '}
+                {restaurant.menus_count || menuList.length} pilihan
+                menu spesial
               </p>
             </div>
 

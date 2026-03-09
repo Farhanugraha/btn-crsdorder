@@ -18,16 +18,22 @@ export function useRestaurantDetail(restaurantId: string) {
   const [isInitialized, setIsInitialized] = useState(false);
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [menus, setMenus] = useState<Menu[]>([]);
+  const [allMenus, setAllMenus] = useState<Menu[]>([]);
   const [isLoadingMenus, setIsLoadingMenus] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [togglingId, setTogglingId] = useState<number | null>(null);
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const [message, setMessage] = useState<Message | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
   const [imagePreview, setImagePreview] = useState<string>('');
   const [imageFile, setImageFile] = useState<File | null>(null);
+
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(5);
 
   const [formData, setFormData] = useState<FormData>({
     name: '',
@@ -99,19 +105,56 @@ export function useRestaurantDetail(restaurantId: string) {
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = await response.json();
-      
+
       if (data.success) {
         const menusArray = Array.isArray(data.data) ? data.data : data.data?.data || [];
-        setMenus(menusArray);
+        setAllMenus(menusArray);
       } else {
-        setMenus([]);
+        setAllMenus([]);
       }
     } catch (error) {
       console.error('Error fetching menus:', error);
-      setMenus([]);
+      setAllMenus([]);
     } finally {
       setIsLoadingMenus(false);
     }
+  };
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterStatus, searchQuery]);
+
+  // Filter dan pagination logic
+  useEffect(() => {
+    let filtered = [...allMenus];
+
+    // Filter by status
+    if (filterStatus === 'available') {
+      filtered = filtered.filter((menu) => menu.is_available === true);
+    } else if (filterStatus === 'unavailable') {
+      filtered = filtered.filter((menu) => menu.is_available === false);
+    }
+
+    // Filter by search query
+    if (searchQuery.trim()) {
+      filtered = filtered.filter((menu) =>
+        menu.name.toLowerCase().includes(searchQuery.trim().toLowerCase())
+      );
+    }
+
+    const start = (currentPage - 1) * itemsPerPage;
+    const end = start + itemsPerPage;
+    setMenus(filtered.slice(start, end));
+  }, [allMenus, filterStatus, searchQuery, currentPage, itemsPerPage]);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleItemsPerPageChange = (items: number) => {
+    setItemsPerPage(items);
+    setCurrentPage(1);
   };
 
   const uploadImageToServer = async (file: File): Promise<string | null> => {
@@ -124,7 +167,10 @@ export function useRestaurantDetail(restaurantId: string) {
 
       const maxSize = 5 * 1024 * 1024;
       if (file.size > maxSize) {
-        showMessage('error', `Ukuran file maksimal 5MB (Ukuran: ${(file.size / 1024 / 1024).toFixed(2)}MB)`);
+        showMessage(
+          'error',
+          `Ukuran file maksimal 5MB (Ukuran: ${(file.size / 1024 / 1024).toFixed(2)}MB)`
+        );
         return null;
       }
 
@@ -135,9 +181,7 @@ export function useRestaurantDetail(restaurantId: string) {
 
       const response = await fetch(`${apiUrl}/api/menus/upload-image`, {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`
-        },
+        headers: { Authorization: `Bearer ${token}` },
         body: formDataToSend
       });
 
@@ -153,10 +197,7 @@ export function useRestaurantDetail(restaurantId: string) {
 
       if (data.success) {
         const filename = data.data?.filename || data.filename;
-        
-        if (!filename) {
-          throw new Error('Response format tidak sesuai');
-        }
+        if (!filename) throw new Error('Response format tidak sesuai');
         return filename;
       }
 
@@ -203,7 +244,6 @@ export function useRestaurantDetail(restaurantId: string) {
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
     const { name, value, type } = e.target;
-    
     setFormData((prev) => ({
       ...prev,
       [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value
@@ -222,9 +262,8 @@ export function useRestaurantDetail(restaurantId: string) {
     }
 
     const priceValue = Math.round(Number(formData.price));
-
     setIsSubmitting(true);
-    
+
     try {
       let finalImageName: string | null = formData.image || null;
 
@@ -239,7 +278,9 @@ export function useRestaurantDetail(restaurantId: string) {
 
       const token = localStorage?.getItem('auth_token');
       const method = editingId ? 'PUT' : 'POST';
-      const url = editingId ? `${apiUrl}/api/menus/${editingId}` : `${apiUrl}/api/menus`;
+      const url = editingId
+        ? `${apiUrl}/api/menus/${editingId}`
+        : `${apiUrl}/api/menus`;
 
       const payload = {
         restaurant_id: Number(restaurantId),
@@ -275,12 +316,14 @@ export function useRestaurantDetail(restaurantId: string) {
         );
         resetForm();
         await fetchMenus();
+        setCurrentPage(1);
       } else {
         throw new Error(result.message || 'Gagal menyimpan menu');
       }
     } catch (error) {
       console.error('Submit error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Terjadi kesalahan saat menyimpan';
+      const errorMessage =
+        error instanceof Error ? error.message : 'Terjadi kesalahan saat menyimpan';
       showMessage('error', errorMessage);
     } finally {
       setIsSubmitting(false);
@@ -301,7 +344,10 @@ export function useRestaurantDetail(restaurantId: string) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleToggleAvailability = async (id: number, currentStatus: boolean): Promise<void> => {
+  const handleToggleAvailability = async (
+    id: number,
+    currentStatus: boolean
+  ): Promise<void> => {
     setTogglingId(id);
     try {
       const token = localStorage?.getItem('auth_token');
@@ -312,9 +358,7 @@ export function useRestaurantDetail(restaurantId: string) {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          is_available: !currentStatus
-        })
+        body: JSON.stringify({ is_available: !currentStatus })
       });
 
       const result = await response.json();
@@ -335,7 +379,8 @@ export function useRestaurantDetail(restaurantId: string) {
       }
     } catch (error) {
       console.error('Toggle error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Gagal mengubah status';
+      const errorMessage =
+        error instanceof Error ? error.message : 'Gagal mengubah status';
       showMessage('error', errorMessage);
     } finally {
       setTogglingId(null);
@@ -348,7 +393,7 @@ export function useRestaurantDetail(restaurantId: string) {
 
       const response = await fetch(`${apiUrl}/api/menus/${id}`, {
         method: 'DELETE',
-        headers: { 
+        headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
@@ -367,12 +412,14 @@ export function useRestaurantDetail(restaurantId: string) {
       if (result.success) {
         showMessage('success', 'Menu berhasil dihapus');
         await fetchMenus();
+        setCurrentPage(1);
       } else {
         throw new Error(result.message || 'Gagal menghapus menu');
       }
     } catch (error) {
       console.error('Delete error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Gagal menghapus menu';
+      const errorMessage =
+        error instanceof Error ? error.message : 'Gagal menghapus menu';
       showMessage('error', errorMessage);
     } finally {
       setDeleteConfirm(null);
@@ -380,12 +427,7 @@ export function useRestaurantDetail(restaurantId: string) {
   };
 
   const resetForm = (): void => {
-    setFormData({
-      name: '',
-      price: '',
-      image: '',
-      is_available: true
-    });
+    setFormData({ name: '', price: '', image: '', is_available: true });
     setImagePreview('');
     setImageFile(null);
     setEditingId(null);
@@ -412,27 +454,42 @@ export function useRestaurantDetail(restaurantId: string) {
     return `${apiUrl}/storage/uploads/${image}`;
   };
 
-  const availableCount = menus.filter((m: Menu) => m.is_available).length;
-  const unavailableCount = menus.filter((m: Menu) => !m.is_available).length;
+  const availableCount = allMenus.filter((m: Menu) => m.is_available).length;
+  const unavailableCount = allMenus.filter((m: Menu) => !m.is_available).length;
 
-  const filteredMenus = menus.filter((menu: Menu) => {
-    if (filterStatus === 'available') return menu.is_available;
-    if (filterStatus === 'unavailable') return !menu.is_available;
-    return true;
-  });
+  // Total menu setelah filter status + search (untuk pagination)
+  const filteredTotal = allMenus.filter((menu) => {
+    const matchStatus =
+      filterStatus === 'available'
+        ? menu.is_available === true
+        : filterStatus === 'unavailable'
+          ? menu.is_available === false
+          : true;
+
+    const matchSearch = searchQuery.trim()
+      ? menu.name.toLowerCase().includes(searchQuery.trim().toLowerCase())
+      : true;
+
+    return matchStatus && matchSearch;
+  }).length;
+
+  const totalPages = Math.max(1, Math.ceil(filteredTotal / itemsPerPage));
 
   return {
+    // State
     user,
     isLoading,
     isInitialized,
     restaurant,
     menus,
+    allMenus,
     isLoadingMenus,
     isSubmitting,
     showForm,
     editingId,
     togglingId,
     filterStatus,
+    searchQuery,
     message,
     deleteConfirm,
     imagePreview,
@@ -440,24 +497,37 @@ export function useRestaurantDetail(restaurantId: string) {
     formData,
     availableCount,
     unavailableCount,
-    filteredMenus,
 
+    // Pagination values
+    currentPage,
+    itemsPerPage,
+    totalPages,
+    totalMenus: filteredTotal,
+
+    // Setters
     setShowForm,
     setFilterStatus,
+    setSearchQuery,
     setDeleteConfirm,
     setFormData,
     setImagePreview,
     setImageFile,
 
+    // Pagination handlers
+    handlePageChange,
+    handleItemsPerPageChange,
+
+    // Actions
     resetForm,
     handleSubmit,
     handleEdit,
     handleDelete,
     handleToggleAvailability,
     handleImageChange,
-    handleFormChange, 
+    handleFormChange,
     showMessage,
 
+    // Helpers
     formatCurrency,
     getImageSrc
   };

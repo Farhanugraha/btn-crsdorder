@@ -8,6 +8,8 @@ export const useRestaurantMenu = (restaurantId: string) => {
   const [isLoading, setIsLoading] = useState(true);
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [menuList, setMenuList] = useState<Menu[]>([]);
+  const [filteredMenuList, setFilteredMenuList] = useState<Menu[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState<{ [key: string]: boolean }>({});
   const [selectedQuantity, setSelectedQuantity] = useState<{ [key: string]: number }>({});
@@ -40,6 +42,7 @@ export const useRestaurantMenu = (restaurantId: string) => {
 
         setRestaurant(result.data);
         setMenuList(result.data.menus || []);
+        setFilteredMenuList(result.data.menus || []);
         setAreaId(result.data.area_id);
       } catch (err) {
         console.error('Error:', err);
@@ -51,6 +54,25 @@ export const useRestaurantMenu = (restaurantId: string) => {
 
     fetchData();
   }, [restaurantId, apiUrl]);
+
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setFilteredMenuList(menuList);
+      return;
+    }
+
+    const query = searchQuery.toLowerCase().trim();
+    const filtered = menuList.filter(
+      (menu) =>
+        menu.name.toLowerCase().includes(query) ||
+        (menu.description && menu.description.toLowerCase().includes(query))
+    );
+    setFilteredMenuList(filtered);
+  }, [searchQuery, menuList]);
+
+  const handleSearchChange = (query: string) => {
+    setSearchQuery(query);
+  };
 
   const toggleDialog = (menuId: number) => {
     if (!isLoggedIn) {
@@ -137,7 +159,9 @@ export const useRestaurantMenu = (restaurantId: string) => {
   return {
     isLoading,
     restaurant,
-    menuList,
+    menuList: filteredMenuList,
+    originalMenuList: menuList,
+    searchQuery,
     error,
     dialogOpen,
     selectedQuantity,
@@ -150,6 +174,7 @@ export const useRestaurantMenu = (restaurantId: string) => {
     handleBack,
     handleLoginRedirect,
     setSelectedQuantity,
-    setNotes
+    setNotes,
+    handleSearchChange
   };
 };

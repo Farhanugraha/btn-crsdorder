@@ -9,7 +9,6 @@ import { MenuForm } from './components/MenuForm';
 import { MenuFilter } from './components/MenuFilter';
 import { MenuList } from './components/MenuList';
 import { DeleteModal } from './components/DeleteModal';
-import { LoadingState } from './components/LoadingState';
 import { NotFoundState } from './components/NotFoundState';
 import {
   DetailHeaderSkeleton,
@@ -27,12 +26,14 @@ export default function RestaurantDetailPage() {
     isInitialized,
     restaurant,
     menus,
+    allMenus,
     isLoadingMenus,
     isSubmitting,
     showForm,
     editingId,
     togglingId,
     filterStatus,
+    searchQuery,
     message,
     deleteConfirm,
     imagePreview,
@@ -40,15 +41,25 @@ export default function RestaurantDetailPage() {
     formData,
     availableCount,
     unavailableCount,
-    filteredMenus,
+
+    // Pagination values
+    currentPage,
+    itemsPerPage,
+    totalPages,
+    totalMenus,
 
     // Setters
     setShowForm,
     setFilterStatus,
+    setSearchQuery,
     setDeleteConfirm,
-    setFormData, // <-- SEKARANG TERSEDIA
-    setImagePreview, // <-- SEKARANG TERSEDIA
-    setImageFile, // <-- SEKARANG TERSEDIA
+    setFormData,
+    setImagePreview,
+    setImageFile,
+
+    // Pagination handlers
+    handlePageChange,
+    handleItemsPerPageChange,
 
     // Actions
     resetForm,
@@ -57,6 +68,7 @@ export default function RestaurantDetailPage() {
     handleDelete,
     handleToggleAvailability,
     handleImageChange,
+    handleFormChange,
     showMessage,
 
     // Helpers
@@ -126,7 +138,11 @@ export default function RestaurantDetailPage() {
         />
       )}
 
-      <RestaurantInfo restaurant={restaurant} />
+      <RestaurantInfo
+        restaurant={restaurant}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+      />
 
       {/* Main Content */}
       <main className="px-4 py-6 sm:px-6 lg:px-8">
@@ -143,13 +159,7 @@ export default function RestaurantDetailPage() {
               isSubmitting={isSubmitting}
               imagePreview={imagePreview}
               imageFile={imageFile}
-              onFormChange={(e) => {
-                const { name, value, type, checked } = e.target;
-                setFormData((prev: any) => ({
-                  ...prev,
-                  [name]: type === 'checkbox' ? checked : value
-                }));
-              }}
+              onFormChange={handleFormChange}
               onImageChange={handleImageChange}
               onRemoveImage={() => {
                 setImagePreview('');
@@ -166,7 +176,7 @@ export default function RestaurantDetailPage() {
           >
             <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900">
               <MenuFilter
-                totalMenus={menus.length}
+                totalMenus={allMenus.length}
                 availableCount={availableCount}
                 unavailableCount={unavailableCount}
                 filterStatus={filterStatus}
@@ -175,17 +185,23 @@ export default function RestaurantDetailPage() {
 
               <div className="p-4 sm:p-6">
                 <MenuList
-                  menus={filteredMenus}
+                  menus={menus}
                   isLoading={isLoadingMenus}
                   filterStatus={filterStatus}
                   togglingId={togglingId}
-                  totalMenus={menus.length}
+                  totalMenus={totalMenus}
                   onEdit={handleEdit}
                   onToggleAvailability={handleToggleAvailability}
                   onDelete={(id) => setDeleteConfirm(id)}
                   onAddFirst={() => setShowForm(true)}
                   formatCurrency={formatCurrency}
                   getImageSrc={getImageSrc}
+                  // Pagination props
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  itemsPerPage={itemsPerPage}
+                  onPageChange={handlePageChange}
+                  onItemsPerPageChange={handleItemsPerPageChange}
                 />
               </div>
             </div>
