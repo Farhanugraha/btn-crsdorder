@@ -12,7 +12,6 @@ export const useAdminDashboard = () => {
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
-  // ============= CEK AUTH =============
   useEffect(() => {
     const checkAuth = () => {
       const token = typeof window !== 'undefined' ? localStorage?.getItem('auth_token') : null;
@@ -35,7 +34,6 @@ export const useAdminDashboard = () => {
     checkAuth();
   }, [router]);
 
-  // ============= HITUNG STATISTIK HARI INI =============
   const getTodayStats = useCallback((ordersData: Order[]) => {
     if (!ordersData.length) return { totalToday: 0, completedToday: 0, revenueToday: 0 };
 
@@ -48,7 +46,9 @@ export const useAdminDashboard = () => {
       return orderDate.getTime() === today.getTime();
     });
 
-    const totalToday = todayOrders.length;
+    const totalToday = todayOrders.filter(
+      order => order.status === 'paid'
+    ).length;
     const completedToday = todayOrders.filter(
       order => order.order_status === 'completed' && order.status === 'paid'
     ).length;
@@ -59,7 +59,6 @@ export const useAdminDashboard = () => {
     return { totalToday, completedToday, revenueToday };
   }, []);
 
-  // ============= FETCH ALL DATA PARALLEL =============
   useEffect(() => {
     if (!user) return;
 
@@ -87,7 +86,6 @@ export const useAdminDashboard = () => {
           ordersRes.json()
         ]);
 
-        // Proses orders
         let processedOrders: Order[] = [];
         if (ordersJson.success && ordersJson.data) {
           processedOrders = ordersJson.data.map((order: any) => ({
@@ -98,13 +96,10 @@ export const useAdminDashboard = () => {
           }));
         }
         
-        // Set orders
         setOrders(processedOrders);
 
-        // Hitung statistik dari orders
         const { totalToday, completedToday, revenueToday } = getTodayStats(processedOrders);
 
-        // Set dashboard data dengan statistik yang sudah dihitung
         if (dashboardJson.success && dashboardJson.data) {
           const dashboardWithStats = {
             ...dashboardJson.data,
@@ -120,7 +115,6 @@ export const useAdminDashboard = () => {
           };
           setDashboardData(dashboardWithStats);
         } else {
-          // Fallback jika dashboard API error
           const totalRevenue = processedOrders
             .filter(order => order.status === 'paid')
             .reduce((sum, order) => sum + (Number(order.total_price) || 0), 0);
@@ -166,12 +160,10 @@ export const useAdminDashboard = () => {
     fetchAllData();
   }, [user, apiUrl, router, getTodayStats]);
 
-  // ============= EFFECT UNTUK UPDATE STATS SAAT ORDERS BERUBAH =============
   useEffect(() => {
     if (dashboardData && orders.length > 0) {
       const { totalToday, completedToday, revenueToday } = getTodayStats(orders);
       
-      // Cek apakah perlu update
       const needsUpdate = 
         dashboardData.orders?.today !== totalToday ||
         dashboardData.orders?.completedToday !== completedToday ||
@@ -197,7 +189,6 @@ export const useAdminDashboard = () => {
     }
   }, [orders, dashboardData, getTodayStats]);
 
-  // ============= REFRESH =============
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
     
@@ -219,7 +210,6 @@ export const useAdminDashboard = () => {
         ordersRes.json()
       ]);
 
-      // Update orders dulu
       if (ordersJson.success && ordersJson.data) {
         const processedOrders = ordersJson.data.map((order: any) => ({
           ...order,
@@ -230,7 +220,6 @@ export const useAdminDashboard = () => {
         setOrders(processedOrders);
       }
 
-      // Update dashboard data
       if (dashboardJson.success && dashboardJson.data) {
         setDashboardData(dashboardJson.data);
       }

@@ -49,7 +49,7 @@ interface UserData {
 
 interface DashboardData {
   total_orders: number;
-  today_orders: number; // Total pesanan hari ini
+  today_orders: number;
   total_users: number;
   total_admins: number;
   total_superadmins: number;
