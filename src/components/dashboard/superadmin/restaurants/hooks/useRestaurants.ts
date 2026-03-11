@@ -8,8 +8,13 @@ import type {
   ViewMode, 
   FilterStatus 
 } from '../types';
-// PERBAIKAN: import API_URL sebagai value, bukan type
 import { API_URL } from '../types';
+
+const getApiUrl = (): string => {
+  const envUrl = (process.env.NEXT_PUBLIC_API_URL ?? '').replace(/\/$/, '');
+  if (envUrl.endsWith('/api')) return envUrl;
+  return `${envUrl}/api`;
+};
 
 export function useRestaurants() {
   const [isDark, setIsDark] = useState(false);
@@ -35,8 +40,6 @@ export function useRestaurants() {
     description: '',
     address: ''
   });
-
-  const apiUrl = API_URL; // Gunakan API_URL yang diimport
 
   const getIsOpen = (value: number | boolean): boolean => Boolean(value);
 
@@ -87,7 +90,8 @@ export function useRestaurants() {
 
   const fetchAreas = async () => {
     try {
-      const response = await fetch(`${apiUrl}/api/areas`);
+      const apiUrl = getApiUrl();
+      const response = await fetch(`${apiUrl}/areas`);
       const data = await response.json();
       if (data.success && Array.isArray(data.data)) {
         setAreas(data.data);
@@ -101,14 +105,21 @@ export function useRestaurants() {
   const fetchRestaurants = async () => {
     setIsLoadingRestaurants(true);
     try {
+      const apiUrl = getApiUrl();
       const token = localStorage?.getItem('auth_token');
-      const response = await fetch(`${apiUrl}/api/restaurants`, {
+      const response = await fetch(`${apiUrl}/restaurants?per_page=100`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = await response.json();
 
-      if (data.success && data.data?.data && Array.isArray(data.data.data)) {
-        setRestaurants(data.data.data);
+      if (data.success) {
+        if (data.data?.data && Array.isArray(data.data.data)) {
+          setRestaurants(data.data.data);
+        } else if (Array.isArray(data.data)) {
+          setRestaurants(data.data);
+        } else {
+          setRestaurants([]);
+        }
       } else {
         setRestaurants([]);
       }
@@ -157,11 +168,11 @@ export function useRestaurants() {
 
     setIsSubmitting(true);
     try {
+      const apiUrl = getApiUrl();
       const token = localStorage?.getItem('auth_token');
-      const method = editingId ? 'PUT' : 'POST';
       const url = editingId
-        ? `${apiUrl}/api/restaurants/${editingId}`
-        : `${apiUrl}/api/restaurants`;
+        ? `${apiUrl}/restaurants/${editingId}`
+        : `${apiUrl}/restaurants`;
 
       const submitData = new FormData();
       submitData.append('area_id', String(formData.area_id));
@@ -224,8 +235,9 @@ export function useRestaurants() {
 
   const handleDelete = async (id: number) => {
     try {
+      const apiUrl = getApiUrl();
       const token = localStorage?.getItem('auth_token');
-      const response = await fetch(`${apiUrl}/api/restaurants/${id}`, {
+      const response = await fetch(`${apiUrl}/restaurants/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -247,8 +259,9 @@ export function useRestaurants() {
   const handleToggleStatus = async (id: number) => {
     setTogglingId(id);
     try {
+      const apiUrl = getApiUrl();
       const token = localStorage?.getItem('auth_token');
-      const response = await fetch(`${apiUrl}/api/restaurants/${id}/toggle-status`, {
+      const response = await fetch(`${apiUrl}/restaurants/${id}/toggle-status`, {
         method: 'PATCH',
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -287,7 +300,6 @@ export function useRestaurants() {
     }
   };
 
-  // PERBAIKAN: Hapus penggunaan editingId di dalam objek prev
   const handleRemovePhoto = () => {
     setFormData(prev => ({
       ...prev,
@@ -300,12 +312,9 @@ export function useRestaurants() {
     if (input) input.value = '';
   };
 
-  const filteredRestaurants = restaurants.filter((r) => {
-    const statusMatch =
-      filterStatus === 'all' ||
-      (filterStatus === 'open' ? getIsOpen(r.is_open) : !getIsOpen(r.is_open));
-
-    const areaMatch = filterArea === 'all' || r.area_id === Number(filterArea);
+  const restaurantsByArea = restaurants.filter((r) => {
+    const areaMatch =
+      filterArea === 'all' || Number(r.area_id) === Number(filterArea);
 
     const searchMatch =
       searchQuery === '' ||
@@ -313,14 +322,19 @@ export function useRestaurants() {
       r.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
       r.address.toLowerCase().includes(searchQuery.toLowerCase());
 
-    return statusMatch && areaMatch && searchMatch;
+    return areaMatch && searchMatch;
   });
 
-  const openCount = restaurants.filter((r) => getIsOpen(r.is_open)).length;
-  const closedCount = restaurants.filter((r) => !getIsOpen(r.is_open)).length;
+  const filteredRestaurants = restaurantsByArea.filter((r) => {
+    if (filterStatus === 'all') return true;
+    return filterStatus === 'open' ? getIsOpen(r.is_open) : !getIsOpen(r.is_open);
+  });
+
+  const totalCount = restaurantsByArea.length;
+  const openCount = restaurantsByArea.filter((r) => getIsOpen(r.is_open)).length;
+  const closedCount = restaurantsByArea.filter((r) => !getIsOpen(r.is_open)).length;
 
   return {
-    // State
     isDark,
     user,
     isLoading,
@@ -341,8 +355,8 @@ export function useRestaurants() {
     filteredRestaurants,
     openCount,
     closedCount,
+    totalCount,
 
-    // Setters
     setShowForm,
     setViewMode,
     setFilterStatus,
@@ -350,7 +364,6 @@ export function useRestaurants() {
     setSearchQuery,
     setDeleteConfirm,
 
-    // Actions
     resetForm,
     handleSubmit,
     handleEdit,
@@ -361,7 +374,6 @@ export function useRestaurants() {
     handleRemovePhoto,
     showMessage,
 
-    // Helpers
     getIsOpen
   };
 }

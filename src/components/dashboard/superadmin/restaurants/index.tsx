@@ -13,11 +13,9 @@ import { LoadingState } from './components/LoadingState';
 import { GridSkeleton } from './components/skeleton/GridSkeleton';
 import { ListSkeleton } from './components/skeleton/ListSkeleton';
 import { FilterSkeleton } from './components/skeleton/FilterSkeleton';
-// HAPUS import API_URL karena tidak digunakan di sini
 
 export default function RestaurantsPage() {
   const {
-    // State
     isLoading,
     restaurants,
     areas,
@@ -36,8 +34,8 @@ export default function RestaurantsPage() {
     filteredRestaurants,
     openCount,
     closedCount,
+    totalCount,
 
-    // Setters
     setShowForm,
     setViewMode,
     setFilterStatus,
@@ -45,7 +43,6 @@ export default function RestaurantsPage() {
     setSearchQuery,
     setDeleteConfirm,
 
-    // Actions
     resetForm,
     handleSubmit,
     handleEdit,
@@ -56,7 +53,6 @@ export default function RestaurantsPage() {
     handleRemovePhoto,
     showMessage,
 
-    // Helpers
     getIsOpen
   } = useRestaurants();
 
@@ -74,7 +70,6 @@ export default function RestaurantsPage() {
         onAddClick={() => setShowForm(true)}
       />
 
-      {/* Alert Messages */}
       {message && (
         <MessageAlert
           message={message}
@@ -82,7 +77,6 @@ export default function RestaurantsPage() {
         />
       )}
 
-      {/* Search Bar Section */}
       {!showForm && restaurants.length > 0 && (
         <SearchBar
           searchQuery={searchQuery}
@@ -92,21 +86,18 @@ export default function RestaurantsPage() {
         />
       )}
 
-      {/* Main Content */}
       <main className="px-4 py-6 pt-6 sm:px-6 lg:px-8">
         <div
           className={`grid gap-6 ${
             showForm ? 'lg:grid-cols-4' : 'lg:grid-cols-1'
           }`}
         >
-          {/* Form Section */}
           {showForm && (
             <RestaurantForm
               formData={formData}
               areas={areas}
               editingId={editingId}
               isSubmitting={isSubmitting}
-              // HAPUS prop apiUrl dari sini
               onFormChange={handleFormChange}
               onPhotoUpload={handlePhotoUpload}
               onRemovePhoto={handleRemovePhoto}
@@ -115,27 +106,23 @@ export default function RestaurantsPage() {
             />
           )}
 
-          {/* Restaurants List */}
           <div
             className={showForm ? 'lg:col-span-3' : 'lg:col-span-1'}
           >
             <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-200/50 dark:border-slate-700 dark:bg-slate-900 dark:shadow-none">
-              {/* Filter Toolbar */}
               <FilterToolbar
                 filterStatus={filterStatus}
                 filterArea={filterArea}
                 areas={areas}
                 openCount={openCount}
                 closedCount={closedCount}
-                totalCount={restaurants.length}
+                totalCount={totalCount}
                 onStatusChange={setFilterStatus}
                 onAreaChange={setFilterArea}
               />
 
-              {/* Content */}
               <div className="p-4 sm:p-6">
                 {isLoadingRestaurants ? (
-                  // Skeleton Loading
                   viewMode === 'grid' ? (
                     <GridSkeleton />
                   ) : (
@@ -170,7 +157,6 @@ export default function RestaurantsPage() {
         </div>
       </main>
 
-      {/* Delete Confirmation Modal */}
       <DeleteModal
         isOpen={deleteConfirm !== null}
         onConfirm={() => deleteConfirm && handleDelete(deleteConfirm)}

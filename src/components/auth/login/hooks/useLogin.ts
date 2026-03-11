@@ -123,6 +123,11 @@ export const useLogin = () => {
         }, 1000);
       } else {
         setSubmitting(false);
+        
+        if (response.status === 403) {
+          toast.error('Email belum diverifikasi. Silakan cek inbox atau folder spam Anda.');
+          return;
+        }
 
         if (responseData.errors) {
           handleValidationErrors(responseData.errors);
