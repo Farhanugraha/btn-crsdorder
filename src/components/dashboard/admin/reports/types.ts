@@ -57,10 +57,10 @@ export interface OrderItem {
 export interface DashboardData {
   orders: {
     total: number;
-    pending: number; // payment pending
-    processing: number; // order processing
-    completed: number; // order completed AND payment paid
-    canceled: number; // order canceled OR payment canceled
+    pending: number; 
+    processing: number;
+    completed: number;
+    canceled: number; 
     today?: number;
     completedToday?: number;
   };
@@ -115,11 +115,15 @@ export interface OrderByDate {
     payment_status: string; 
     created_at: string;
     total: number;
+    restaurant_name: string;  
+    area_name: string; 
+    notes: string | null;       
     items: Array<{
       name: string;
       quantity: number;
       price: number;
       subtotal: number;
+      notes: string | null;
     }>;
   }>;
 }

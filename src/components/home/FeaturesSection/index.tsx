@@ -42,7 +42,7 @@ export const FeaturesSection = () => {
         >
           <div className="mb-3 inline-block rounded-full bg-gradient-to-r from-blue-100 to-purple-100 px-4 py-1.5 dark:from-blue-900/30 dark:to-purple-900/30">
             <span className="text-sm font-medium text-blue-600 dark:text-blue-400">
-              🚀 Keunggulan Fooder
+              🚀 Keunggulan Obbama
             </span>
           </div>
           <h2 className="mb-4 text-3xl font-bold text-gray-900 dark:text-white md:text-4xl">

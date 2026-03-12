@@ -90,9 +90,9 @@ export const useReports = () => {
   const isFetchingRef = useRef(false);
   const initialLoadDoneRef = useRef(false);
   const currentUserIdRef = useRef<string | null>(null);
-  
   const moduleCacheRef = useRef<ModuleDataCache>({});
 
+  // ─── Persist filters & module to localStorage ───────────────────────────────
   useEffect(() => {
     if (activeFilterStartDate) {
       localStorage.setItem(STORAGE_KEYS.ACTIVE_FILTER_START, activeFilterStartDate);
@@ -113,6 +113,7 @@ export const useReports = () => {
     }
   }, [selectedModule]);
 
+  // ─── Auth helpers ────────────────────────────────────────────────────────────
   const getAuthToken = useCallback((): string | null => {
     if (typeof window === 'undefined') return null;
     return localStorage.getItem('auth_token');
@@ -135,7 +136,6 @@ export const useReports = () => {
       if (!userDataStr) return null;
       
       const user = JSON.parse(userDataStr);
-      
       let dataAccess = user.data_access || [];
       
       if (user.role === 'superadmin') {
@@ -168,6 +168,7 @@ export const useReports = () => {
     }
   }, []);
 
+  // ─── Reset ───────────────────────────────────────────────────────────────────
   const resetAllData = useCallback(() => {
     setDashboardData(null);
     setReportsData(null);
@@ -178,11 +179,11 @@ export const useReports = () => {
     moduleCacheRef.current = {};
   }, []);
 
+  // ─── Detect user change (e.g. login as different account) ───────────────────
   useEffect(() => {
     const checkUserChange = () => {
       const user = getUserDataFromStorage();
       if (!user) return;
-      
       if (currentUserIdRef.current && currentUserIdRef.current !== user.id) {
         resetAllData();
         setSelectedModule('');
@@ -200,30 +201,15 @@ export const useReports = () => {
     return () => window.removeEventListener('storage', handleStorageChange);
   }, [getUserDataFromStorage, resetAllData]);
 
+  // ─── Data transformers ───────────────────────────────────────────────────────
   const transformDashboardData = useCallback((data: any): DashboardData => {
     if (!data) {
       return {
-        orders: {
-          total: 0,
-          pending: 0,
-          processing: 0,
-          completed: 0,
-          canceled: 0,
-          today: 0,
-          completedToday: 0
-        },
-        payments: {
-          total_revenue: 0,
-          pending_payments: 0,
-          today_revenue: 0
-        },
-        users: {
-          total_users: 0,
-          total_admins: 0
-        }
+        orders: { total: 0, pending: 0, processing: 0, completed: 0, canceled: 0, today: 0, completedToday: 0 },
+        payments: { total_revenue: 0, pending_payments: 0, today_revenue: 0 },
+        users: { total_users: 0, total_admins: 0 }
       };
     }
-
     return {
       orders: {
         total: data?.orders?.total || 0,
@@ -248,13 +234,8 @@ export const useReports = () => {
 
   const transformReportsData = useCallback((data: any): ReportsData => {
     if (!data) {
-      return {
-        total_orders: 0,
-        orders_by_status: [],
-        payment_summary: []
-      };
+      return { total_orders: 0, orders_by_status: [], payment_summary: [] };
     }
-
     return {
       total_orders: data.total_orders || 0,
       orders_by_status: data.orders_by_status || [],
@@ -262,65 +243,121 @@ export const useReports = () => {
     };
   }, []);
 
-  const mapToOrdersDetailData = useCallback((apiData: any, activeStart: string, activeEnd: string): OrdersDetailData | undefined => {
-    try {
-      if (!apiData) {
-        return undefined;
-      }
-      
-      if (!apiData?.orders_by_date?.length) {
-        return undefined;
-      }
-      
-      const ordersByDate = apiData.orders_by_date;
-      
-      const totalOrders = ordersByDate.reduce((sum: number, day: any) => sum + (day.total_orders || 0), 0);
-      const totalRevenue = ordersByDate.reduce((sum: number, day: any) => sum + (day.daily_total || 0), 0);
-      
-      const mappedOrdersByDate: OrderByDate[] = ordersByDate.map((day: any) => {
-        return {
-          date: day.date,
-          total_orders: day.total_orders || 0,
-          daily_total: day.daily_total || 0,
-          cumulative_total: day.cumulative_total || 0,
-          orders: (day.orders || []).map((order: any) => ({
-            order_id: order.order_id || order.id,
-            order_number: order.order_number || order.order_code,
-            customer: order.customer || '-',
-            order_status: order.order_status || 'completed',
-            payment_status: order.payment_status || 'paid',
-            created_at: order.created_at,
-            total: order.total || 0,
-            items: (order.items || []).map((item: any) => ({
-              name: item.name || '-',
-              quantity: item.quantity || 0,
-              price: item.price || 0,
-              subtotal: item.subtotal || 0
-            }))
-          }))
-        };
-      });
+  const resolveRestaurantAndArea = useCallback((order: any): { restaurant_name: string; area_name: string } => {
 
-      const result = {
-        period: { 
-          start_date: apiData.period?.start_date || activeStart, 
-          end_date: apiData.period?.end_date || activeEnd 
-        },
-        summary: {
-          total_orders: apiData.summary?.total_orders || totalOrders,
-          total_revenue: apiData.summary?.total_revenue || totalRevenue,
-          average_order_value: apiData.summary?.average_order_value || (totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0)
-        },
-        orders_by_date: mappedOrdersByDate
+    if (order.restaurant_name && order.area_name) {
+      return {
+        restaurant_name: order.restaurant_name,
+        area_name: order.area_name
       };
-      
-      return result;
-      
-    } catch {
-      return undefined;
     }
+    
+    const items: any[] = order.items || [];
+    for (const item of items) {
+      const restaurant = item?.menu?.restaurant;
+      if (restaurant?.name) {
+        return {
+          restaurant_name: restaurant.name,
+          area_name: restaurant?.area?.name || '-'
+        };
+      }
+    }
+    if (order.restaurant?.name) {
+      return {
+        restaurant_name: order.restaurant.name,
+        area_name: order.restaurant?.area?.name || '-'
+      };
+    }
+
+    return { restaurant_name: '-', area_name: '-' };
   }, []);
 
+const mapToOrdersDetailData = useCallback((
+  apiData: any,
+  activeStart: string,
+  activeEnd: string
+): OrdersDetailData | undefined => {
+  try {
+    if (!apiData || !apiData?.orders_by_date?.length) return undefined;
+
+    const ordersByDate = apiData.orders_by_date;
+    const totalOrders  = ordersByDate.reduce((sum: number, day: any) => sum + (day.total_orders || 0), 0);
+    const totalRevenue = ordersByDate.reduce((sum: number, day: any) => sum + (day.daily_total   || 0), 0);
+
+    const mappedOrdersByDate: OrderByDate[] = ordersByDate.map((day: any) => ({
+      date:             day.date,
+      total_orders:     day.total_orders    || 0,
+      daily_total:      day.daily_total     || 0,
+      cumulative_total: day.cumulative_total || 0,
+
+      orders: (day.orders || []).map((order: any) => {
+        const { restaurant_name, area_name } = resolveRestaurantAndArea(order);
+
+        return {
+          order_id:       order.order_id     || order.id,
+          order_number:   order.order_number || order.order_code,
+          customer:       order.customer     || order.user?.name || '-',
+          order_status:   order.order_status  || 'completed',
+          payment_status: order.payment_status || 'paid',
+          created_at:     order.created_at,
+
+          total: parseFloat(order.total)
+              || parseFloat(order.total_price)
+              || 0,
+
+          restaurant_name,
+          area_name,
+
+          notes: order.notes || null,
+
+          items: (order.items || []).map((item: any) => {
+            const itemPrice    = parseFloat(item.price)    || 0;
+            const itemQuantity = parseInt(item.quantity)   || 0;
+
+            const itemSubtotal = item.subtotal
+              ? parseFloat(item.subtotal)
+              : itemPrice * itemQuantity;
+
+            const itemName = item.name
+                          || item.menu?.name
+                          || '-';
+
+            const itemNotes = (item.notes && item.notes.trim() !== '')
+              ? item.notes.trim()
+              : null;
+
+            return {
+              name:     itemName,
+              quantity: itemQuantity,
+              price:    itemPrice,
+              subtotal: itemSubtotal,
+              notes:    itemNotes,
+            };
+          }),
+        };
+      }),
+    }));
+
+    return {
+      period: {
+        start_date: apiData.period?.start_date || activeStart,
+        end_date:   apiData.period?.end_date   || activeEnd,
+      },
+      summary: {
+        total_orders:         apiData.summary?.total_orders         || totalOrders,
+        total_revenue:        apiData.summary?.total_revenue        || totalRevenue,
+        average_order_value:  apiData.summary?.average_order_value  ||
+          (totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0),
+      },
+      orders_by_date: mappedOrdersByDate,
+    };
+  } catch (e) {
+    console.error('mapToOrdersDetailData error:', e);
+    return undefined;
+  }
+}, [resolveRestaurantAndArea]);
+
+  // ─── URL builder ─────────────────────────────────────────────────────────────
   const buildUrl = useCallback((baseUrl: string, params: Record<string, string>): string => {
     const url = new URL(baseUrl, window.location.origin);
     Object.entries(params).forEach(([key, value]) => {
@@ -330,6 +367,7 @@ export const useReports = () => {
     return url.toString();
   }, []);
 
+  // ─── Cache helpers ───────────────────────────────────────────────────────────
   const getCacheKey = useCallback((module: string, start: string, end: string) => {
     return `${module}_${start}_${end}`;
   }, []);
@@ -338,13 +376,12 @@ export const useReports = () => {
     const cacheKey = getCacheKey(module, start, end);
     const cache = moduleCacheRef.current[cacheKey];
     if (!cache) return null;
-    
-    const CACHE_DURATION = 2 * 60 * 1000;
+
+    const CACHE_DURATION = 2 * 60 * 1000; // 2 menit
     if (Date.now() - cache.timestamp > CACHE_DURATION) {
       delete moduleCacheRef.current[cacheKey];
       return null;
     }
-    
     return cache;
   }, [getCacheKey]);
 
@@ -360,40 +397,32 @@ export const useReports = () => {
     }
   ) => {
     const cacheKey = getCacheKey(module, start, end);
-    moduleCacheRef.current[cacheKey] = {
-      ...data,
-      timestamp: Date.now()
-    };
+    moduleCacheRef.current[cacheKey] = { ...data, timestamp: Date.now() };
   }, [getCacheKey]);
 
-  const fetchDashboard = useCallback(async (token: string, start: string, end: string, module?: string): Promise<DashboardData | null> => {
-    try {
-      const params: Record<string, string> = {
-        start_date: start,
-        end_date: end
-      };
-      
-      if (module && module !== 'general') {
-        params.crsd_type = module;
+  const invalidateModuleCache = useCallback((module: string) => {
+    Object.keys(moduleCacheRef.current).forEach(key => {
+      if (key.startsWith(module)) {
+        delete moduleCacheRef.current[key];
       }
-      
+    });
+  }, []);
+
+  // ─── API fetchers ────────────────────────────────────────────────────────────
+  const fetchDashboard = useCallback(async (
+    token: string, start: string, end: string, module?: string
+  ): Promise<DashboardData | null> => {
+    try {
+      const params: Record<string, string> = { start_date: start, end_date: end };
+      if (module && module !== 'general') params.crsd_type = module;
+
       const response = await fetch(buildUrl(`${apiUrl}/api/admin/dashboard`, params), {
-        headers: { 
-          Authorization: `Bearer ${token}`, 
-          Accept: 'application/json',
-          'Cache-Control': 'no-cache'
-        },
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json', 'Cache-Control': 'no-cache' },
         cache: 'no-cache'
       });
 
-      if (response.status === 401) {
-        router.push('/auth/login');
-        return null;
-      }
-
-      if (!response.ok) {
-        return null;
-      }
+      if (response.status === 401) { router.push('/auth/login'); return null; }
+      if (!response.ok) return null;
 
       const data = await response.json();
       return data.success ? transformDashboardData(data.data) : null;
@@ -402,81 +431,58 @@ export const useReports = () => {
     }
   }, [apiUrl, router, transformDashboardData, buildUrl]);
 
-  const fetchReports = useCallback(async (token: string, start: string, end: string, module?: string): Promise<ReportsData | null> => {
+  const fetchReports = useCallback(async (
+    token: string, start: string, end: string, module?: string
+  ): Promise<ReportsData | null> => {
     try {
-      const params: Record<string, string> = {
-        start_date: start,
-        end_date: end
-      };
-      
-      if (module && module !== 'general') {
-        params.crsd_type = module;
-      }
-      
+      const params: Record<string, string> = { start_date: start, end_date: end };
+      if (module && module !== 'general') params.crsd_type = module;
+
       const response = await fetch(buildUrl(`${apiUrl}/api/admin/reports`, params), {
-        headers: { 
-          Authorization: `Bearer ${token}`, 
-          Accept: 'application/json',
-          'Cache-Control': 'no-cache'
-        },
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json', 'Cache-Control': 'no-cache' },
         cache: 'no-cache'
       });
 
-      if (!response.ok) {
-        return null;
-      }
+      if (!response.ok) return null;
 
       const data = await response.json();
-      
-      if (data.success && data.data) {
-        return transformReportsData(data.data);
-      } else if (data.success && !data.data) {
-        return transformReportsData(null);
-      }
-      
+      if (data.success) return transformReportsData(data.data ?? null);
       return null;
     } catch {
       return null;
     }
   }, [apiUrl, transformReportsData, buildUrl]);
 
-  const fetchOrdersDetail = useCallback(async (token: string, start: string, end: string, module?: string): Promise<OrdersDetailData | undefined> => {
-    try {
-      const params: Record<string, string> = { 
-        start_date: start, 
-        end_date: end 
-      };
-      
-      if (module) {
-        params.crsd_type = module;
-      }
-      
-      const response = await fetch(buildUrl(`${apiUrl}/api/admin/orders-detail`, params), {
-        headers: { 
-          Authorization: `Bearer ${token}`, 
-          Accept: 'application/json',
-          'Cache-Control': 'no-cache'
-        },
-        cache: 'no-cache'
-      });
+  const fetchOrdersDetail = useCallback(async (
+  token: string, start: string, end: string, module?: string
+): Promise<OrdersDetailData | undefined> => {
+  try {
+    const params: Record<string, string> = { start_date: start, end_date: end };
+    if (module) params.crsd_type = module;
 
-      if (!response.ok) {
-        return undefined;
-      }
+    const response = await fetch(buildUrl(`${apiUrl}/api/admin/orders-detail`, params), {
+      headers: { Authorization: `Bearer ${token}`, Accept: 'application/json', 'Cache-Control': 'no-cache' },
+      cache: 'no-cache'
+    });
 
-      const data = await response.json();
-      
-      if (data.success && data.data) {
-        return mapToOrdersDetailData(data.data, start, end);
-      }
-      
-      return undefined;
-    } catch {
-      return undefined;
+    if (!response.ok) return undefined;
+
+    const data = await response.json();
+
+    if (data.success && data.data) {
+      return mapToOrdersDetailData(data.data, start, end);
     }
-  }, [apiUrl, mapToOrdersDetailData, buildUrl]);
 
-  const fetchModuleData = useCallback(async (token: string, start: string, end: string, module: string) => {
+    return undefined;
+  } catch {
+    return undefined;
+  }
+}, [apiUrl, mapToOrdersDetailData, buildUrl]);
+
+  // ─── Module data loader ──────────────────────────────────────────────────────
+  const fetchModuleData = useCallback(async (
+    token: string, start: string, end: string, module: string
+  ) => {
     const cached = getCachedData(module, start, end);
     if (cached) {
       setDashboardData(cached.dashboardData);
@@ -490,7 +496,7 @@ export const useReports = () => {
     setReportsData(null);
     setOrdersDetailData(undefined);
     setAvailableDates([]);
-    
+
     try {
       const [dashboardResult, reportsResult, ordersDetailResult] = await Promise.all([
         fetchDashboard(token, start, end, module),
@@ -498,13 +504,10 @@ export const useReports = () => {
         fetchOrdersDetail(token, start, end, module)
       ]);
 
-      let newAvailableDates: AvailableDate[] = [];
-      if (ordersDetailResult?.orders_by_date) {
-        newAvailableDates = ordersDetailResult.orders_by_date.map(day => ({
-          date: day.date,
-          has_data: day.total_orders > 0
-        }));
-      }
+      const newAvailableDates: AvailableDate[] = ordersDetailResult?.orders_by_date?.map(day => ({
+        date: day.date,
+        has_data: day.total_orders > 0
+      })) || [];
 
       setDashboardData(dashboardResult);
       setReportsData(reportsResult);
@@ -522,7 +525,10 @@ export const useReports = () => {
     }
   }, [fetchDashboard, fetchReports, fetchOrdersDetail, getCachedData, setCachedData]);
 
-  const fetchAllData = useCallback(async (start: string, end: string, module?: string, force = false) => {
+  // ─── Main fetch orchestrator ─────────────────────────────────────────────────
+  const fetchAllData = useCallback(async (
+    start: string, end: string, module?: string, force = false
+  ) => {
     if (isFetchingRef.current && !force) return;
 
     try {
@@ -533,38 +539,28 @@ export const useReports = () => {
       if (!checkAuth()) return;
 
       const token = getAuthToken();
-      if (!token || !apiUrl) {
-        setError('Konfigurasi tidak lengkap');
-        return;
-      }
+      if (!token || !apiUrl) { setError('Konfigurasi tidak lengkap'); return; }
 
       const user = getUserDataFromStorage();
-      if (!user) {
-        setError('Data user tidak ditemukan');
-        return;
-      }
+      if (!user) { setError('Data user tidak ditemukan'); return; }
 
-      if (!currentUserIdRef.current) {
-        currentUserIdRef.current = user.id;
-      }
+      if (!currentUserIdRef.current) currentUserIdRef.current = user.id;
 
       setUserData(user);
       setAvailableModules(user.data_access);
 
       const moduleToUse = module || selectedModule;
-
       const isSuperadmin = user.role === 'superadmin';
-      const needsModuleSelection = (isSuperadmin || user.hasMultipleAccess) && !moduleToUse;
 
-      if (needsModuleSelection) {
+      if ((isSuperadmin || user.hasMultipleAccess) && !moduleToUse) {
         setShowModuleSelection(true);
         setIsLoading(false);
         return;
       }
 
       if (!moduleToUse && !user.hasMultipleAccess && !isSuperadmin) {
-        const defaultModule = user.data_access.includes('crsd1') ? 'crsd1' : 
-                             user.data_access.includes('crsd2') ? 'crsd2' : '';
+        const defaultModule = user.data_access.includes('crsd1') ? 'crsd1' :
+                              user.data_access.includes('crsd2') ? 'crsd2' : '';
         if (defaultModule) {
           setSelectedModule(defaultModule);
           await fetchModuleData(token, start, end, defaultModule);
@@ -583,7 +579,6 @@ export const useReports = () => {
         await fetchModuleData(token, start, end, moduleToUse);
         setShowModuleSelection(false);
       }
-
     } catch {
       setError('Gagal memuat data');
     } finally {
@@ -592,13 +587,12 @@ export const useReports = () => {
     }
   }, [apiUrl, selectedModule, fetchModuleData, getUserDataFromStorage, checkAuth, getAuthToken]);
 
+  // ─── Initial load ────────────────────────────────────────────────────────────
   useEffect(() => {
     if (initialLoadDoneRef.current) return;
 
     const initialize = async () => {
-      if (typeof window !== 'undefined') {
-        window.scrollTo(0, 0);
-      }
+      if (typeof window !== 'undefined') window.scrollTo(0, 0);
 
       if (!checkAuth()) return;
 
@@ -623,23 +617,17 @@ export const useReports = () => {
       const monthAgo = getMonthAgoDate();
       const today = getTodayDate();
 
-      if (!activeFilterStartDate) {
-        setActiveFilterStartDate(monthAgo);
-        setStartDate(monthAgo);
-      } else {
-        setStartDate(activeFilterStartDate);
-      }
+      const initStart = activeFilterStartDate || monthAgo;
+      const initEnd = activeFilterEndDate || today;
 
-      if (!activeFilterEndDate) {
-        setActiveFilterEndDate(today);
-        setEndDate(today);
-      } else {
-        setEndDate(activeFilterEndDate);
-      }
+      setStartDate(initStart);
+      setEndDate(initEnd);
+      if (!activeFilterStartDate) setActiveFilterStartDate(monthAgo);
+      if (!activeFilterEndDate) setActiveFilterEndDate(today);
 
       if (user.role === 'superadmin' || user.hasMultipleAccess) {
         if (selectedModule) {
-          await fetchAllData(activeFilterStartDate, activeFilterEndDate, selectedModule, true);
+          await fetchAllData(initStart, initEnd, selectedModule, true);
         } else {
           setShowModuleSelection(true);
           setIsLoading(false);
@@ -648,42 +636,36 @@ export const useReports = () => {
         return;
       }
 
-      const defaultModule = user.data_access.includes('crsd1') ? 'crsd1' : 
-                           user.data_access.includes('crsd2') ? 'crsd2' : '';
-      
+      const defaultModule = user.data_access.includes('crsd1') ? 'crsd1' :
+                            user.data_access.includes('crsd2') ? 'crsd2' : '';
+
       if (defaultModule) {
         setSelectedModule(defaultModule);
-        await fetchAllData(
-          activeFilterStartDate || monthAgo,
-          activeFilterEndDate || today,
-          defaultModule,
-          true
-        );
+        await fetchAllData(initStart, initEnd, defaultModule, true);
       } else {
         setIsLoading(false);
       }
-      
+
       initialLoadDoneRef.current = true;
     };
 
     initialize();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ─── Handlers ────────────────────────────────────────────────────────────────
   const handleModuleSelect = useCallback(async (module: string) => {
     setIsLoading(true);
     setError(null);
-    
+
     const user = getUserDataFromStorage();
-    
     if (user && module !== 'general') {
-      const isSuperadmin = user.role === 'superadmin';
-      if (!isSuperadmin && !user.data_access.includes(module)) {
+      if (user.role !== 'superadmin' && !user.data_access.includes(module)) {
         setError('Anda tidak memiliki akses ke modul ini');
         setIsLoading(false);
         return;
       }
     }
-    
+
     setSelectedModule(module);
     setShowModuleSelection(false);
 
@@ -703,9 +685,7 @@ export const useReports = () => {
       true
     );
 
-    const moduleName = module === 'general' ? 'Umum' : 
-                      module === 'crsd1' ? 'CRSD 1' : 'CRSD 2';
-    
+    const moduleName = module === 'general' ? 'Umum' : module === 'crsd1' ? 'CRSD 1' : 'CRSD 2';
     setSuccessMessage(`Dashboard ${moduleName} berhasil dimuat`);
     setTimeout(() => setSuccessMessage(null), 3000);
   }, [apiUrl, activeFilterStartDate, activeFilterEndDate, startDate, endDate, fetchAllData, getUserDataFromStorage, checkAuth, getAuthToken]);
@@ -721,7 +701,6 @@ export const useReports = () => {
       setError('Silakan pilih tanggal awal dan akhir');
       return;
     }
-
     if (new Date(startDate) > new Date(endDate)) {
       setError('Tanggal awal harus lebih kecil dari tanggal akhir');
       return;
@@ -729,18 +708,9 @@ export const useReports = () => {
 
     setActiveFilterStartDate(startDate);
     setActiveFilterEndDate(endDate);
-    
-    if (selectedModule) {
-      const prefix = selectedModule;
-      Object.keys(moduleCacheRef.current).forEach(key => {
-        if (key.startsWith(prefix)) {
-          delete moduleCacheRef.current[key];
-        }
-      });
-    }
-    
+    if (selectedModule) invalidateModuleCache(selectedModule);
     fetchAllData(startDate, endDate, selectedModule, true);
-  }, [startDate, endDate, selectedModule, fetchAllData]);
+  }, [startDate, endDate, selectedModule, fetchAllData, invalidateModuleCache]);
 
   const handleExport = useCallback(async () => {
     try {
@@ -753,51 +723,47 @@ export const useReports = () => {
       }
 
       const filename = `audit-orders-${ordersDetailData.period.start_date}-to-${ordersDetailData.period.end_date}`;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const exportData = ordersDetailData as any;
 
       switch (exportFormat) {
         case 'csv':
-          downloadFile(generateOrdersAuditCSV(ordersDetailData), `${filename}.csv`, 'text/csv');
+          downloadFile(generateOrdersAuditCSV(exportData), `${filename}.csv`, 'text/csv');
           break;
         case 'excel':
-          await generateOrdersAuditExcel(ordersDetailData);
+          await generateOrdersAuditExcel(exportData);
           break;
         case 'pdf':
-          await generateOrdersAuditPDF(ordersDetailData);
+          await generateOrdersAuditPDF(exportData);
           break;
         case 'txt':
-          downloadFile(generateOrdersAuditTXT(ordersDetailData), `${filename}.txt`, 'text/plain');
+          downloadFile(generateOrdersAuditTXT(exportData), `${filename}.txt`, 'text/plain');
           break;
       }
 
       setSuccessMessage(`Export ${exportFormat.toUpperCase()} berhasil`);
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch {
-      setError('Gagal export');
+      setError('Gagal export data');
     } finally {
       setIsExporting(false);
     }
   }, [ordersDetailData, exportFormat]);
 
   const handleRefresh = useCallback(() => {
-    if (selectedModule) {
-      const prefix = selectedModule;
-      Object.keys(moduleCacheRef.current).forEach(key => {
-        if (key.startsWith(prefix)) {
-          delete moduleCacheRef.current[key];
-        }
-      });
-    }
+    if (selectedModule) invalidateModuleCache(selectedModule);
     fetchAllData(activeFilterStartDate, activeFilterEndDate, selectedModule, true);
-  }, [activeFilterStartDate, activeFilterEndDate, selectedModule, fetchAllData]);
+  }, [activeFilterStartDate, activeFilterEndDate, selectedModule, fetchAllData, invalidateModuleCache]);
 
   const handleResetError = useCallback(() => setError(null), []);
   const handleResetSuccess = useCallback(() => setSuccessMessage(null), []);
-  
+
   const isDateAvailable = useCallback((date: string): boolean => {
-    const available = availableDates.find(d => d.date === date);
-    return available ? available.has_data : true;
+    const found = availableDates.find(d => d.date === date);
+    return found ? found.has_data : true;
   }, [availableDates]);
 
+  // ─── Return ──────────────────────────────────────────────────────────────────
   return {
     dashboardData,
     reportsData,
@@ -820,7 +786,7 @@ export const useReports = () => {
     setEndDate,
     setExportFormat,
     handleModuleSelect,
-    handleChangeModule, 
+    handleChangeModule,
     handleApplyFilter,
     handleExport,
     handleRefresh,

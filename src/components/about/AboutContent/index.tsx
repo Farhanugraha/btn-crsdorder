@@ -29,7 +29,7 @@ export const AboutContent = () => {
       <motion.div variants={fadeInUp}>
         <div className="inline-block rounded-full bg-gradient-to-r from-blue-100 to-purple-100 px-4 py-1.5 dark:from-blue-900/30 dark:to-purple-900/30">
           <span className="text-sm font-medium text-blue-600 dark:text-blue-400">
-            🎯 Tentang Fooder
+            🎯 Tentang Obbama
           </span>
         </div>
 
@@ -50,9 +50,9 @@ export const AboutContent = () => {
         <span className="font-semibold text-blue-600 dark:text-blue-400">
           BTNers
         </span>{' '}
-        di Fooder, platform pemesanan makanan yang kami hadirkan untuk
+        di Obbama, platform pemesanan makanan yang kami hadirkan untuk
         memudahkan Anda menikmati beragam hidangan favorit secara
-        praktis dan cepat. Fooder dirancang untuk mendukung aktivitas
+        praktis dan cepat. Obbama dirancang untuk mendukung aktivitas
         BTNers dengan akses mudah ke pilihan kuliner berkualitas dari
         berbagai mitra restoran, menghadirkan pengalaman memesan
         makanan yang efisien, nyaman, dan menyenangkan dalam satu

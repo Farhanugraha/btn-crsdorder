@@ -28,7 +28,7 @@ export const HeroImage = () => {
         <div className="relative overflow-hidden rounded-2xl shadow-2xl">
           <Image
             src="/obbamadashboard.png"
-            alt="Fooder - Platform Pemesanan Makanan"
+            alt="Obbama - Platform Pemesanan Makanan"
             width={500}
             height={500}
             className="h-auto w-full object-cover"

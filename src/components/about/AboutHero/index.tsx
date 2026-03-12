@@ -19,7 +19,7 @@ export const AboutHero = () => {
       <div className="relative aspect-[5/6] w-full overflow-hidden rounded-2xl shadow-2xl">
         <Image
           src={aboutPic}
-          alt="About Fooder - Platform Pemesanan Makanan BTN"
+          alt="About Obbama - Platform Pemesanan Makanan"
           fill
           className="object-contain p-2"
           sizes="(max-width: 768px) 90vw, 35vw"

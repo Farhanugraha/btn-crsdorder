@@ -2,7 +2,7 @@ export const VERIFY_MESSAGES = {
   LOADING: 'Memproses verifikasi...',
   SUCCESS_TITLE: '✨ Verifikasi Berhasil!',
   SUCCESS_MESSAGE: 'Email Anda telah berhasil diverifikasi! 🎉',
-  SUCCESS_DESCRIPTION: 'Akun Anda sudah siap digunakan. Silakan login untuk mulai berbelanja di CRSD BTN FOODER.',
+  SUCCESS_DESCRIPTION: 'Akun Anda sudah siap digunakan. Silakan login untuk mulai berbelanja di CRSD OBBAMA.',
   ERROR_TITLE: '⚠️ Verifikasi Gagal',
   ERROR_DEFAULT: 'Gagal memverifikasi email. Link mungkin sudah expired.',
   ERROR_UNVERIFIED: 'Email belum diverifikasi.',
