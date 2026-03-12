@@ -206,7 +206,7 @@ const styleTotalHarian = (col: number) => ({
  * Sheet 1 - Ringkasan        : Info periode + ringkasan keseluruhan
  * Sheet 2 - Ringkasan Harian : Tabel per tanggal (total & kumulatif)
  * Sheet 3+ - Detail Per Hari : Satu sheet per tanggal dengan kolom:
- *   No. | Pelanggan | Restoran | Area | Notes Order | Nama Produk | Notes Item | Qty | Harga Satuan | Subtotal
+ *   No. | Pelanggan | Restoran | Area | Catatan Pesanan | Nama Produk | Catatan Khusus | Qty | Harga Satuan | Subtotal
  */
 export const generateOrdersAuditExcel = async (data: OrdersDetail): Promise<void> => {
   try {
@@ -336,9 +336,9 @@ export const generateOrdersAuditExcel = async (data: OrdersDetail): Promise<void
     //   1  Pelanggan
     //   2  Restoran
     //   3  Area
-    //   4  Notes Order
+    //   4  Catatan Pesanan
     //   5  Nama Produk
-    //   6  Notes Item
+    //   6  Catatan Khusus
     //   7  Qty
     //   8  Harga Satuan
     //   9  Subtotal
@@ -354,9 +354,9 @@ export const generateOrdersAuditExcel = async (data: OrdersDetail): Promise<void
           'Pelanggan',
           'Restoran',
           'Area',
-          'Notes Order',
+          'Catatan Pesanan',
           'Nama Produk',
-          'Notes Item',
+          'Catatan Khusus',
           'Qty',
           'Harga Satuan',
           'Subtotal',
@@ -418,9 +418,9 @@ export const generateOrdersAuditExcel = async (data: OrdersDetail): Promise<void
         { wch: 20 }, // Pelanggan
         { wch: 22 }, // Restoran
         { wch: 16 }, // Area
-        { wch: 28 }, // Notes Order
+        { wch: 28 }, // Catatan Pesanan
         { wch: 26 }, // Nama Produk
-        { wch: 28 }, // Notes Item
+        { wch: 28 }, // Catatan Khusus
         { wch: 7  }, // Qty
         { wch: 16 }, // Harga Satuan
         { wch: 16 }, // Subtotal
@@ -800,9 +800,9 @@ export const generateOrdersAuditPDF = async (data: OrdersDetail): Promise<void> 
             <th style="width:11%;">Pelanggan</th>
             <th style="width:13%;">Restoran</th>
             <th style="width:9%;">Area</th>
-            <th style="width:13%;">Notes Order</th>
+            <th style="width:13%;">Catatan Pesanan</th>
             <th style="width:17%;">Produk</th>
-            <th style="width:13%;">Notes Item</th>
+            <th style="width:13%;">Catatan Khusus</th>
             <th style="width:4%;">Qty</th>
             <th style="width:8%;">Harga</th>
             <th style="width:9%;">Subtotal</th>
@@ -986,7 +986,7 @@ export const generateOrdersAuditTXT = (data: OrdersDetail): string => {
   const lines: string[] = [];
 
   const TABLE_TOP = '┌────┬──────────────────┬────────────────────┬──────────────┬────────────────────────┬──────────────────────┬────────────────────────┬──────┬──────────────┬──────────────┐';
-  const TABLE_HDR = '│ No.│ Pelanggan        │ Restoran           │ Area         │ Notes Order            │ Produk               │ Notes Item             │ Qty  │ Harga        │ Subtotal     │';
+  const TABLE_HDR = '│ No.│ Pelanggan        │ Restoran           │ Area         │ Catatan Pesanan        │ Produk               │ Catatan Khusus         │ Qty  │ Harga        │ Subtotal     │';
   const TABLE_MID = '├────┼──────────────────┼────────────────────┼──────────────┼────────────────────────┼──────────────────────┼────────────────────────┼──────┼──────────────┼──────────────┤';
   const TABLE_BOT = '└────┴──────────────────┴────────────────────┴──────────────┴────────────────────────┴──────────────────────┴────────────────────────┴──────┴──────────────┴──────────────┘';
 
@@ -1163,9 +1163,9 @@ export const generateOrdersAuditCSV = (data: OrdersDetail): string => {
         'Pelanggan',
         'Restoran',
         'Area',
-        'Notes Order',
+        'Catatan Pesanan',
         'Produk',
-        'Notes Item',
+        'Catatan Khusus',
         'Qty',
         'Harga Satuan',
         'Subtotal',
