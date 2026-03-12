@@ -280,7 +280,10 @@ const mapToOrdersDetailData = useCallback((
   try {
     if (!apiData || !apiData?.orders_by_date?.length) return undefined;
 
-    const ordersByDate = apiData.orders_by_date;
+    const ordersByDate = [...(apiData.orders_by_date || [])].sort(
+      (a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
+
     const totalOrders  = ordersByDate.reduce((sum: number, day: any) => sum + (day.total_orders || 0), 0);
     const totalRevenue = ordersByDate.reduce((sum: number, day: any) => sum + (day.daily_total   || 0), 0);
 
@@ -290,7 +293,9 @@ const mapToOrdersDetailData = useCallback((
       daily_total:      day.daily_total     || 0,
       cumulative_total: day.cumulative_total || 0,
 
-      orders: (day.orders || []).map((order: any) => {
+      orders: [...(day.orders || [])].sort(
+        (a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      ).map((order: any) => {
         const { restaurant_name, area_name } = resolveRestaurantAndArea(order);
 
         return {
