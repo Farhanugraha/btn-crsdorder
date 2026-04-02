@@ -18,9 +18,26 @@ export const useAreaRestaurants = (areaId: string) => {
     try {
       setIsLoading(true);
       const response = await fetch(`${apiUrl}/api/restaurants/area/${areaId}`);
+
+      if (response.status === 404) {
+        router.replace('/areas');
+        return;
+      }
+
+      if(!response.ok) {
+        setError('Gagal memuat data area');
+        return;
+      }
+
       const result = await response.json();
 
       if (result.success) {
+
+        if (result.data.area && result.data.area.is_active === false) {
+          router.replace('/areas');
+          return;
+        }
+
         setArea(result.data.area);
         setRestaurants(result.data.restaurants);
         setFilteredRestaurants(result.data.restaurants);
