@@ -1,6 +1,6 @@
 'use client';
 
-import { Loader2, CheckCircle2, Plus } from 'lucide-react';
+import { CheckCircle2, Plus } from 'lucide-react';
 import { AreaCard } from './AreaCard';
 import { AreaListItem } from './AreaListItem';
 import type { Area, ViewMode } from '../types';
@@ -11,6 +11,7 @@ interface AreasListProps {
   viewMode: ViewMode;
   onEdit: (area: Area) => void;
   onDelete: (id: number) => void;
+  onToggleActive: (id: number) => void;
   onAddFirst: () => void;
 }
 
@@ -37,6 +38,7 @@ const GridSkeleton = () => {
             <div className="flex gap-2">
               <div className="h-8 w-8 rounded-lg bg-slate-200 dark:bg-slate-700"></div>
               <div className="h-8 w-8 rounded-lg bg-slate-200 dark:bg-slate-700"></div>
+              <div className="h-8 w-8 rounded-lg bg-slate-200 dark:bg-slate-700"></div>
             </div>
           </div>
         </div>
@@ -58,10 +60,12 @@ const ListSkeleton = () => {
             <div className="mb-2 flex items-center gap-3">
               <div className="h-5 w-32 rounded bg-slate-200 dark:bg-slate-700"></div>
               <div className="h-5 w-12 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+              <div className="h-5 w-16 rounded-full bg-slate-200 dark:bg-slate-700"></div>
             </div>
             <div className="h-4 w-3/4 rounded bg-slate-200 dark:bg-slate-700"></div>
           </div>
           <div className="flex gap-2">
+            <div className="h-8 w-8 rounded-lg bg-slate-200 dark:bg-slate-700"></div>
             <div className="h-8 w-8 rounded-lg bg-slate-200 dark:bg-slate-700"></div>
             <div className="h-8 w-8 rounded-lg bg-slate-200 dark:bg-slate-700"></div>
           </div>
@@ -77,6 +81,7 @@ export const AreasList = ({
   viewMode,
   onEdit,
   onDelete,
+  onToggleActive,
   onAddFirst
 }: AreasListProps) => {
   if (isLoading) {
@@ -116,6 +121,7 @@ export const AreasList = ({
             area={area}
             onEdit={onEdit}
             onDelete={onDelete}
+            onToggleActive={onToggleActive}
           />
         ))}
       </div>
@@ -130,6 +136,7 @@ export const AreasList = ({
           area={area}
           onEdit={onEdit}
           onDelete={onDelete}
+          onToggleActive={onToggleActive}
         />
       ))}
     </div>

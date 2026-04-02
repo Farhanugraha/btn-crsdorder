@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Area, FormData, Message, User, ViewMode } from '../types';
 
-// FIXED: pakai endsWith agar tidak salah detect /api di tengah URL
 const getApiUrl = (): string => {
   const envUrl = (process.env.NEXT_PUBLIC_API_URL ?? '').replace(/\/$/, '');
   if (envUrl.endsWith('/api')) return envUrl;
@@ -73,7 +72,7 @@ export function useAreas() {
       const token = getAuthToken();
       const apiUrl = getApiUrl();
 
-      const response = await fetch(`${apiUrl}/areas`, {
+      const response = await fetch(`${apiUrl}/areas/all`, {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -111,6 +110,52 @@ export function useAreas() {
     setEditingId(null);
     setShowForm(false);
   };
+
+
+const handleToggleActive = async (id: number) => {
+  const previousAreas = JSON.parse(JSON.stringify(areas));
+  const currentArea = areas.find(area => area.id === id);
+  if (!currentArea) return;
+  
+  const newIsActive = !currentArea.is_active;
+  setAreas(prev =>
+    prev.map(area =>
+      area.id === id ? { ...area, is_active: newIsActive } : area
+    )
+  );
+
+  try {
+    const token = getAuthToken();
+    const apiUrl = getApiUrl();
+
+    const response = await fetch(`${apiUrl}/areas/${id}/toggle-active`, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    const result = await response.json();
+
+    if (response.ok && result.success) {
+      const backendIsActive = result.data.is_active;
+      setAreas(prev =>
+        prev.map(area =>
+          area.id === id ? { ...area, is_active: backendIsActive } : area
+        )
+      );
+      showMessage('success', result.message);
+    } else {
+      setAreas(previousAreas);
+      showMessage('error', result.message || 'Gagal mengubah status area');
+    }
+  } catch (error) {
+    setAreas(previousAreas);
+    console.error('Error toggling active:', error);
+    showMessage('error', 'Terjadi kesalahan saat mengubah status');
+  }
+};
 
   const handleSubmit = async () => {
     if (!formData.name.trim() || !formData.description.trim()) {
@@ -259,6 +304,7 @@ export function useAreas() {
     handleFormChange,
     handleIconSelect,
     handleIconCustom,
+    handleToggleActive,
     toggleViewMode,
     showMessage
   };

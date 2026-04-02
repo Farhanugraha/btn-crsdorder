@@ -5,6 +5,7 @@ export interface Area {
   icon: string;
   order: number;
   slug: string;
+  is_active: boolean;
   created_at: string;
 }
 

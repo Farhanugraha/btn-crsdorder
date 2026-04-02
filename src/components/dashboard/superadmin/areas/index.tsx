@@ -29,6 +29,7 @@ export default function AreasPage() {
     handleSubmit,
     handleEdit,
     handleDelete,
+    handleToggleActive,
     handleFormChange,
     handleIconSelect,
     handleIconCustom,
@@ -51,7 +52,6 @@ export default function AreasPage() {
       />
 
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        {/* Message Alert */}
         {message && (
           <MessageAlert
             message={message}
@@ -60,7 +60,6 @@ export default function AreasPage() {
         )}
 
         <div className="flex flex-col gap-8 lg:flex-row">
-          {/* Form Section */}
           {showForm && (
             <AreaForm
               formData={formData}
@@ -75,7 +74,6 @@ export default function AreasPage() {
             />
           )}
 
-          {/* Areas List Section */}
           <div className="flex-1">
             <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
               <div className="border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white px-6 py-5 dark:border-slate-700 dark:from-slate-800 dark:to-slate-800">
@@ -112,6 +110,7 @@ export default function AreasPage() {
                   viewMode={viewMode}
                   onEdit={handleEdit}
                   onDelete={(id) => setDeleteConfirm(id)}
+                  onToggleActive={handleToggleActive}
                   onAddFirst={() => setShowForm(true)}
                 />
               </div>
@@ -120,7 +119,6 @@ export default function AreasPage() {
         </div>
       </main>
 
-      {/* Delete Confirmation Modal */}
       <DeleteModal
         isOpen={deleteConfirm !== null}
         onConfirm={() => deleteConfirm && handleDelete(deleteConfirm)}
